@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Entre em contato com a Associação: dúvidas, sugestões e solicitações.">
+  <title>Contato | Associação</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <a href="#main" class="skip-link">Ir para o conteúdo principal</a>
+  <header class="header">
+    <div class="container header-inner">
+      <a href="index.html" class="logo" aria-label="Associação Cultural Afro Brasileira Betim Cor Brazil - Página inicial"><img src="img/logo.jpg" alt="Associação Cultural Afro Brasileira Betim Cor Brazil" class="logo-img"><span class="logo-text">Betim Cor Brazil</span></a>
+      <button class="menu-toggle" aria-label="Abrir menu" aria-expanded="false"><span></span><span></span><span></span></button>
+      <nav class="nav" aria-label="Menu principal">
+        <ul class="nav-list">
+          <li><a href="index.html#nos">Nós</a></li>
+          <li><a href="eventos.html">Eventos</a></li>
+          <li><a href="noticias.html">Notícias</a></li>
+          <li><a href="galeria.html">Galeria</a></li>
+          <li><a href="contato.html">Contato</a></li>
+          <li><a href="area-membros.html" class="nav-membros">Área Membros</a></li>
+          <li><a href="doar.html" class="btn-doação">Doar</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="pagina-interna">
+    <div class="container">
+      <h1>Contato</h1>
+      <p class="intro">Envie dúvidas, sugestões ou solicitações pelo formulário abaixo.</p>
+
+      <form class="form-max" id="form-contato" aria-label="Formulário de contato">
+        <div class="form-group">
+          <label for="nome">Nome completo *</label>
+          <input type="text" id="nome" name="nome" required autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label for="email">E-mail *</label>
+          <input type="email" id="email" name="email" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="assunto">Assunto *</label>
+          <select id="assunto" name="assunto" required>
+            <option value="">Selecione</option>
+            <option value="duvida">Dúvida</option>
+            <option value="sugestao">Sugestão</option>
+            <option value="solicitacao">Solicitação / Inscrição</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="mensagem">Mensagem *</label>
+          <textarea id="mensagem" name="mensagem" rows="5" required></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Enviar mensagem</button>
+        </div>
+      </form>
+
+      <section class="section" aria-labelledby="titulo-redes">
+        <h2 id="titulo-redes">Redes sociais</h2>
+        <p>Siga-nos e compartilhe nosso conteúdo para maior engajamento.</p>
+        <div class="social-links">
+          <a href="#" class="btn btn-outline">Facebook</a>
+          <a href="#" class="btn btn-outline">Instagram</a>
+          <a href="#" class="btn btn-outline">YouTube</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h3>Associação</h3>
+          <div class="social-links" aria-label="Redes sociais">
+            <a href="#" aria-label="Facebook">Facebook</a>
+            <a href="#" aria-label="Instagram">Instagram</a>
+            <a href="#" aria-label="YouTube">YouTube</a>
+          </div>
+        </div>
+        <div class="footer-col">
+          <h4>Navegação</h4>
+          <ul>
+            <li><a href="index.html#nos">Nós</a></li>
+            <li><a href="eventos.html">Eventos</a></li>
+            <li><a href="noticias.html">Notícias</a></li>
+            <li><a href="galeria.html">Galeria</a></li>
+            <li><a href="contato.html">Contato</a></li>
+            <li><a href="doar.html">Doar</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom"><p>&copy; <span id="ano"></span> Associação.</p></div>
+    </div>
+  </footer>
+  <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+/* Área administrativa */
+.admin-login { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--cinza-800, #1e293b); padding: 1rem; }
+.admin-login-box { width: 100%; max-width: 400px; padding: 2rem; background: var(--branco); border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+.admin-login-box h1 { margin: 0 0 0.25rem; font-size: 1.5rem; color: var(--verde); }
+.admin-login-sub { margin: 0 0 1.5rem; font-size: 0.9rem; color: var(--cinza-600); }
+.admin-login-footer { margin-top: 1.5rem; font-size: 0.85rem; color: var(--cinza-600); text-align: center; }
+.admin-login-footer a { color: var(--verde); }
+.btn-block { width: 100%; }
+
+/* Layout do painel */
+.admin-painel { display: flex; min-height: 100vh; }
+.admin-sidebar { width: 260px; min-width: 260px; background: var(--verde); color: var(--branco); padding: 1rem 0; }
+.admin-sidebar h2 { font-size: 1rem; margin: 0 1rem 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.3); }
+.admin-sidebar a { display: block; padding: 0.5rem 1rem; color: rgba(255,255,255,0.9); text-decoration: none; border-left: 3px solid transparent; }
+.admin-sidebar a:hover { background: rgba(0,0,0,0.1); color: var(--branco); }
+.admin-sidebar a.ativo { background: rgba(0,0,0,0.2); border-left-color: var(--amarelo-verde); }
+.admin-sidebar .sair { margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 1rem; }
+.admin-sidebar .sair a { color: rgba(255,255,255,0.8); }
+.admin-conteudo { flex: 1; padding: 1.5rem 2rem; background: var(--cinza-100); overflow: auto; }
+.admin-conteudo h1 { margin: 0 0 1rem; font-size: 1.5rem; color: var(--preto); }
+.admin-secao { display: none; }
+.admin-secao.ativo { display: block; }
+
+/* Tabelas e listas no admin */
+.admin-tabela { width: 100%; border-collapse: collapse; background: var(--branco); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.admin-tabela th, .admin-tabela td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--cinza-200); }
+.admin-tabela th { background: var(--verde); color: var(--branco); font-weight: 600; }
+.admin-tabela tr:hover { background: var(--cinza-100); }
+.admin-tabela .acoes { white-space: nowrap; }
+.admin-tabela .btn { padding: 0.35rem 0.6rem; font-size: 0.85rem; margin-right: 0.25rem; }
+.admin-tabela .btn-remove { background: var(--vermelho); color: var(--branco); border: none; }
+.admin-tabela .btn-remove:hover { background: var(--vermelho-escuro); }
+
+/* Formulários em bloco */
+.admin-form-card { max-width: 640px; background: var(--branco); padding: 1.5rem; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+.admin-form-card h3 { margin: 0 0 1rem; }
+.admin-aviso { font-size: 0.85rem; color: var(--cinza-600); margin-top: 0.5rem; }
+.badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; }
+.badge-ok { background: rgba(22, 163, 74, 0.2); color: var(--verde); }
+.badge-rascunho { background: rgba(234, 179, 8, 0.2); color: #b45309; }
+
+@media (max-width: 768px) {
+  .admin-painel { flex-direction: column; }
+  .admin-sidebar { width: 100%; display: flex; flex-wrap: wrap; gap: 0.25rem; padding: 0.5rem; }
+  .admin-sidebar h2 { width: 100%; margin: 0.0 0 0.5rem; }
+  .admin-sidebar a { padding: 0.4rem 0.75rem; border-radius: 6px; border-left: none; border-bottom: 2px solid transparent; }
+  .admin-sidebar a.ativo { border-bottom-color: var(--amarelo-verde); }
+}

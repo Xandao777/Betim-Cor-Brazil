@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Área Administrativa – Login</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="admin-login">
+  <main class="admin-login-box">
+    <h1>Área Administrativa</h1>
+    <p class="admin-login-sub">Betim Cor Brazil – Painel de controle</p>
+    <p id="admin-login-erro" class="login-erro" role="alert" style="display: none;"></p>
+    <form id="form-admin-login" aria-label="Login administrativo">
+      <div class="form-group">
+        <label for="admin-usuario">Usuário</label>
+        <input type="text" id="admin-usuario" name="usuario" autocomplete="username" required>
+      </div>
+      <div class="form-group">
+        <label for="admin-senha">Senha</label>
+        <input type="password" id="admin-senha" name="senha" autocomplete="current-password" required>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+      </div>
+    </form>
+    <p class="admin-login-footer">
+      <a href="../index.html">← Voltar ao site</a> &nbsp;|&nbsp;
+      <a href="../contato.html">Recuperar senha</a> (entre em contato)
+    </p>
+  </main>
+  <script src="../js/dados-site.js"></script>
+  <script src="js/admin-auth.js"></script>
+</body>
+</html>

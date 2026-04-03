@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Painel Administrativo</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="admin-painel">
+    <aside class="admin-sidebar">
+      <h2>Painel</h2>
+      <a href="#" data-secao="dashboard" class="ativo">Dashboard</a>
+      <a href="#" data-secao="eventos">Eventos</a>
+      <a href="#" data-secao="noticias">Notícias</a>
+      <a href="#" data-secao="blog">Blog</a>
+      <a href="#" data-secao="galeria">Galeria</a>
+      <a href="#" data-secao="membros">Membros</a>
+      <a href="#" data-secao="documentos">Documentos</a>
+      <a href="#" data-secao="patrocinadores">Patrocinadores</a>
+      <a href="#" data-secao="institucional">Conteúdo institucional</a>
+      <div class="sair"><a href="index.html">Sair</a></div>
+    </aside>
+    <div class="admin-conteudo">
+      <p id="admin-usuario-info" style="margin: 0 0 1rem; font-size: 0.9rem; color: var(--cinza-600);"></p>
+
+      <!-- Dashboard -->
+      <section id="secao-dashboard" class="admin-secao ativo">
+        <h1>Dashboard</h1>
+        <p>Bem-vindo ao painel. Use o menu ao lado para gerenciar eventos, notícias, blog, galeria, membros, documentos, patrocinadores e conteúdo institucional.</p>
+        <div class="card" style="max-width: 400px;">
+          <h3>Resumo</h3>
+          <p id="dashboard-events-count">Eventos: -</p>
+          <p id="dashboard-news-count">Notícias: -</p>
+          <p id="dashboard-members-count">Membros: -</p>
+        </div>
+      </section>
+
+      <!-- Eventos -->
+      <section id="secao-eventos" class="admin-secao">
+        <h1>Gerenciar Eventos</h1>
+        <div class="admin-form-card" id="form-evento-card" style="display: none;">
+          <h3 id="form-evento-titulo">Novo evento</h3>
+          <form id="form-evento">
+            <input type="hidden" id="evento-id">
+            <div class="form-group">
+              <label for="evento-titulo">Título *</label>
+              <input type="text" id="evento-titulo" required>
+            </div>
+            <div class="form-group">
+              <label for="evento-descricao">Descrição</label>
+              <textarea id="evento-descricao" rows="3"></textarea>
+            </div>
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div>
+                <label for="evento-data">Data *</label>
+                <input type="date" id="evento-data" required>
+              </div>
+              <div>
+                <label for="evento-hora">Horário</label>
+                <input type="time" id="evento-hora">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="evento-local">Local</label>
+              <input type="text" id="evento-local">
+            </div>
+            <div class="form-group">
+              <label for="evento-vagas">Limite de vagas (0 = sem limite)</label>
+              <input type="number" id="evento-vagas" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label><input type="checkbox" id="evento-inscricoes"> Inscrições online ativas</label>
+            </div>
+            <div class="form-group">
+              <label><input type="checkbox" id="evento-publicado" checked> Publicado no site</label>
+            </div>
+            <div class="form-group">
+              <label><input type="checkbox" id="evento-destaque"> Destaque na página inicial</label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Salvar</button>
+              <button type="button" id="evento-cancelar" class="btn btn-outline">Cancelar</button>
+            </div>
+          </form>
+        </div>
+        <p><button type="button" id="btn-novo-evento" class="btn btn-primary">+ Novo evento</button></p>
+        <div class="admin-tabela-wrapper">
+          <table class="admin-tabela" id="tabela-eventos">
+            <thead><tr><th>Título</th><th>Data</th><th>Publicado</th><th class="acoes">Ações</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Notícias -->
+      <section id="secao-noticias" class="admin-secao">
+        <h1>Gerenciar Notícias</h1>
+        <div class="admin-form-card" id="form-noticia-card" style="display: none;">
+          <h3 id="form-noticia-titulo">Nova notícia</h3>
+          <form id="form-noticia">
+            <input type="hidden" id="noticia-id">
+            <div class="form-group">
+              <label for="noticia-titulo">Título *</label>
+              <input type="text" id="noticia-titulo" required>
+            </div>
+            <div class="form-group">
+              <label for="noticia-categoria">Categoria</label>
+              <input type="text" id="noticia-categoria" placeholder="Ex: Projeto, Comunicado">
+            </div>
+            <div class="form-group">
+              <label for="noticia-resumo">Resumo</label>
+              <textarea id="noticia-resumo" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="noticia-conteudo">Conteúdo completo</label>
+              <textarea id="noticia-conteudo" rows="5"></textarea>
+            </div>
+            <div class="form-group">
+              <label><input type="checkbox" id="noticia-publicado" checked> Publicado</label>
+            </div>
+            <div class="form-group">
+              <label><input type="checkbox" id="noticia-destaque"> Destaque na página inicial</label>
+            </div>
+            <div class="form-group">
+              <label><input type="checkbox" id="noticia-exclusivo"> Exclusivo para associados (área de membros)</label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Salvar</button>
+              <button type="button" id="noticia-cancelar" class="btn btn-outline">Cancelar</button>
+            </div>
+          </form>
+        </div>
+        <p><button type="button" id="btn-nova-noticia" class="btn btn-primary">+ Nova notícia</button></p>
+        <table class="admin-tabela" id="tabela-noticias">
+          <thead><tr><th>Título</th><th>Categoria</th><th>Status</th><th class="acoes">Ações</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <!-- Blog -->
+      <section id="secao-blog" class="admin-secao">
+        <h1>Gerenciar Blog</h1>
+        <div class="admin-form-card" id="form-blog-card" style="display: none;">
+          <h3 id="form-blog-titulo">Nova postagem</h3>
+          <form id="form-blog">
+            <input type="hidden" id="blog-id">
+            <div class="form-group">
+              <label for="blog-titulo">Título *</label>
+              <input type="text" id="blog-titulo" required>
+            </div>
+            <div class="form-group">
+              <label for="blog-categoria">Categoria</label>
+              <input type="text" id="blog-categoria">
+            </div>
+            <div class="form-group">
+              <label for="blog-resumo">Resumo</label>
+              <textarea id="blog-resumo" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="blog-conteudo">Conteúdo</label>
+              <textarea id="blog-conteudo" rows="5"></textarea>
+            </div>
+            <div class="form-group">
+              <label><input type="checkbox" id="blog-publicado" checked> Publicado</label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Salvar</button>
+              <button type="button" id="blog-cancelar" class="btn btn-outline">Cancelar</button>
+            </div>
+          </form>
+        </div>
+        <p><button type="button" id="btn-nova-postagem" class="btn btn-primary">+ Nova postagem</button></p>
+        <table class="admin-tabela" id="tabela-blog">
+          <thead><tr><th>Título</th><th>Status</th><th class="acoes">Ações</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <!-- Galeria -->
+      <section id="secao-galeria" class="admin-secao">
+        <h1>Gerenciar Galeria</h1>
+        <div class="admin-form-card" id="form-galeria-card" style="display: none;">
+          <h3 id="form-galeria-titulo">Nova mídia</h3>
+          <form id="form-galeria">
+            <input type="hidden" id="galeria-id">
+            <div class="form-group">
+              <label for="galeria-titulo">Título *</label>
+              <input type="text" id="galeria-titulo" required>
+            </div>
+            <div class="form-group">
+              <label for="galeria-tipo">Tipo</label>
+              <select id="galeria-tipo"><option value="imagem">Imagem</option><option value="video">Vídeo</option></select>
+            </div>
+            <div class="form-group">
+              <label for="galeria-url">URL da mídia</label>
+              <input type="text" id="galeria-url" placeholder="Link da imagem ou vídeo">
+            </div>
+            <div class="form-group">
+              <label for="galeria-categoria">Categoria / Evento</label>
+              <input type="text" id="galeria-categoria">
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Salvar</button>
+              <button type="button" id="galeria-cancelar" class="btn btn-outline">Cancelar</button>
+            </div>
+          </form>
+        </div>
+        <p><button type="button" id="btn-nova-midia" class="btn btn-primary">+ Nova mídia</button></p>
+        <table class="admin-tabela" id="tabela-galeria">
+          <thead><tr><th>Título</th><th>Tipo</th><th>Categoria</th><th class="acoes">Ações</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <!-- Membros -->
+      <section id="secao-membros" class="admin-secao">
+        <h1>Gerenciar Membros (área restrita)</h1>
+        <div class="admin-form-card" id="form-membro-card" style="display: none;">
+          <h3 id="form-membro-titulo">Novo membro</h3>
+          <form id="form-membro">
+            <input type="hidden" id="membro-id">
+            <div class="form-group">
+              <label for="membro-usuario">Usuário (login) *</label>
+              <input type="text" id="membro-usuario" required>
+            </div>
+            <div class="form-group">
+              <label for="membro-senha">Senha *</label>
+              <input type="password" id="membro-senha" placeholder="Deixe em branco para manter atual">
+            </div>
+            <div class="form-group">
+              <label for="membro-nome">Nome de exibição *</label>
+              <input type="text" id="membro-nome" required>
+            </div>
+            <div class="form-group">
+              <label for="membro-email">E-mail</label>
+              <input type="email" id="membro-email">
+            </div>
+            <div class="form-group">
+              <label for="membro-telefone">Telefone</label>
+              <input type="text" id="membro-telefone">
+            </div>
+            <div class="form-group">
+              <label for="membro-tipo">Tipo de associado</label>
+              <select id="membro-tipo">
+                <option value="Associado">Associado</option>
+                <option value="Benemérito">Benemérito</option>
+                <option value="Voluntário">Voluntário</option>
+                <option value="Administrador">Administrador</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label><input type="checkbox" id="membro-ativo" checked> Acesso ativo</label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Salvar</button>
+              <button type="button" id="membro-cancelar" class="btn btn-outline">Cancelar</button>
+            </div>
+          </form>
+        </div>
+        <p><button type="button" id="btn-novo-membro" class="btn btn-primary">+ Novo membro</button></p>
+        <table class="admin-tabela" id="tabela-membros">
+          <thead><tr><th>Usuário</th><th>Nome</th><th>Status</th><th class="acoes">Ações</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <!-- Documentos -->
+      <section id="secao-documentos" class="admin-secao">
+        <h1>Documentos da área de membros</h1>
+        <div class="admin-form-card" id="form-doc-card" style="display: none;">
+          <h3 id="form-doc-titulo">Novo documento</h3>
+          <form id="form-documento">
+            <input type="hidden" id="doc-id">
+            <div class="form-group">
+              <label for="doc-titulo">Título *</label>
+              <input type="text" id="doc-titulo" required>
+            </div>
+            <div class="form-group">
+              <label for="doc-categoria">Categoria</label>
+              <select id="doc-categoria">
+                <option value="ata">Ata</option>
+                <option value="estatuto">Estatuto</option>
+                <option value="relatorio">Relatório</option>
+                <option value="regulamento">Regulamento</option>
+                <option value="edital">Edital</option>
+                <option value="comunicado">Comunicado</option>
+                <option value="material">Material de apoio</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="doc-arquivo">URL do arquivo</label>
+              <input type="text" id="doc-arquivo" placeholder="Link para PDF ou arquivo">
+            </div>
+            <div class="form-group">
+              <label><input type="checkbox" id="doc-visivel" checked> Visível para membros</label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Salvar</button>
+              <button type="button" id="doc-cancelar" class="btn btn-outline">Cancelar</button>
+            </div>
+          </form>
+        </div>
+        <p><button type="button" id="btn-novo-doc" class="btn btn-primary">+ Novo documento</button></p>
+        <table class="admin-tabela" id="tabela-documentos">
+          <thead><tr><th>Título</th><th>Visível</th><th class="acoes">Ações</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <!-- Patrocinadores -->
+      <section id="secao-patrocinadores" class="admin-secao">
+        <h1>Gerenciar Patrocinadores</h1>
+        <div class="admin-form-card" id="form-patroc-card" style="display: none;">
+          <h3 id="form-patroc-titulo">Novo patrocinador</h3>
+          <form id="form-patroc">
+            <input type="hidden" id="patroc-id">
+            <div class="form-group">
+              <label for="patroc-nome">Nome *</label>
+              <input type="text" id="patroc-nome" required>
+            </div>
+            <div class="form-group">
+              <label for="patroc-descricao">Descrição</label>
+              <textarea id="patroc-descricao" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="patroc-logo">URL do logo</label>
+              <input type="text" id="patroc-logo">
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Salvar</button>
+              <button type="button" id="patroc-cancelar" class="btn btn-outline">Cancelar</button>
+            </div>
+          </form>
+        </div>
+        <p><button type="button" id="btn-novo-patroc" class="btn btn-primary">+ Novo patrocinador</button></p>
+        <table class="admin-tabela" id="tabela-patrocinadores">
+          <thead><tr><th>Nome</th><th class="acoes">Ações</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <!-- Conteúdo institucional -->
+      <section id="secao-institucional" class="admin-secao">
+        <h1>Conteúdo institucional</h1>
+        <p class="admin-aviso">Estes textos aparecem na página inicial (Nós) e no rodapé.</p>
+        <form id="form-institucional" class="admin-form-card">
+          <div class="form-group">
+            <label for="inst-historia">História</label>
+            <textarea id="inst-historia" rows="4"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="inst-missao">Missão</label>
+            <textarea id="inst-missao" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="inst-visao">Visão</label>
+            <textarea id="inst-visao" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="inst-objetivos">Objetivos (um por linha)</label>
+            <textarea id="inst-objetivos" rows="5" placeholder="Cada linha = um objetivo"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="inst-email">E-mail de contato</label>
+            <input type="email" id="inst-email">
+          </div>
+          <div class="form-group">
+            <label for="inst-telefone">Telefone</label>
+            <input type="text" id="inst-telefone">
+          </div>
+          <div class="form-group">
+            <label for="inst-facebook">Facebook (URL)</label>
+            <input type="url" id="inst-facebook">
+          </div>
+          <div class="form-group">
+            <label for="inst-instagram">Instagram (URL)</label>
+            <input type="url" id="inst-instagram">
+          </div>
+          <div class="form-group">
+            <label for="inst-youtube">YouTube (URL)</label>
+            <input type="url" id="inst-youtube">
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Salvar alterações</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </div>
+  <script src="../js/dados-site.js"></script>
+  <script src="js/admin-painel.js"></script>
+</body>
+</html>

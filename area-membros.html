@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Área restrita para associados: perfil, documentos, relatórios, eventos, notícias e suporte.">
+  <title>Área de Membros | Associação</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <a href="#main" class="skip-link">Ir para o conteúdo principal</a>
+  <header class="header">
+    <div class="container header-inner">
+      <a href="index.html" class="logo" aria-label="Associação Cultural Afro Brasileira Betim Cor Brazil - Página inicial"><img src="img/logo.jpg" alt="Associação Cultural Afro Brasileira Betim Cor Brazil" class="logo-img"><span class="logo-text">Betim Cor Brazil</span></a>
+      <button class="menu-toggle" aria-label="Abrir menu" aria-expanded="false"><span></span><span></span><span></span></button>
+      <nav class="nav" aria-label="Menu principal">
+        <ul class="nav-list">
+          <li><a href="index.html#nos">Nós</a></li>
+          <li><a href="eventos.html">Eventos</a></li>
+          <li><a href="noticias.html">Notícias</a></li>
+          <li><a href="galeria.html">Galeria</a></li>
+          <li><a href="contato.html">Contato</a></li>
+          <li><a href="area-membros.html" class="nav-membros">Área Membros</a></li>
+          <li><a href="doar.html" class="btn-doação">Doar</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="pagina-interna">
+    <div class="container">
+      <!-- Tela de login -->
+      <div id="bloco-login">
+        <h1>Área para Membros</h1>
+        <p class="intro">Acesso restrito a associados. Faça login para acessar documentos, relatórios, eventos e conteúdo exclusivo.</p>
+        <div class="login-box">
+          <h2>Entrar</h2>
+          <p id="login-erro" class="login-erro" role="alert" style="display: none;"></p>
+          <form id="form-login" aria-label="Formulário de login">
+            <div class="form-group">
+              <label for="login-email">Usuário</label>
+              <input type="text" id="login-email" name="usuario" autocomplete="username" required>
+            </div>
+            <div class="form-group">
+              <label for="login-senha">Senha</label>
+              <input type="password" id="login-senha" name="senha" autocomplete="current-password" required>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Entrar</button>
+            </div>
+          </form>
+          <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--cinza-600);">
+            Esqueceu a senha? Entre em <a href="contato.html">contato</a> com a associação para recuperar.
+          </p>
+        </div>
+        <section class="section" aria-labelledby="titulo-oque">
+          <h2 id="titulo-oque" class="section-title">O que você encontra</h2>
+          <ul style="padding-left: 1.25rem;">
+            <li>Dashboard com próximos eventos e avisos</li>
+            <li>Meu perfil (dados cadastrais)</li>
+            <li>Documentos internos e relatórios</li>
+            <li>Inscrição em eventos e acompanhamento</li>
+            <li>Notícias exclusivas para associados</li>
+            <li>Voluntariado e suporte</li>
+          </ul>
+        </section>
+      </div>
+
+      <!-- Painel do membro (após login) -->
+      <div id="bloco-dashboard" style="display: none;">
+        <div class="dashboard-header">
+          <h1>Área do Membro</h1>
+          <p class="intro">Olá, <strong id="nome-membro"></strong>. Bem-vindo(a).</p>
+          <button type="button" id="btn-sair" class="btn btn-outline">Sair</button>
+        </div>
+
+        <div class="membro-painel">
+          <nav class="membro-sidebar" aria-label="Menu da área de membros">
+            <h2>Menu</h2>
+            <a href="#" data-secao="inicio" class="ativo">Início</a>
+            <a href="#" data-secao="perfil">Meu Perfil</a>
+            <a href="#" data-secao="documentos">Documentos</a>
+            <a href="#" data-secao="relatorios">Relatórios</a>
+            <a href="#" data-secao="eventos">Eventos</a>
+            <a href="#" data-secao="noticias">Notícias Internas</a>
+            <a href="#" data-secao="voluntariado">Voluntariado</a>
+            <a href="#" data-secao="suporte">Suporte</a>
+            <div class="sair"><a href="#" id="link-sair">Sair</a></div>
+          </nav>
+
+          <div class="membro-conteudo">
+            <!-- Início (Dashboard) -->
+            <section id="secao-inicio" class="membro-secao ativo">
+              <h2 class="section-title">Início</h2>
+              <div class="membro-card" id="dashboard-proximos-eventos">
+                <h3>Próximos eventos</h3>
+                <div id="lista-dashboard-eventos"></div>
+              </div>
+              <div class="membro-card" id="dashboard-minhas-inscricoes">
+                <h3>Minhas inscrições</h3>
+                <div id="lista-dashboard-inscricoes"></div>
+              </div>
+              <div class="membro-card">
+                <h3>Documentos recentes</h3>
+                <ul class="lista-recursos" id="lista-dashboard-docs"></ul>
+              </div>
+              <div class="membro-card">
+                <h3>Avisos internos</h3>
+                <p id="texto-avisos-internos" class="admin-aviso">Convocações e avisos serão publicados aqui pela diretoria.</p>
+              </div>
+            </section>
+
+            <!-- Meu Perfil -->
+            <section id="secao-perfil" class="membro-secao">
+              <h2 class="section-title">Meu Perfil</h2>
+              <p class="admin-aviso">Visualize e edite suas informações básicas. Para alterar senha, entre em contato com a associação.</p>
+              <div class="admin-form-card membro-card" style="max-width: 480px;">
+                <form id="form-perfil">
+                  <div class="form-group">
+                    <label for="perfil-nome">Nome *</label>
+                    <input type="text" id="perfil-nome" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="perfil-email">E-mail</label>
+                    <input type="email" id="perfil-email">
+                  </div>
+                  <div class="form-group">
+                    <label for="perfil-telefone">Telefone</label>
+                    <input type="text" id="perfil-telefone">
+                  </div>
+                  <div class="form-group">
+                    <label for="perfil-tipo">Tipo de associado</label>
+                    <input type="text" id="perfil-tipo" readonly class="admin-aviso" style="background: var(--cinza-100);">
+                  </div>
+                  <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Salvar alterações</button>
+                  </div>
+                </form>
+              </div>
+            </section>
+
+            <!-- Documentos -->
+            <section id="secao-documentos" class="membro-secao">
+              <h2 class="section-title">Documentos internos</h2>
+              <p class="admin-aviso">Estatuto, atas, regulamentos, editais e comunicados. Filtre por categoria.</p>
+              <div class="form-group" style="max-width: 280px;">
+                <label for="filtro-documentos">Categoria</label>
+                <select id="filtro-documentos">
+                  <option value="">Todas</option>
+                  <option value="ata">Atas</option>
+                  <option value="estatuto">Estatuto</option>
+                  <option value="regulamento">Regulamentos</option>
+                  <option value="edital">Editais</option>
+                  <option value="comunicado">Comunicados</option>
+                  <option value="material">Materiais de apoio</option>
+                </select>
+              </div>
+              <ul class="lista-recursos" id="lista-documentos-membro"></ul>
+              <p id="documentos-vazio" class="admin-aviso" style="display: none;">Nenhum documento nesta categoria.</p>
+            </section>
+
+            <!-- Relatórios -->
+            <section id="secao-relatorios" class="membro-secao">
+              <h2 class="section-title">Relatórios e transparência</h2>
+              <p class="admin-aviso">Relatórios de atividades, prestação de contas e balanços.</p>
+              <ul class="lista-recursos" id="lista-relatorios-membro"></ul>
+              <p id="relatorios-vazio" class="admin-aviso" style="display: none;">Nenhum relatório disponível.</p>
+            </section>
+
+            <!-- Eventos -->
+            <section id="secao-eventos" class="membro-secao">
+              <h2 class="section-title">Eventos e inscrições</h2>
+              <p class="admin-aviso">Veja os eventos, inscreva-se e acompanhe suas inscrições.</p>
+              <div class="membro-card">
+                <h3>Minhas inscrições</h3>
+                <ul class="lista-recursos" id="lista-minhas-inscricoes"></ul>
+                <p id="inscricoes-vazio" class="admin-aviso" style="display: none;">Você ainda não se inscreveu em nenhum evento.</p>
+              </div>
+              <h3 style="margin-top: 1.5rem;">Eventos disponíveis</h3>
+              <div id="lista-eventos-membro"></div>
+            </section>
+
+            <!-- Notícias internas -->
+            <section id="secao-noticias" class="membro-secao">
+              <h2 class="section-title">Notícias exclusivas</h2>
+              <p class="admin-aviso">Comunicados internos, convocações e avisos para associados.</p>
+              <div id="lista-noticias-internas"></div>
+              <p id="noticias-internas-vazio" class="admin-aviso" style="display: none;">Nenhuma notícia exclusiva no momento.</p>
+            </section>
+
+            <!-- Voluntariado -->
+            <section id="secao-voluntariado" class="membro-secao">
+              <h2 class="section-title">Voluntariado</h2>
+              <p>Manifeste interesse em participar de projetos e ações da associação.</p>
+              <div class="membro-card" style="max-width: 480px;">
+                <form id="form-voluntariado">
+                  <div class="form-group">
+                    <label for="vol-area">Área de interesse</label>
+                    <select id="vol-area">
+                      <option value="">Selecione</option>
+                      <option value="eventos">Eventos</option>
+                      <option value="projetos">Projetos sociais</option>
+                      <option value="comunicacao">Comunicação</option>
+                      <option value="outro">Outro</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="vol-mensagem">Mensagem</label>
+                    <textarea id="vol-mensagem" rows="4" placeholder="Conte um pouco sobre sua disponibilidade e interesse."></textarea>
+                  </div>
+                  <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Enviar interesse</button>
+                  </div>
+                </form>
+              </div>
+              <p class="admin-aviso"><a href="voluntariado.html">Saiba mais sobre voluntariado</a> na página pública.</p>
+            </section>
+
+            <!-- Suporte -->
+            <section id="secao-suporte" class="membro-secao">
+              <h2 class="section-title">Suporte e contato interno</h2>
+              <p>Envie dúvidas, solicitações ou sugestões para a diretoria.</p>
+              <div class="membro-card" style="max-width: 480px;">
+                <form id="form-suporte">
+                  <div class="form-group">
+                    <label for="sup-assunto">Assunto *</label>
+                    <select id="sup-assunto" required>
+                      <option value="">Selecione</option>
+                      <option value="duvida">Dúvida</option>
+                      <option value="solicitacao">Solicitação</option>
+                      <option value="sugestao">Sugestão</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="sup-mensagem">Mensagem *</label>
+                    <textarea id="sup-mensagem" rows="5" required></textarea>
+                  </div>
+                  <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Enviar</button>
+                  </div>
+                </form>
+              </div>
+              <p class="admin-aviso">Você também pode usar o <a href="contato.html">formulário de contato</a> do site.</p>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h3>Associação</h3>
+          <div class="social-links" aria-label="Redes sociais">
+            <a href="#" aria-label="Facebook">Facebook</a>
+            <a href="#" aria-label="Instagram">Instagram</a>
+            <a href="#" aria-label="YouTube">YouTube</a>
+          </div>
+        </div>
+        <div class="footer-col">
+          <h4>Navegação</h4>
+          <ul>
+            <li><a href="index.html#nos">Nós</a></li>
+            <li><a href="eventos.html">Eventos</a></li>
+            <li><a href="noticias.html">Notícias</a></li>
+            <li><a href="galeria.html">Galeria</a></li>
+            <li><a href="contato.html">Contato</a></li>
+            <li><a href="doar.html">Doar</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom"><p>&copy; <span id="ano"></span> Associação.</p></div>
+    </div>
+  </footer>
+  <script src="js/dados-site.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/area-membros.js"></script>
+</body>
+</html>
