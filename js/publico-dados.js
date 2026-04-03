@@ -125,10 +125,25 @@
     var container = document.querySelector('.galeria-full');
     if (!container) return;
     var list = D.getGallery() || [];
-    if (list.length === 0) return;
+    if (list.length === 0) {
+      container.innerHTML = '<p class="galeria-vazio">Nenhuma mídia na galeria no momento.</p>';
+      return;
+    }
     container.innerHTML = list.map(function (g) {
-      var inner = g.url ? '<img src="' + g.url + '" alt="' + (g.titulo || '') + '">' : '<div class="galeria-placeholder">' + (g.titulo || '') + '</div>';
-      return '<a href="' + (g.url || '#') + '">' + inner + '</a>';
+      var inner;
+      if (g.tipo === 'video' && g.url) {
+        inner = '<video src="' + g.url + '" controls playsinline preload="metadata" title="' + (g.titulo || '') + '"></video>';
+      } else if (g.url) {
+        inner = '<img src="' + g.url + '" alt="' + (g.titulo || '') + '">';
+      } else {
+        inner = '<div class="galeria-placeholder">' + (g.titulo || '') + '</div>';
+      }
+      var wrap = g.tipo === 'video' && g.url
+        ? '<div class="galeria-item galeria-item-video">' + inner + '</div>'
+        : '<a href="' + (g.url || '#') + '" class="galeria-item">' + inner + '</a>';
+      var legParts = [g.categoria, g.titulo].filter(Boolean);
+      var leg = legParts.length ? '<figcaption>' + legParts.join(' · ') + '</figcaption>' : '';
+      return '<figure class="galeria-figure">' + wrap + leg + '</figure>';
     }).join('');
   })();
 
