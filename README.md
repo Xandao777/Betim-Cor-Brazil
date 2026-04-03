@@ -38,7 +38,20 @@ Em **`area-membros.html`**, associados entram com usuário e senha cadastrados p
 ## Como usar
 
 1. Abra o arquivo `index.html` no navegador (duplo clique ou arraste para o Chrome/Edge/Firefox).
-2. Para publicar na internet: envie a pasta completa para um provedor de hospedagem (ex.: hospedagem com FTP ou serviço estático como Netlify/Vercel).
+2. **Testar como no servidor (opcional):** na pasta do projeto, rode `npm install` e depois `npm run serve:local` — abra `http://localhost:3000`.
+3. Para publicar na internet: envie a pasta completa para um provedor de hospedagem (ex.: FTP, Netlify, Vercel) ou use o **Railway** (abaixo).
+
+## Deploy no Railway
+
+O repositório inclui `package.json` e `server.cjs` (Node + **`serve-handler`**) para expor o site estático na porta definida pelo Railway (`PORT`).
+
+1. Crie uma conta em [Railway](https://railway.app) e conecte o GitHub.
+2. **New project** → **Deploy from GitHub repo** → selecione este repositório.
+3. O Nixpacks detecta Node.js, roda `npm install` e **`npm start`** (comando `start` no `package.json`).
+4. Em **Settings** → **Networking** → **Generate domain** para obter a URL pública.
+5. Cada push na branch configurada (geralmente `main`) dispara um novo deploy.
+
+**Observação:** o painel admin e os dados continuam no **localStorage** de cada visitante; não há backend neste deploy.
 
 ## Personalização
 

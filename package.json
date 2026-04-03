@@ -1,0 +1,16 @@
+{
+  "name": "betim-cor-brazil-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Site institucional estático — Node + serve-handler (Railway e local)",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.cjs",
+    "serve:local": "node server.cjs"
+  },
+  "dependencies": {
+    "serve-handler": "^6.1.7"
+  }
+}
