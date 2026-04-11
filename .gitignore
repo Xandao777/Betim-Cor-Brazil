@@ -5,6 +5,12 @@ coverage/
 # Estado local quando roda sem Supabase
 data/site-data.json
 
+# Ficheiros enviados pelos administradores
+uploads/documents/*
+!uploads/documents/.gitkeep
+uploads/gallery/*
+!uploads/gallery/.gitkeep
+
 # Editor / OS
 Thumbs.db
 Desktop.ini

@@ -5,39 +5,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Painel Administrativo</title>
+  <link rel="icon" href="../img/logo.jpg" type="image/jpeg">
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="css/admin.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="admin-app">
   <div class="admin-painel">
-    <aside class="admin-sidebar">
-      <h2>Painel</h2>
-      <a href="#" data-secao="dashboard" class="ativo">Dashboard</a>
-      <a href="#" data-secao="eventos">Eventos</a>
-      <a href="#" data-secao="noticias">Notícias</a>
-      <a href="#" data-secao="blog">Blog</a>
-      <a href="#" data-secao="galeria">Galeria</a>
-      <a href="#" data-secao="membros">Membros</a>
-      <a href="#" data-secao="documentos">Documentos</a>
-      <a href="#" data-secao="patrocinadores">Patrocinadores</a>
-      <a href="#" data-secao="institucional">Conteúdo institucional</a>
-      <div class="sair"><a href="index.html">Sair</a></div>
+    <aside class="admin-sidebar" aria-label="Menu do painel">
+      <div class="admin-sidebar-brand">
+        <img src="../img/logo.jpg" alt="" class="admin-sidebar-logo" width="48" height="48" decoding="async">
+        <div class="admin-sidebar-brand-text">
+          <span class="admin-sidebar-org">Betim Cor Brazil</span>
+          <span class="admin-sidebar-title">Painel admin</span>
+        </div>
+      </div>
+      <nav class="admin-sidebar-nav" aria-label="Secções">
+        <a href="#" data-secao="dashboard" class="ativo">Dashboard</a>
+        <a href="#" data-secao="eventos">Eventos</a>
+        <a href="#" data-secao="noticias">Notícias</a>
+        <a href="#" data-secao="blog">Blog</a>
+        <a href="#" data-secao="galeria">Galeria</a>
+        <a href="#" data-secao="membros">Membros</a>
+        <a href="#" data-secao="documentos">Documentos</a>
+        <a href="#" data-secao="patrocinadores">Patrocinadores</a>
+        <a href="#" data-secao="institucional">Conteúdo institucional</a>
+      </nav>
+      <div class="sair"><a href="index.html">Sair do painel</a></div>
     </aside>
     <div class="admin-conteudo">
-      <p id="admin-usuario-info" style="margin: 0 0 1rem; font-size: 0.9rem; color: var(--cinza-600);"></p>
+      <header class="admin-topbar">
+        <p id="admin-usuario-info" class="admin-usuario-info"></p>
+      </header>
 
       <!-- Dashboard -->
       <section id="secao-dashboard" class="admin-secao ativo">
         <h1>Dashboard</h1>
-        <p>Bem-vindo ao painel. Use o menu ao lado para gerenciar eventos, notícias, blog, galeria, membros, documentos, patrocinadores e conteúdo institucional.</p>
-        <div class="card" style="max-width: 400px;">
-          <h3>Resumo</h3>
-          <p id="dashboard-events-count">Eventos: -</p>
-          <p id="dashboard-news-count">Notícias: -</p>
-          <p id="dashboard-members-count">Membros: -</p>
+        <p class="admin-secao-intro">Use o menu à esquerda para gerir conteúdos do site.</p>
+        <div class="admin-dashboard-resumo card">
+          <h3>Resumo rápido</h3>
+          <ul class="admin-dashboard-stats">
+            <li><span class="admin-dashboard-label">Eventos</span> <strong id="dashboard-events-count">—</strong></li>
+            <li><span class="admin-dashboard-label">Notícias</span> <strong id="dashboard-news-count">—</strong></li>
+            <li><span class="admin-dashboard-label">Membros</span> <strong id="dashboard-members-count">—</strong></li>
+            <li><span class="admin-dashboard-label">Patrocinadores</span> <strong id="dashboard-sponsors-count">—</strong></li>
+          </ul>
         </div>
       </section>
 
@@ -137,10 +148,12 @@
           </form>
         </div>
         <p><button type="button" id="btn-nova-noticia" class="btn btn-primary">+ Nova notícia</button></p>
-        <table class="admin-tabela" id="tabela-noticias">
-          <thead><tr><th>Título</th><th>Categoria</th><th>Status</th><th class="acoes">Ações</th></tr></thead>
-          <tbody></tbody>
-        </table>
+        <div class="admin-tabela-wrapper">
+          <table class="admin-tabela" id="tabela-noticias">
+            <thead><tr><th>Título</th><th>Categoria</th><th>Status</th><th class="acoes">Ações</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </section>
 
       <!-- Blog -->
@@ -163,8 +176,8 @@
               <textarea id="blog-resumo" rows="2"></textarea>
             </div>
             <div class="form-group">
-              <label for="blog-conteudo">Conteúdo</label>
-              <textarea id="blog-conteudo" rows="5"></textarea>
+              <label for="blog-conteudo">Conteúdo (texto do post; parágrafos separados por linha em branco)</label>
+              <textarea id="blog-conteudo" rows="10" placeholder="Escreva o texto completo. Use linha em branco entre parágrafos."></textarea>
             </div>
             <div class="form-group">
               <label><input type="checkbox" id="blog-publicado" checked> Publicado</label>
@@ -176,10 +189,12 @@
           </form>
         </div>
         <p><button type="button" id="btn-nova-postagem" class="btn btn-primary">+ Nova postagem</button></p>
-        <table class="admin-tabela" id="tabela-blog">
-          <thead><tr><th>Título</th><th>Status</th><th class="acoes">Ações</th></tr></thead>
-          <tbody></tbody>
-        </table>
+        <div class="admin-tabela-wrapper">
+          <table class="admin-tabela" id="tabela-blog">
+            <thead><tr><th>Título</th><th>Categoria</th><th>Data</th><th>Status</th><th class="acoes">Ações</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </section>
 
       <!-- Galeria -->
@@ -198,8 +213,13 @@
               <select id="galeria-tipo"><option value="imagem">Imagem</option><option value="video">Vídeo</option></select>
             </div>
             <div class="form-group">
-              <label for="galeria-url">URL da mídia</label>
-              <input type="text" id="galeria-url" placeholder="Link da imagem ou vídeo">
+              <label for="galeria-file">Enviar ficheiro do computador</label>
+              <input type="file" id="galeria-file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/ogg,.mov,.m4v">
+              <p class="admin-aviso" id="galeria-url-atual" style="display: none; margin-top: 0.5rem;"></p>
+            </div>
+            <div class="form-group">
+              <label for="galeria-url">Ou URL da mídia (opcional)</label>
+              <input type="text" id="galeria-url" placeholder="https://… se não enviar ficheiro acima">
             </div>
             <div class="form-group">
               <label for="galeria-categoria">Categoria / Evento</label>
@@ -212,10 +232,12 @@
           </form>
         </div>
         <p><button type="button" id="btn-nova-midia" class="btn btn-primary">+ Nova mídia</button></p>
-        <table class="admin-tabela" id="tabela-galeria">
-          <thead><tr><th>Título</th><th>Tipo</th><th>Categoria</th><th class="acoes">Ações</th></tr></thead>
-          <tbody></tbody>
-        </table>
+        <div class="admin-tabela-wrapper">
+          <table class="admin-tabela" id="tabela-galeria">
+            <thead><tr><th>Título</th><th>Tipo</th><th>Categoria</th><th class="acoes">Ações</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </section>
 
       <!-- Membros -->
@@ -264,10 +286,12 @@
           </form>
         </div>
         <p><button type="button" id="btn-novo-membro" class="btn btn-primary">+ Novo membro</button></p>
-        <table class="admin-tabela" id="tabela-membros">
-          <thead><tr><th>Usuário</th><th>Nome</th><th>Status</th><th class="acoes">Ações</th></tr></thead>
-          <tbody></tbody>
-        </table>
+        <div class="admin-tabela-wrapper">
+          <table class="admin-tabela" id="tabela-membros">
+            <thead><tr><th>Usuário</th><th>Nome</th><th>Status</th><th class="acoes">Ações</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </section>
 
       <!-- Documentos -->
@@ -294,8 +318,13 @@
               </select>
             </div>
             <div class="form-group">
-              <label for="doc-arquivo">URL do arquivo</label>
-              <input type="text" id="doc-arquivo" placeholder="Link para PDF ou arquivo">
+              <label for="doc-file">Enviar arquivo do computador</label>
+              <input type="file" id="doc-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.txt,.csv,.zip,.rar,.7z,.png,.jpg,.jpeg,.webp">
+              <p class="admin-aviso" id="doc-arquivo-atual" style="display: none; margin-top: 0.5rem;"></p>
+            </div>
+            <div class="form-group">
+              <label for="doc-arquivo">Ou link externo (opcional)</label>
+              <input type="text" id="doc-arquivo" placeholder="https://… se não enviar arquivo acima">
             </div>
             <div class="form-group">
               <label><input type="checkbox" id="doc-visivel" checked> Visível para membros</label>
@@ -307,10 +336,12 @@
           </form>
         </div>
         <p><button type="button" id="btn-novo-doc" class="btn btn-primary">+ Novo documento</button></p>
-        <table class="admin-tabela" id="tabela-documentos">
-          <thead><tr><th>Título</th><th>Visível</th><th class="acoes">Ações</th></tr></thead>
-          <tbody></tbody>
-        </table>
+        <div class="admin-tabela-wrapper">
+          <table class="admin-tabela" id="tabela-documentos">
+            <thead><tr><th>Título</th><th>Categoria</th><th>Visível</th><th class="acoes">Ações</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </section>
 
       <!-- Patrocinadores -->
@@ -329,8 +360,12 @@
               <textarea id="patroc-descricao" rows="2"></textarea>
             </div>
             <div class="form-group">
-              <label for="patroc-logo">URL do logo</label>
-              <input type="text" id="patroc-logo">
+              <label for="patroc-logo">URL do logo (imagem)</label>
+              <input type="text" id="patroc-logo" placeholder="https://… ou caminho em /img/…" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label for="patroc-url">Site do patrocinador (opcional)</label>
+              <input type="text" id="patroc-url" placeholder="https://…" autocomplete="off">
             </div>
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">Salvar</button>
@@ -339,17 +374,19 @@
           </form>
         </div>
         <p><button type="button" id="btn-novo-patroc" class="btn btn-primary">+ Novo patrocinador</button></p>
-        <table class="admin-tabela" id="tabela-patrocinadores">
-          <thead><tr><th>Nome</th><th class="acoes">Ações</th></tr></thead>
-          <tbody></tbody>
-        </table>
+        <div class="admin-tabela-wrapper">
+          <table class="admin-tabela" id="tabela-patrocinadores">
+            <thead><tr><th>Nome</th><th class="acoes">Ações</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </section>
 
       <!-- Conteúdo institucional -->
       <section id="secao-institucional" class="admin-secao">
         <h1>Conteúdo institucional</h1>
         <p class="admin-aviso">Estes textos aparecem na página inicial (Nós) e no rodapé.</p>
-        <form id="form-institucional" class="admin-form-card">
+        <form id="form-institucional" class="admin-form-card" novalidate>
           <div class="form-group">
             <label for="inst-historia">História</label>
             <textarea id="inst-historia" rows="4"></textarea>
@@ -376,15 +413,15 @@
           </div>
           <div class="form-group">
             <label for="inst-facebook">Facebook (URL)</label>
-            <input type="url" id="inst-facebook">
+            <input type="text" id="inst-facebook" placeholder="https://…" autocomplete="url">
           </div>
           <div class="form-group">
             <label for="inst-instagram">Instagram (URL)</label>
-            <input type="url" id="inst-instagram">
+            <input type="text" id="inst-instagram" placeholder="https://…" autocomplete="url">
           </div>
           <div class="form-group">
             <label for="inst-youtube">YouTube (URL)</label>
-            <input type="url" id="inst-youtube">
+            <input type="text" id="inst-youtube" placeholder="https://…" autocomplete="url">
           </div>
           <div class="form-actions">
             <button type="submit" class="btn btn-primary">Salvar alterações</button>

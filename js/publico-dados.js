@@ -17,6 +17,10 @@
     return { dia: d.getDate(), mes: mes, ano: d.getFullYear() };
   }
 
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
   // ---- Página de eventos: listar eventos publicados (com filtro de mês) ----
   (function () {
     var container = document.querySelector('.lista-eventos');
@@ -113,38 +117,93 @@
 
   // ---- Página blog: lista de postagens ----
   (function () {
+    var path = (window.location.pathname || '').replace(/\\/g, '/');
+    if (!/blog\.html$/i.test(path)) return;
     var container = document.querySelector('.pagina-interna .lista-posts');
-    if (!container || window.location.href.indexOf('blog') === -1) return;
-    var list = (D.getBlog() || []).filter(function (b) { return b.publicado !== false; });
-    if (list.length === 0) return;
+    if (!container) return;
+    var list = (D.getBlog() || []).filter(function (b) { return b.publicado !== false; }).sort(function (a, b) {
+      return (b.dataPublicacao || '').localeCompare(a.dataPublicacao || '');
+    });
+    if (list.length === 0) {
+      container.innerHTML = '<p class="galeria-vazio">Nenhuma postagem publicada no momento.</p>';
+      return;
+    }
     container.innerHTML = list.map(function (b) {
-      return '<article class="post-card"><div class="post-card-img" aria-hidden="true"></div><div><span class="tag">' + (b.categoria || '') + '</span><h3>' + (b.titulo || '') + '</h3><p class="meta">' + (b.dataPublicacao || '') + '</p><p>' + (b.resumo || '') + '</p><a href="#" class="link-cta">Ler e comentar</a></div></article>';
+      var fd = formatarData(b.dataPublicacao);
+      var meta = fd.dia + ' ' + fd.mes + ' ' + fd.ano;
+      var href = 'blog-post.html?id=' + encodeURIComponent(String(b.id));
+      return '<article class="post-card"><div class="post-card-img" aria-hidden="true"></div><div><span class="tag">' + escapeHtml(b.categoria || '') + '</span><h3>' + escapeHtml(b.titulo || '') + '</h3><p class="meta">' + escapeHtml(meta) + '</p><p>' + escapeHtml(b.resumo || '') + '</p><a href="' + href + '" class="link-cta">Ler postagem</a></div></article>';
     }).join('');
+  })();
+
+  // ---- Página artigo do blog (blog-post.html?id=) ----
+  (function () {
+    var path = (window.location.pathname || '').replace(/\\/g, '/');
+    if (!/blog-post\.html$/i.test(path)) return;
+    var root = document.getElementById('blog-post-artigo');
+    if (!root) return;
+    var params = new URLSearchParams(window.location.search);
+    var pid = params.get('id');
+    if (!pid) {
+      root.innerHTML = '<p class="galeria-vazio">Nenhum post indicado.</p>';
+      return;
+    }
+    var list = D.getBlog() || [];
+    var b = list.find(function (x) { return String(x.id) === String(pid); });
+    if (!b || b.publicado === false) {
+      root.innerHTML = '<p class="galeria-vazio">Post não encontrado ou não publicado.</p>';
+      return;
+    }
+    var fd = formatarData(b.dataPublicacao);
+    var meta = (b.categoria ? escapeHtml(b.categoria) + ' · ' : '') + escapeHtml(String(fd.dia) + ' ' + fd.mes + ' ' + fd.ano);
+    var raw = (b.conteudo || '').trim();
+    var conteudo;
+    if (raw) {
+      conteudo = escapeHtml(raw).replace(/\r\n/g, '\n').split(/\n\n+/).map(function (block) {
+        return '<p>' + block.replace(/\n/g, '<br>') + '</p>';
+      }).join('');
+    } else {
+      conteudo = '<p class="intro">' + escapeHtml(b.resumo || '') + '</p>';
+    }
+    root.innerHTML =
+      '<header class="blog-post-cabecalho"><p class="tag">' + escapeHtml(b.categoria || '') + '</p><h1>' + escapeHtml(b.titulo || '') + '</h1><p class="meta blog-post-meta">' + meta + '</p></header>' +
+      '<div class="blog-post-texto">' + conteudo + '</div>' +
+      '<p class="section-cta"><a href="blog.html" class="btn btn-outline">← Voltar ao blog</a></p>';
+    try {
+      document.title = (b.titulo || 'Post') + ' | Blog | Associação';
+    } catch (e) {}
   })();
 
   // ---- Galeria ----
   (function () {
     var container = document.querySelector('.galeria-full');
     if (!container) return;
+    function escapeAttr(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    }
+    function escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
     var list = D.getGallery() || [];
     if (list.length === 0) {
       container.innerHTML = '<p class="galeria-vazio">Nenhuma mídia na galeria no momento.</p>';
       return;
     }
     container.innerHTML = list.map(function (g) {
+      var u = g.url || '';
       var inner;
-      if (g.tipo === 'video' && g.url) {
-        inner = '<video src="' + g.url + '" controls playsinline preload="metadata" title="' + (g.titulo || '') + '"></video>';
-      } else if (g.url) {
-        inner = '<img src="' + g.url + '" alt="' + (g.titulo || '') + '">';
+      if (g.tipo === 'video' && u) {
+        inner = '<video src="' + escapeAttr(u) + '" controls playsinline preload="metadata" title="' + escapeAttr(g.titulo || '') + '"></video>';
+      } else if (u) {
+        inner = '<img src="' + escapeAttr(u) + '" alt="' + escapeAttr(g.titulo || '') + '" loading="lazy">';
       } else {
-        inner = '<div class="galeria-placeholder">' + (g.titulo || '') + '</div>';
+        inner = '<div class="galeria-placeholder">' + escapeHtml(g.titulo || '') + '</div>';
       }
-      var wrap = g.tipo === 'video' && g.url
+      var wrap = g.tipo === 'video' && u
         ? '<div class="galeria-item galeria-item-video">' + inner + '</div>'
-        : '<a href="' + (g.url || '#') + '" class="galeria-item">' + inner + '</a>';
+        : '<a href="' + escapeAttr(u || '#') + '" class="galeria-item">' + inner + '</a>';
       var legParts = [g.categoria, g.titulo].filter(Boolean);
-      var leg = legParts.length ? '<figcaption>' + legParts.join(' · ') + '</figcaption>' : '';
+      var leg = legParts.length ? '<figcaption>' + legParts.map(function (x) { return escapeHtml(x); }).join(' · ') + '</figcaption>' : '';
       return '<figure class="galeria-figure">' + wrap + leg + '</figure>';
     }).join('');
   })();
@@ -153,28 +212,86 @@
   (function () {
     var container = document.querySelector('.patrocinadores-grid');
     if (!container) return;
+    function escapeAttr(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    }
+    function escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function normalizePatrocUrl(s) {
+      s = (s || '').trim();
+      if (!s) return '';
+      if (/^https?:\/\//i.test(s)) return s;
+      return 'https://' + s;
+    }
     var list = D.getSponsors() || [];
     if (list.length === 0) {
-      container.innerHTML = '<div class="patrocinador-item">Nenhum patrocinador cadastrado no momento.</div>';
+      container.innerHTML = '<p class="patrocinadores-vazio">Nenhum patrocinador cadastrado no momento.</p>';
       return;
     }
     container.innerHTML = list.map(function (p) {
-      if (p.logo) return '<div class="patrocinador-item"><img src="' + p.logo + '" alt="' + (p.nome || '') + '" style="max-height:60px;max-width:120px;"></div>';
-      return '<div class="patrocinador-item">' + (p.nome || '') + '</div>';
+      var url = normalizePatrocUrl(p.url);
+      var desc = (p.descricao || '').trim();
+      var titleAttr = desc ? ' title="' + escapeAttr(desc) + '"' : '';
+      var inner;
+      if (p.logo && String(p.logo).trim()) {
+        inner = '<img src="' + escapeAttr(p.logo) + '" alt="' + escapeAttr(p.nome || '') + '" loading="lazy" style="max-height:60px;max-width:120px;">';
+      } else {
+        inner = escapeHtml(p.nome || '');
+      }
+      if (url) {
+        return '<a class="patrocinador-item patrocinador-item--link"' + titleAttr + ' href="' + escapeAttr(url) + '" target="_blank" rel="noopener noreferrer">' + inner + '</a>';
+      }
+      return '<div class="patrocinador-item"' + titleAttr + '>' + inner + '</div>';
     }).join('');
   })();
 
-  // ---- Conteúdo institucional: elementos com data-institucional ----
+  // ---- Conteúdo institucional: textos (data-institucional) + redes (data-inst-href) ----
   (function () {
     var inst = D.getInstitutional() || {};
+
+    function normalizeSocialUrl(s) {
+      s = (s || '').trim();
+      if (!s) return '';
+      if (/^https?:\/\//i.test(s)) return s;
+      return 'https://' + s;
+    }
+
     document.querySelectorAll('[data-institucional]').forEach(function (el) {
       var key = el.getAttribute('data-institucional');
       var val = inst[key];
-      if (val === undefined) return;
+      if (val === undefined || val === null) return;
       if (key === 'objetivos' && Array.isArray(val)) {
-        el.innerHTML = '<ul><li>' + val.join('</li><li>') + '</li></ul>';
+        el.innerHTML = '<ul><li>' + val.map(function (x) { return String(x).replace(/</g, '&lt;'); }).join('</li><li>') + '</li></ul>';
       } else if (typeof val === 'string') {
         el.textContent = val;
+      }
+    });
+
+    document.querySelectorAll('a[data-inst-href]').forEach(function (a) {
+      var key = a.getAttribute('data-inst-href');
+      if (!key || ['facebook', 'instagram', 'youtube'].indexOf(key) === -1) return;
+      var url = normalizeSocialUrl(inst[key]);
+      if (url) {
+        a.href = url;
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener noreferrer');
+        a.classList.remove('social-link-desativado');
+        a.removeAttribute('aria-disabled');
+      } else {
+        a.href = '#';
+        a.removeAttribute('target');
+        a.setAttribute('rel', 'nofollow');
+        a.classList.add('social-link-desativado');
+        a.setAttribute('aria-disabled', 'true');
+      }
+    });
+
+    document.querySelectorAll('a[data-inst-mailto]').forEach(function (a) {
+      var em = (inst.email || '').trim();
+      if (em) {
+        a.href = 'mailto:' + em;
+        if (!a.textContent.replace(/\s/g, '')) a.textContent = em;
       }
     });
   })();

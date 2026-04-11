@@ -109,6 +109,57 @@ describe('API (integração, ficheiro temporário)', function () {
       .expect(403);
   });
 
+  test('POST /api/upload/document sem sessão → 401', async function () {
+    await request(app)
+      .post('/api/upload/document')
+      .set(mutatingHeaders())
+      .attach('file', Buffer.from('%PDF-1.4'), 'doc.pdf')
+      .expect(401);
+  });
+
+  test('editor não pode POST /api/upload/document → 403', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'editor', senha: 'editor123' }).expect(200);
+    await agent
+      .post('/api/upload/document')
+      .set(mutatingHeaders())
+      .attach('file', Buffer.from('%PDF-1.4'), 'doc.pdf')
+      .expect(403);
+  });
+
+  test('admin pode enviar PDF e ficheiro fica em /uploads/documents/', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var res = await agent
+      .post('/api/upload/document')
+      .set(mutatingHeaders())
+      .attach('file', Buffer.from('%PDF-1.4 test'), 'relatorio-teste.pdf')
+      .expect(200);
+    expect(res.body.url).toMatch(/^\/uploads\/documents\/.+\.pdf$/);
+    var getRes = await request(app).get(res.body.url).expect(200);
+    expect(Buffer.isBuffer(getRes.body) || typeof getRes.body === 'string').toBe(true);
+  });
+
+  test('POST /api/upload/gallery sem sessão → 401', async function () {
+    await request(app)
+      .post('/api/upload/gallery')
+      .set(mutatingHeaders())
+      .attach('file', Buffer.from('fake'), 'foto.png')
+      .expect(401);
+  });
+
+  test('editor pode enviar imagem para galeria em /uploads/gallery/', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'editor', senha: 'editor123' }).expect(200);
+    var res = await agent
+      .post('/api/upload/gallery')
+      .set(mutatingHeaders())
+      .attach('file', Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), 'mini.png')
+      .expect(200);
+    expect(res.body.url).toMatch(/^\/uploads\/gallery\/.+\.png$/);
+    await request(app).get(res.body.url).expect(200);
+  });
+
   test('POST /api/auth/member e GET /api/member-bootstrap', async function () {
     var agent = request.agent(app);
     await agent.post('/api/auth/member').send({ usuario: 'membro', senha: 'demo123' }).expect(200);

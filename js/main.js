@@ -155,8 +155,9 @@
   var mesAtual = document.getElementById('mes-atual');
   if (mesAtual) {
     var meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    var indice = 2; // Março
-    var ano = 2025;
+    var agora = new Date();
+    var indice = agora.getMonth();
+    var ano = agora.getFullYear();
     function atualizarMes() {
       mesAtual.textContent = meses[indice] + ' ' + ano;
       if (window.renderEventosPorMes) {

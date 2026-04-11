@@ -86,19 +86,20 @@
 
   function salvarPerfil() {
     var m = getUsuarioLogado();
-    if (!m || !D) return;
+    if (!m || !D) return Promise.resolve();
     var list = D.getMembers() || [];
     var idx = list.findIndex(function (x) { return x.id === m.id; });
-    if (idx < 0) return;
+    if (idx < 0) return Promise.resolve();
     var nome = document.getElementById('perfil-nome').value.trim();
     var email = document.getElementById('perfil-email').value.trim();
     var telefone = document.getElementById('perfil-telefone').value.trim();
-    D.salvarPerfilMembro(nome, email, telefone).then(function () {
+    return D.salvarPerfilMembro(nome, email, telefone).then(function () {
       return D.refresh();
     }).then(function () {
       sessionStorage.setItem('membroNome', nome);
       var nomeHeader = document.getElementById('nome-membro');
       if (nomeHeader) nomeHeader.textContent = nome;
+      alert('Perfil atualizado.');
     }).catch(function (e) {
       alert(e.message || 'Não foi possível salvar o perfil.');
     });
@@ -222,9 +223,14 @@
     }).join('');
   }
 
+  /** Só pode registar-se uma vez; não usar display==='none' — antes do login o painel está oculto mas o DOM já existe. */
+  var painelMembroNavegacaoPronta = false;
+
   function init() {
     var dashboard = document.getElementById('bloco-dashboard');
-    if (!dashboard || dashboard.style.display === 'none') return;
+    if (!dashboard) return;
+    if (painelMembroNavegacaoPronta) return;
+    painelMembroNavegacaoPronta = true;
 
     document.querySelectorAll('.membro-sidebar a[data-secao]').forEach(function (a) {
       a.addEventListener('click', function (e) {
@@ -240,7 +246,7 @@
     });
 
     var formPerfil = document.getElementById('form-perfil');
-    if (formPerfil) formPerfil.addEventListener('submit', function (e) { e.preventDefault(); salvarPerfil(); alert('Perfil atualizado.'); });
+    if (formPerfil) formPerfil.addEventListener('submit', function (e) { e.preventDefault(); salvarPerfil(); });
 
     var formVol = document.getElementById('form-voluntariado');
     if (formVol) formVol.addEventListener('submit', function (e) { e.preventDefault(); alert('Obrigado! Sua manifestação de interesse foi registrada. A associação entrará em contato.'); formVol.reset(); });

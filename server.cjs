@@ -10,6 +10,8 @@ const DEFAULTS = require('./server/site-defaults.cjs');
 const pgStore = require('./server/pg-store.cjs');
 const pwd = require('./server/passwords.cjs');
 const { createLimiters } = require('./server/rate-limit.cjs');
+const docUpload = require('./server/document-upload.cjs');
+const galleryUpload = require('./server/gallery-upload.cjs');
 
 var DATA_FILE = process.env.SITE_DATA_FILE
   ? path.resolve(process.env.SITE_DATA_FILE)
@@ -196,23 +198,33 @@ if (process.env.RAILWAY_ENVIRONMENT || process.env.TRUST_PROXY) {
   app.set('trust proxy', 1);
 }
 
-app.use(function (req, res, next) {
-  res.setHeader(
-    'Content-Security-Policy',
-    [
-      "default-src 'self'",
-      "script-src 'self'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: http: https:",
-      "font-src 'self'",
-      "connect-src 'self'",
-      "frame-ancestors 'self'",
-      "base-uri 'self'",
-      "form-action 'self'"
-    ].join('; ')
-  );
-  next();
-});
+/**
+ * CSP só em produção (ou FORCE_CSP=1), para desenvolvimento local não bloquear
+ * extensões (ex.: antivírus), fontes ou uploads. Desligar: DISABLE_CSP=1.
+ */
+var cspAtiva =
+  process.env.DISABLE_CSP !== '1' &&
+  (process.env.NODE_ENV === 'production' || process.env.FORCE_CSP === '1');
+if (cspAtiva) {
+  app.use(function (req, res, next) {
+    res.setHeader(
+      'Content-Security-Policy',
+      [
+        "default-src 'self'",
+        "script-src 'self'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: http: https:",
+        "font-src 'self' data:",
+        "connect-src 'self'",
+        "media-src 'self' blob:",
+        "frame-ancestors 'self'",
+        "base-uri 'self'",
+        "form-action 'self'"
+      ].join('; ')
+    );
+    next();
+  });
+}
 
 app.use(cookieParser());
 app.use(express.json({ limit: '5mb' }));
@@ -417,6 +429,55 @@ app.put('/api/state/:key', async function (req, res) {
   }
 });
 
+/** Upload de ficheiro para documentos (somente perfil admin — igual a PUT documents). */
+function handleDocumentUploadPost(req, res) {
+  var payload = verifyToken(req);
+  if (!payload || payload.t !== 'admin') {
+    return res.status(401).json({ error: 'Não autorizado' });
+  }
+  if ((payload.perfil || 'editor') !== 'admin') {
+    return res.status(403).json({ error: 'Sem permissão para enviar documentos' });
+  }
+  docUpload.uploadSingle(req, res, function (err) {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'Arquivo muito grande (máx. 25 MB)' });
+      }
+      return res.status(400).json({ error: err.message || 'Upload inválido' });
+    }
+    if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+    res.json({ url: docUpload.publicUrlPath + req.file.filename });
+  });
+}
+app.get('/api/upload/document', function (req, res) {
+  res.status(405).set('Allow', 'POST').json({ error: 'Use POST com multipart field "file"' });
+});
+app.post('/api/upload/document', handleDocumentUploadPost);
+app.post('/api/upload/document/', handleDocumentUploadPost);
+
+/** Upload de ficheiro para galeria (admin ou editor — igual a PUT gallery). */
+function handleGalleryUploadPost(req, res) {
+  var payload = verifyToken(req);
+  if (!payload || payload.t !== 'admin') {
+    return res.status(401).json({ error: 'Não autorizado' });
+  }
+  galleryUpload.uploadSingle(req, res, function (err) {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'Arquivo muito grande (máx. 100 MB)' });
+      }
+      return res.status(400).json({ error: err.message || 'Upload inválido' });
+    }
+    if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+    res.json({ url: galleryUpload.publicUrlPath + req.file.filename });
+  });
+}
+app.get('/api/upload/gallery', function (req, res) {
+  res.status(405).set('Allow', 'POST').json({ error: 'Use POST com multipart field "file"' });
+});
+app.post('/api/upload/gallery', handleGalleryUploadPost);
+app.post('/api/upload/gallery/', handleGalleryUploadPost);
+
 app.post('/api/inscricao/publica', rateLimits.inscricaoPublica, async function (req, res) {
   try {
     var b = req.body || {};
@@ -575,7 +636,9 @@ function iniciar(porta, tentativas) {
     process.exit(1);
   });
   server.listen(porta, '0.0.0.0', function () {
-    console.log('Servidor em http://127.0.0.1:' + porta + ' | dados: ' + (pgPool ? 'PostgreSQL' : 'arquivo local data/site-data.json'));
+    var dados = pgPool ? 'PostgreSQL' : 'arquivo local data/site-data.json';
+    var cspMsg = cspAtiva ? 'CSP ativa' : 'CSP off (dev — use NODE_ENV=production na hospedagem para ativar)';
+    console.log('Servidor em http://127.0.0.1:' + porta + ' | ' + dados + ' | ' + cspMsg);
   });
 }
 

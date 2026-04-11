@@ -4,22 +4,22 @@
   var D = window.DadosSite;
   if (!D) return;
 
+  /** Sempre validar o cookie HttpOnly no servidor — não confiar só no sessionStorage (ex.: localhost vs 127.0.0.1 ou cookie expirado). */
   var sessao = null;
   try {
-    var raw = sessionStorage.getItem('site_admin_profile');
-    sessao = raw ? JSON.parse(raw) : null;
+    var rs = await fetch('/api/auth/admin/session', { credentials: 'include' });
+    if (rs.ok) {
+      var sd = await rs.json();
+      sessao = { nome: sd.nome, perfil: sd.perfil, usuario: sd.usuario };
+      try {
+        sessionStorage.setItem('site_admin_profile', JSON.stringify(sessao));
+      } catch (e) {}
+    }
   } catch (e) {}
   if (!sessao) {
     try {
-      var rs = await fetch('/api/auth/admin/session', { credentials: 'include' });
-      if (rs.ok) {
-        var sd = await rs.json();
-        sessao = { nome: sd.nome, perfil: sd.perfil, usuario: sd.usuario };
-        sessionStorage.setItem('site_admin_profile', JSON.stringify(sessao));
-      }
-    } catch (e) {}
-  }
-  if (!sessao) {
+      sessionStorage.removeItem('site_admin_profile');
+    } catch (e2) {}
     window.location.href = 'index.html';
     return;
   }
@@ -58,6 +58,13 @@
 
   function id() { return Math.random().toString(36).slice(2, 10); }
 
+  function escHtml(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /** Atribuída dentro de `if (isAdmin)` — referência estável para o menu lateral. */
+  var renderDocumentos = function () {};
+
   // Navegação entre seções
   document.querySelectorAll('.admin-sidebar a[data-secao]').forEach(function (link) {
     link.addEventListener('click', function (e) {
@@ -69,6 +76,11 @@
       var el = document.getElementById('secao-' + secao);
       if (el) el.classList.add('ativo');
       if (secao === 'dashboard') atualizarDashboard();
+      if (secao === 'institucional' && isAdmin) carregarFormInstitucional();
+      if (secao === 'patrocinadores') renderPatrocinadores();
+      if (secao === 'galeria') renderGaleria();
+      if (secao === 'documentos' && isAdmin) renderDocumentos();
+      if (secao === 'blog') renderBlog();
     });
   });
 
@@ -76,14 +88,33 @@
     var events = D.getEvents() || [];
     var news = D.getNews() || [];
     var members = D.getMembers() || [];
+    var sponsors = D.getSponsors() || [];
     var elE = document.getElementById('dashboard-events-count');
     var elN = document.getElementById('dashboard-news-count');
     var elM = document.getElementById('dashboard-members-count');
-    if (elE) elE.textContent = 'Eventos: ' + events.length;
-    if (elN) elN.textContent = 'Notícias: ' + news.length;
-    if (elM) elM.textContent = 'Membros: ' + members.length;
+    var elS = document.getElementById('dashboard-sponsors-count');
+    if (elE) elE.textContent = String(events.length);
+    if (elN) elN.textContent = String(news.length);
+    if (elM) elM.textContent = String(members.length);
+    if (elS) elS.textContent = String(sponsors.length);
   }
   atualizarDashboard();
+
+  function carregarFormInstitucional() {
+    if (!isAdmin) return;
+    var formInst = document.getElementById('form-institucional');
+    if (!formInst) return;
+    var inst = D.getInstitutional() || {};
+    document.getElementById('inst-historia').value = inst.historia || '';
+    document.getElementById('inst-missao').value = inst.missao || '';
+    document.getElementById('inst-visao').value = inst.visao || '';
+    document.getElementById('inst-objetivos').value = Array.isArray(inst.objetivos) ? inst.objetivos.join('\n') : (inst.objetivos || '');
+    document.getElementById('inst-email').value = inst.email || '';
+    document.getElementById('inst-telefone').value = inst.telefone || '';
+    document.getElementById('inst-facebook').value = inst.facebook || '';
+    document.getElementById('inst-instagram').value = inst.instagram || '';
+    document.getElementById('inst-youtube').value = inst.youtube || '';
+  }
 
   // ---- EVENTOS ----
   var formEventoCard = document.getElementById('form-evento-card');
@@ -240,14 +271,15 @@
     var list = D.getBlog() || [];
     tbody.innerHTML = list.map(function (b) {
       var status = b.publicado ? '<span class="badge badge-ok">Publicado</span>' : '<span class="badge badge-rascunho">Rascunho</span>';
-      return '<tr><td>' + (b.titulo || '') + '</td><td>' + status + '</td><td class="acoes"><button type="button" class="btn btn-outline btn-edit-blog" data-id="' + b.id + '">Editar</button> <button type="button" class="btn btn-remove btn-remove-blog" data-id="' + b.id + '">Excluir</button></td></tr>';
+      var dataPub = b.dataPublicacao || '—';
+      return '<tr><td>' + escHtml(b.titulo || '') + '</td><td>' + escHtml(b.categoria || '—') + '</td><td>' + escHtml(dataPub) + '</td><td>' + status + '</td><td class="acoes"><button type="button" class="btn btn-outline btn-edit-blog" data-id="' + escHtml(b.id) + '">Editar</button> <button type="button" class="btn btn-remove btn-remove-blog" data-id="' + escHtml(b.id) + '">Excluir</button></td></tr>';
     }).join('');
     tbody.querySelectorAll('.btn-edit-blog').forEach(function (btn) { btn.addEventListener('click', function () { editarBlog(this.getAttribute('data-id')); }); });
     tbody.querySelectorAll('.btn-remove-blog').forEach(function (btn) { btn.addEventListener('click', function () { if (confirm('Excluir?')) removerBlog(this.getAttribute('data-id')); }); });
   }
   function editarBlog(id) {
     var list = D.getBlog() || [];
-    var b = list.find(function (x) { return x.id === id; });
+    var b = list.find(function (x) { return String(x.id) === String(id); });
     if (!b) return;
     document.getElementById('blog-id').value = b.id;
     document.getElementById('blog-titulo').value = b.titulo || '';
@@ -259,7 +291,7 @@
     formBlogCard.style.display = 'block';
   }
   function removerBlog(id) {
-    var list = (D.getBlog() || []).filter(function (x) { return x.id !== id; });
+    var list = (D.getBlog() || []).filter(function (x) { return String(x.id) !== String(id); });
     D.setBlog(list).then(function () {
       renderBlog();
       formBlogCard.style.display = 'none';
@@ -277,14 +309,16 @@
     formBlog.addEventListener('submit', function (e) {
       e.preventDefault();
       var list = D.getBlog() || [];
+      var hidId = document.getElementById('blog-id').value;
+      var prev = hidId ? list.find(function (x) { return String(x.id) === String(hidId); }) : null;
       var rec = {
-        id: document.getElementById('blog-id').value || id(),
+        id: hidId || id(),
         titulo: document.getElementById('blog-titulo').value.trim(),
         categoria: document.getElementById('blog-categoria').value.trim(),
         resumo: document.getElementById('blog-resumo').value.trim(),
         conteudo: document.getElementById('blog-conteudo').value.trim(),
         publicado: document.getElementById('blog-publicado').checked,
-        dataPublicacao: document.getElementById('blog-id').value ? (list.find(function (x) { return x.id === document.getElementById('blog-id').value; }) || {}).dataPublicacao : new Date().toISOString().slice(0, 10)
+        dataPublicacao: prev && prev.dataPublicacao ? prev.dataPublicacao : new Date().toISOString().slice(0, 10)
       };
       var idx = list.findIndex(function (x) { return x.id === rec.id; });
       if (idx >= 0) list[idx] = rec; else list.push(rec);
@@ -299,12 +333,21 @@
   // ---- GALERIA ----
   var formGaleriaCard = document.getElementById('form-galeria-card');
   var formGaleria = document.getElementById('form-galeria');
+  function inferGaleriaTipoFromFileName(name) {
+    var n = (name || '').toLowerCase();
+    if (/\.(mp4|webm|ogv|mov|m4v)$/.test(n)) return 'video';
+    return 'imagem';
+  }
   function renderGaleria() {
     var tbody = document.querySelector('#tabela-galeria tbody');
     if (!tbody) return;
     var list = D.getGallery() || [];
     tbody.innerHTML = list.map(function (g) {
-      return '<tr><td>' + (g.titulo || '') + '</td><td>' + (g.tipo || 'imagem') + '</td><td>' + (g.categoria || '') + '</td><td class="acoes"><button type="button" class="btn btn-outline btn-edit-galeria" data-id="' + g.id + '">Editar</button> <button type="button" class="btn btn-remove btn-remove-galeria" data-id="' + g.id + '">Excluir</button></td></tr>';
+      var thumb = '';
+      if (g.url && String(g.url).trim() && (g.tipo || 'imagem') === 'imagem') {
+        thumb = '<img src="' + escHtml(g.url) + '" alt="" class="admin-patroc-thumb" loading="lazy">';
+      }
+      return '<tr><td class="admin-patroc-cell">' + thumb + '<span>' + escHtml(g.titulo || '') + '</span></td><td>' + escHtml(g.tipo || 'imagem') + '</td><td>' + escHtml(g.categoria || '') + '</td><td class="acoes"><button type="button" class="btn btn-outline btn-edit-galeria" data-id="' + escHtml(g.id) + '">Editar</button> <button type="button" class="btn btn-remove btn-remove-galeria" data-id="' + escHtml(g.id) + '">Excluir</button></td></tr>';
     }).join('');
     tbody.querySelectorAll('.btn-edit-galeria').forEach(function (b) { b.addEventListener('click', function () { editarGaleria(this.getAttribute('data-id')); }); });
     tbody.querySelectorAll('.btn-remove-galeria').forEach(function (b) { b.addEventListener('click', function () { if (confirm('Excluir?')) removerGaleria(this.getAttribute('data-id')); }); });
@@ -318,6 +361,18 @@
     document.getElementById('galeria-tipo').value = g.tipo || 'imagem';
     document.getElementById('galeria-url').value = g.url || '';
     document.getElementById('galeria-categoria').value = g.categoria || '';
+    var fileInput = document.getElementById('galeria-file');
+    if (fileInput) fileInput.value = '';
+    var atual = document.getElementById('galeria-url-atual');
+    if (atual) {
+      if (g.url && String(g.url).trim()) {
+        atual.style.display = 'block';
+        atual.innerHTML = 'Mídia atual: <a href="' + escHtml(g.url) + '" target="_blank" rel="noopener">abrir / pré-visualizar</a>';
+      } else {
+        atual.style.display = 'none';
+        atual.innerHTML = '';
+      }
+    }
     document.getElementById('form-galeria-titulo').textContent = 'Editar mídia';
     formGaleriaCard.style.display = 'block';
   }
@@ -331,27 +386,71 @@
   document.getElementById('btn-nova-midia').addEventListener('click', function () {
     document.getElementById('galeria-id').value = '';
     document.getElementById('form-galeria').reset();
+    var atual = document.getElementById('galeria-url-atual');
+    if (atual) { atual.style.display = 'none'; atual.innerHTML = ''; }
     document.getElementById('form-galeria-titulo').textContent = 'Nova mídia';
     formGaleriaCard.style.display = 'block';
   });
   document.getElementById('galeria-cancelar').addEventListener('click', function () { formGaleriaCard.style.display = 'none'; });
+  var galeriaFileEl = document.getElementById('galeria-file');
+  if (galeriaFileEl) {
+    galeriaFileEl.addEventListener('change', function () {
+      var f = this.files && this.files[0];
+      if (!f) return;
+      document.getElementById('galeria-tipo').value = inferGaleriaTipoFromFileName(f.name);
+    });
+  }
   if (formGaleria) {
     formGaleria.addEventListener('submit', function (e) {
       e.preventDefault();
-      var list = D.getGallery() || [];
-      var rec = {
-        id: document.getElementById('galeria-id').value || id(),
-        titulo: document.getElementById('galeria-titulo').value.trim(),
-        tipo: document.getElementById('galeria-tipo').value || 'imagem',
-        url: document.getElementById('galeria-url').value.trim(),
-        categoria: document.getElementById('galeria-categoria').value.trim()
-      };
-      var idx = list.findIndex(function (x) { return x.id === rec.id; });
-      if (idx >= 0) list[idx] = rec; else list.push(rec);
-      D.setGallery(list).then(function () {
-        renderGaleria();
-        formGaleriaCard.style.display = 'none';
-      }).catch(errSave);
+      var fileInput = document.getElementById('galeria-file');
+      var file = fileInput && fileInput.files && fileInput.files[0];
+      var linkUrl = document.getElementById('galeria-url').value.trim();
+
+      function salvarComUrl(mediaUrl, tipoForcado) {
+        var list = D.getGallery() || [];
+        var tipo = tipoForcado != null ? tipoForcado : (document.getElementById('galeria-tipo').value || 'imagem');
+        var rec = {
+          id: document.getElementById('galeria-id').value || id(),
+          titulo: document.getElementById('galeria-titulo').value.trim(),
+          tipo: tipo,
+          url: mediaUrl,
+          categoria: document.getElementById('galeria-categoria').value.trim()
+        };
+        if (!rec.titulo) {
+          alert('Informe o título.');
+          return;
+        }
+        if (!mediaUrl) {
+          alert('Envie um ficheiro ou informe uma URL.');
+          return;
+        }
+        var idx = list.findIndex(function (x) { return x.id === rec.id; });
+        if (idx >= 0) list[idx] = rec; else list.push(rec);
+        D.setGallery(list).then(function () {
+          renderGaleria();
+          formGaleriaCard.style.display = 'none';
+          if (fileInput) fileInput.value = '';
+        }).catch(errSave);
+      }
+
+      if (file) {
+        var fd = new FormData();
+        fd.append('file', file);
+        fetch('/api/upload/gallery', { method: 'POST', body: fd, credentials: 'include' })
+          .then(function (res) {
+            return res.json().then(function (j) {
+              if (!res.ok) throw new Error(j.error || res.statusText);
+              return j.url;
+            });
+          })
+          .then(function (url) {
+            salvarComUrl(url, inferGaleriaTipoFromFileName(file.name));
+          })
+          .catch(errSave);
+        return;
+      }
+      salvarComUrl(linkUrl);
     });
   }
   renderGaleria();
@@ -434,30 +533,54 @@
   if (isAdmin) {
     var formDocCard = document.getElementById('form-doc-card');
     var formDoc = document.getElementById('form-documento');
-    function renderDocumentos() {
+    function docThumbHtml(arquivo) {
+      var u = (arquivo || '').trim();
+      if (!u) return '';
+      var lower = u.split('?')[0].toLowerCase();
+      if (/\.pdf$/i.test(lower)) {
+        return '<span class="admin-doc-pdf" title="Ficheiro PDF"><span class="admin-doc-pdf-inner">PDF</span></span>';
+      }
+      return '<span class="admin-doc-icon" title="Documento">📄</span>';
+    }
+    renderDocumentos = function () {
       var tbody = document.querySelector('#tabela-documentos tbody');
       if (!tbody) return;
       var list = D.getDocuments() || [];
       tbody.innerHTML = list.map(function (d) {
-        return '<tr><td>' + (d.titulo || '') + '</td><td>' + (d.visivel !== false ? 'Sim' : 'Não') + '</td><td class="acoes"><button type="button" class="btn btn-outline btn-edit-doc" data-id="' + d.id + '">Editar</button> <button type="button" class="btn btn-remove btn-remove-doc" data-id="' + d.id + '">Excluir</button></td></tr>';
+        var thumb = docThumbHtml(d.arquivo);
+        var catLabel = escHtml(d.categoria || '—');
+        var vis = d.visivel !== false ? 'Sim' : 'Não';
+        return '<tr><td class="admin-patroc-cell">' + thumb + '<span>' + escHtml(d.titulo || '') + '</span></td><td>' + catLabel + '</td><td>' + vis + '</td><td class="acoes"><button type="button" class="btn btn-outline btn-edit-doc" data-id="' + escHtml(d.id) + '">Editar</button> <button type="button" class="btn btn-remove btn-remove-doc" data-id="' + escHtml(d.id) + '">Excluir</button></td></tr>';
       }).join('');
       tbody.querySelectorAll('.btn-edit-doc').forEach(function (b) { b.addEventListener('click', function () { editarDoc(this.getAttribute('data-id')); }); });
       tbody.querySelectorAll('.btn-remove-doc').forEach(function (b) { b.addEventListener('click', function () { if (confirm('Excluir?')) removerDoc(this.getAttribute('data-id')); }); });
-    }
+    };
     function editarDoc(id) {
       var list = D.getDocuments() || [];
-      var d = list.find(function (x) { return x.id === id; });
+      var d = list.find(function (x) { return String(x.id) === String(id); });
       if (!d) return;
       document.getElementById('doc-id').value = d.id;
       document.getElementById('doc-titulo').value = d.titulo || '';
       document.getElementById('doc-categoria').value = d.categoria || 'ata';
       document.getElementById('doc-arquivo').value = d.arquivo || '';
       document.getElementById('doc-visivel').checked = d.visivel !== false;
+      var fileInput = document.getElementById('doc-file');
+      if (fileInput) fileInput.value = '';
+      var atual = document.getElementById('doc-arquivo-atual');
+      if (atual) {
+        if (d.arquivo && String(d.arquivo).trim()) {
+          atual.style.display = 'block';
+          atual.innerHTML = 'Arquivo atual: <a href="' + escHtml(d.arquivo) + '" target="_blank" rel="noopener">abrir / descarregar</a>';
+        } else {
+          atual.style.display = 'none';
+          atual.innerHTML = '';
+        }
+      }
       document.getElementById('form-doc-titulo').textContent = 'Editar documento';
       formDocCard.style.display = 'block';
     }
     function removerDoc(id) {
-      var list = (D.getDocuments() || []).filter(function (x) { return x.id !== id; });
+      var list = (D.getDocuments() || []).filter(function (x) { return String(x.id) !== String(id); });
       D.setDocuments(list).then(function () {
         renderDocumentos();
         formDocCard.style.display = 'none';
@@ -467,6 +590,8 @@
       document.getElementById('doc-id').value = '';
       document.getElementById('form-documento').reset();
       document.getElementById('doc-visivel').checked = true;
+      var atual = document.getElementById('doc-arquivo-atual');
+      if (atual) { atual.style.display = 'none'; atual.innerHTML = ''; }
       document.getElementById('form-doc-titulo').textContent = 'Novo documento';
       formDocCard.style.display = 'block';
     });
@@ -474,20 +599,51 @@
     if (formDoc) {
       formDoc.addEventListener('submit', function (e) {
         e.preventDefault();
-        var list = D.getDocuments() || [];
-        var rec = {
-          id: document.getElementById('doc-id').value || id(),
-          titulo: document.getElementById('doc-titulo').value.trim(),
-          categoria: (document.getElementById('doc-categoria') && document.getElementById('doc-categoria').value) || 'ata',
-          arquivo: document.getElementById('doc-arquivo').value.trim(),
-          visivel: document.getElementById('doc-visivel').checked
-        };
-        var idx = list.findIndex(function (x) { return x.id === rec.id; });
-        if (idx >= 0) list[idx] = rec; else list.push(rec);
-        D.setDocuments(list).then(function () {
-          renderDocumentos();
-          formDocCard.style.display = 'none';
-        }).catch(errSave);
+        var fileInput = document.getElementById('doc-file');
+        var file = fileInput && fileInput.files && fileInput.files[0];
+        var linkUrl = document.getElementById('doc-arquivo').value.trim();
+
+        function salvarComArquivo(arquivoUrl) {
+          var list = D.getDocuments() || [];
+          var rec = {
+            id: document.getElementById('doc-id').value || id(),
+            titulo: document.getElementById('doc-titulo').value.trim(),
+            categoria: (document.getElementById('doc-categoria') && document.getElementById('doc-categoria').value) || 'ata',
+            arquivo: arquivoUrl,
+            visivel: document.getElementById('doc-visivel').checked
+          };
+          if (!rec.titulo) {
+            alert('Informe o título.');
+            return;
+          }
+          if (!arquivoUrl) {
+            alert('Envie um arquivo do computador ou informe um link externo.');
+            return;
+          }
+          var idx = list.findIndex(function (x) { return x.id === rec.id; });
+          if (idx >= 0) list[idx] = rec; else list.push(rec);
+          D.setDocuments(list).then(function () {
+            renderDocumentos();
+            formDocCard.style.display = 'none';
+            if (fileInput) fileInput.value = '';
+          }).catch(errSave);
+        }
+
+        if (file) {
+          var fd = new FormData();
+          fd.append('file', file);
+          fetch('/api/upload/document', { method: 'POST', body: fd, credentials: 'include' })
+            .then(function (res) {
+              return res.json().then(function (j) {
+                if (!res.ok) throw new Error(j.error || res.statusText);
+                return j.url;
+              });
+            })
+            .then(function (url) { salvarComArquivo(url); })
+            .catch(errSave);
+          return;
+        }
+        salvarComArquivo(linkUrl);
       });
     }
     renderDocumentos();
@@ -501,7 +657,11 @@
     if (!tbody) return;
     var list = D.getSponsors() || [];
     tbody.innerHTML = list.map(function (p) {
-      return '<tr><td>' + (p.nome || '') + '</td><td class="acoes"><button type="button" class="btn btn-outline btn-edit-patroc" data-id="' + p.id + '">Editar</button> <button type="button" class="btn btn-remove btn-remove-patroc" data-id="' + p.id + '">Excluir</button></td></tr>';
+      var thumb = '';
+      if (p.logo && String(p.logo).trim()) {
+        thumb = '<img src="' + escHtml(p.logo) + '" alt="" class="admin-patroc-thumb" loading="lazy">';
+      }
+      return '<tr><td class="admin-patroc-cell">' + thumb + '<span>' + escHtml(p.nome || '') + '</span></td><td class="acoes"><button type="button" class="btn btn-outline btn-edit-patroc" data-id="' + escHtml(p.id) + '">Editar</button> <button type="button" class="btn btn-remove btn-remove-patroc" data-id="' + escHtml(p.id) + '">Excluir</button></td></tr>';
     }).join('');
     tbody.querySelectorAll('.btn-edit-patroc').forEach(function (b) { b.addEventListener('click', function () { editarPatroc(this.getAttribute('data-id')); }); });
     tbody.querySelectorAll('.btn-remove-patroc').forEach(function (b) { b.addEventListener('click', function () { if (confirm('Excluir?')) removerPatroc(this.getAttribute('data-id')); }); });
@@ -514,6 +674,7 @@
     document.getElementById('patroc-nome').value = p.nome || '';
     document.getElementById('patroc-descricao').value = p.descricao || '';
     document.getElementById('patroc-logo').value = p.logo || '';
+    document.getElementById('patroc-url').value = p.url || '';
     document.getElementById('form-patroc-titulo').textContent = 'Editar patrocinador';
     formPatrocCard.style.display = 'block';
   }
@@ -521,6 +682,7 @@
     var list = (D.getSponsors() || []).filter(function (x) { return x.id !== id; });
     D.setSponsors(list).then(function () {
       renderPatrocinadores();
+      atualizarDashboard();
       formPatrocCard.style.display = 'none';
     }).catch(errSave);
   }
@@ -539,12 +701,14 @@
         id: document.getElementById('patroc-id').value || id(),
         nome: document.getElementById('patroc-nome').value.trim(),
         descricao: document.getElementById('patroc-descricao').value.trim(),
-        logo: document.getElementById('patroc-logo').value.trim()
+        logo: document.getElementById('patroc-logo').value.trim(),
+        url: document.getElementById('patroc-url').value.trim()
       };
       var idx = list.findIndex(function (x) { return x.id === rec.id; });
       if (idx >= 0) list[idx] = rec; else list.push(rec);
       D.setSponsors(list).then(function () {
         renderPatrocinadores();
+        atualizarDashboard();
         formPatrocCard.style.display = 'none';
       }).catch(errSave);
     });
@@ -553,17 +717,8 @@
 
   // ---- CONTEÚDO INSTITUCIONAL (só admin) ----
   if (isAdmin) {
+    carregarFormInstitucional();
     var formInst = document.getElementById('form-institucional');
-    var inst = D.getInstitutional() || {};
-    document.getElementById('inst-historia').value = inst.historia || '';
-    document.getElementById('inst-missao').value = inst.missao || '';
-    document.getElementById('inst-visao').value = inst.visao || '';
-    document.getElementById('inst-objetivos').value = Array.isArray(inst.objetivos) ? inst.objetivos.join('\n') : (inst.objetivos || '');
-    document.getElementById('inst-email').value = inst.email || '';
-    document.getElementById('inst-telefone').value = inst.telefone || '';
-    document.getElementById('inst-facebook').value = inst.facebook || '';
-    document.getElementById('inst-instagram').value = inst.instagram || '';
-    document.getElementById('inst-youtube').value = inst.youtube || '';
     if (formInst) {
       formInst.addEventListener('submit', function (e) {
         e.preventDefault();
@@ -580,6 +735,7 @@
           youtube: document.getElementById('inst-youtube').value.trim()
         }).then(function () {
           alert('Conteúdo institucional salvo.');
+          carregarFormInstitucional();
         }).catch(errSave);
       });
     }
