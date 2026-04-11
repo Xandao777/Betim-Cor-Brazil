@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Estado local quando roda sem Supabase
+data/site-data.json
+
 # Editor / OS
 Thumbs.db
 Desktop.ini

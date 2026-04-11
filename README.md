@@ -29,7 +29,7 @@ O painel fica em **`admin/index.html`**. Acesso:
 **Administrador** pode: eventos, notícias, blog, galeria, **membros**, **documentos**, patrocinadores e **conteúdo institucional**.  
 **Editor** pode: eventos, notícias, blog, galeria e patrocinadores (sem membros, documentos nem conteúdo institucional).
 
-Alterações feitas no painel são salvas no navegador (localStorage) e refletidas na área pública. Para produção com muitos acessos, use um backend e banco de dados.
+**Dados globais:** o conteúdo (eventos, notícias, membros, inscrições, etc.) é guardado no **servidor** via API (`/api/...`). Com **PostgreSQL no Railway** (`DATABASE_URL`), tudo fica no banco; sem isso, em desenvolvimento o servidor pode usar `data/site-data.json`.
 
 ## Área de membros
 
@@ -37,21 +37,30 @@ Em **`area-membros.html`**, associados entram com usuário e senha cadastrados p
 
 ## Como usar
 
-1. Abra o arquivo `index.html` no navegador (duplo clique ou arraste para o Chrome/Edge/Firefox).
-2. **Testar como no servidor (opcional):** na pasta do projeto, rode `npm install` e depois `npm run serve:local` — abra `http://localhost:3000`.
-3. Para publicar na internet: envie a pasta completa para um provedor de hospedagem (ex.: FTP, Netlify, Vercel) ou use o **Railway** (abaixo).
+1. **Sempre use o servidor Node** para o site funcionar (há API REST). Na pasta do projeto: `npm install` e `npm run serve:local` — abra `http://localhost:3000` (ou a porta indicada no terminal).
+2. Abrir só o `index.html` pelo disco **não** carrega os dados (as chamadas `/api/public` falham).
+
+## Banco de dados no Railway (recomendado)
+
+1. No mesmo projeto Railway do site, clique em **+ New** → **Database** → **PostgreSQL** (ou adicione o plugin **Postgres**).
+2. O Railway cria o serviço e injeta a variável **`DATABASE_URL`** no seu app web (verifique em **Variables** se o serviço do Node está **referenciando** o Postgres — use “Connect” / variável compartilhada se necessário).
+3. Adicione também **`JWT_SECRET`** (string longa aleatória) nas variáveis do serviço web.
+
+Na **primeira subida**, o Node **cria a tabela `app_state`** sozinho e preenche com os dados padrão se o banco estiver vazio. **Não é obrigatório** rodar SQL manual.
 
 ## Deploy no Railway
 
-O repositório inclui `package.json` e `server.cjs` (Node + **`serve-handler`**) para expor o site estático na porta definida pelo Railway (`PORT`).
+O `server.cjs` usa **Express**: arquivos estáticos + rotas `/api/*` na porta `PORT`.
 
-1. Crie uma conta em [Railway](https://railway.app) e conecte o GitHub.
-2. **New project** → **Deploy from GitHub repo** → selecione este repositório.
-3. O Nixpacks detecta Node.js, roda `npm install` e **`npm start`** (comando `start` no `package.json`).
-4. Em **Settings** → **Networking** → **Generate domain** para obter a URL pública.
-5. Cada push na branch configurada (geralmente `main`) dispara um novo deploy.
+1. [Railway](https://railway.app) → **New project** → **Deploy from GitHub repo** → este repositório.
+2. Adicione **PostgreSQL** e garanta **`DATABASE_URL`** + **`JWT_SECRET`** no serviço da aplicação.
+3. **Networking** → **Generate domain**.
 
-**Observação:** o painel admin e os dados continuam no **localStorage** de cada visitante; não há backend neste deploy.
+**Só web, sem Postgres:** o app cai no modo **arquivo** (`data/site-data.json`), pouco adequado em produção porque o disco pode ser efêmero — use Postgres no Railway para dados persistentes.
+
+### Pasta `supabase/migrations/`
+
+Opcional: se no futuro você usar um projeto **Supabase** separado, esse SQL cria a mesma tabela lá. O fluxo principal agora é **Postgres no Railway**.
 
 ## Personalização
 

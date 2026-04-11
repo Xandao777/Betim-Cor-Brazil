@@ -4,6 +4,8 @@
   var D = window.DadosSite;
   if (!D) return;
 
+  D.ready.then(function () {
+
   function getParam(name) {
     var p = new URLSearchParams(window.location.search);
     return p.get(name);
@@ -143,8 +145,7 @@
         var eventos = D.getEvents ? D.getEvents() : [];
         var ev = eventos.find(function (e2) { return (e2.id || '') === eventoId; }) || {};
         var hoje = new Date().toISOString().slice(0, 10);
-        var list = D.getInscricoes ? D.getInscricoes() : [];
-        list.push({
+        var payload = {
           eventoId: eventoId,
           eventoTitulo: ev.titulo || '',
           eventoData: ev.data || '',
@@ -154,9 +155,10 @@
           email: email,
           telefone: telefone,
           dataInscricao: hoje
-        });
-        if (D.setInscricoes) D.setInscricoes(list);
-        mostrarComprovante({
+        };
+        var p = D.addInscricaoPublica ? D.addInscricaoPublica(payload) : Promise.reject();
+        p.then(function () {
+          mostrarComprovante({
           eventoTitulo: ev.titulo || '',
           eventoData: ev.data || '',
           eventoHora: ev.hora || '',
@@ -165,6 +167,9 @@
           email: email,
           telefone: telefone,
           dataInscricao: hoje
+        });
+        }).catch(function (err) {
+          alert(err.message || 'Não foi possível registrar a inscrição.');
         });
       });
     }
@@ -196,5 +201,7 @@
     renderEvento();
     initInscricao();
   }
+
+  }); // D.ready
 })();
 

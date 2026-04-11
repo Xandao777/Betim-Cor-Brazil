@@ -1,12 +1,14 @@
 /**
  * Área pública: preenche eventos, notícias, blog, galeria e patrocinadores
- * a partir do localStorage (dados editados pelo admin).
+ * a partir da API (/api/public), alimentada pelo painel admin.
  * Incluir após dados-site.js nas páginas que precisam exibir esse conteúdo.
  */
 (function () {
   'use strict';
   var D = window.DadosSite;
   if (!D) return;
+
+  D.ready.then(function () {
 
   function formatarData(str) {
     if (!str) return { dia: '-', mes: '-', ano: '' };
@@ -176,4 +178,6 @@
       }
     });
   })();
+
+  }); // D.ready
 })();

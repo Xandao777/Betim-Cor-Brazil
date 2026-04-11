@@ -1,31 +1,34 @@
 (function () {
   'use strict';
 
-  var CHAVE = 'adminSession';
   var D = window.DadosSite;
   if (!D) return;
 
   var sessao = null;
   try {
-    var raw = sessionStorage.getItem(CHAVE);
+    var raw = sessionStorage.getItem('site_admin_profile');
     sessao = raw ? JSON.parse(raw) : null;
   } catch (e) {}
-  if (!sessao) {
+  if (!sessionStorage.getItem('site_admin_jwt') || !sessao) {
     window.location.href = 'index.html';
     return;
   }
 
-  // Logout: limpar sessão ao clicar em Sair
   document.querySelectorAll('.admin-sidebar .sair a').forEach(function (a) {
     a.addEventListener('click', function (e) {
       e.preventDefault();
-      sessionStorage.removeItem(CHAVE);
+      sessionStorage.removeItem('site_admin_jwt');
+      sessionStorage.removeItem('site_admin_profile');
       window.location.href = 'index.html';
     });
   });
 
   var perfil = sessao.perfil || 'editor';
   var isAdmin = perfil === 'admin';
+
+  function errSave(e) {
+    alert((e && e.message) ? e.message : String(e));
+  }
 
   // Mostrar usuário e esconder itens restritos a admin
   var infoEl = document.getElementById('admin-usuario-info');
@@ -39,6 +42,8 @@
       }
     });
   }
+
+  D.ready.then(function () {
 
   function id() { return Math.random().toString(36).slice(2, 10); }
 
@@ -105,9 +110,10 @@
   }
   function removerEvento(id) {
     var list = (D.getEvents() || []).filter(function (x) { return x.id !== id; });
-    D.setEvents(list);
-    renderEventos();
-    formEventoCard.style.display = 'none';
+    D.setEvents(list).then(function () {
+      renderEventos();
+      formEventoCard.style.display = 'none';
+    }).catch(errSave);
   }
   document.getElementById('btn-novo-evento').addEventListener('click', function () {
     document.getElementById('evento-id').value = '';
@@ -136,9 +142,10 @@
       };
       var idx = list.findIndex(function (x) { return x.id === rec.id; });
       if (idx >= 0) list[idx] = rec; else list.push(rec);
-      D.setEvents(list);
-      renderEventos();
-      formEventoCard.style.display = 'none';
+      D.setEvents(list).then(function () {
+        renderEventos();
+        formEventoCard.style.display = 'none';
+      }).catch(errSave);
     });
   }
   renderEventos();
@@ -174,9 +181,10 @@
   }
   function removerNoticia(id) {
     var list = (D.getNews() || []).filter(function (x) { return x.id !== id; });
-    D.setNews(list);
-    renderNoticias();
-    formNoticiaCard.style.display = 'none';
+    D.setNews(list).then(function () {
+      renderNoticias();
+      formNoticiaCard.style.display = 'none';
+    }).catch(errSave);
   }
   document.getElementById('btn-nova-noticia').addEventListener('click', function () {
     document.getElementById('noticia-id').value = '';
@@ -204,9 +212,10 @@
       };
       var idx = list.findIndex(function (x) { return x.id === rec.id; });
       if (idx >= 0) list[idx] = rec; else list.push(rec);
-      D.setNews(list);
-      renderNoticias();
-      formNoticiaCard.style.display = 'none';
+      D.setNews(list).then(function () {
+        renderNoticias();
+        formNoticiaCard.style.display = 'none';
+      }).catch(errSave);
     });
   }
   renderNoticias();
@@ -240,9 +249,10 @@
   }
   function removerBlog(id) {
     var list = (D.getBlog() || []).filter(function (x) { return x.id !== id; });
-    D.setBlog(list);
-    renderBlog();
-    formBlogCard.style.display = 'none';
+    D.setBlog(list).then(function () {
+      renderBlog();
+      formBlogCard.style.display = 'none';
+    }).catch(errSave);
   }
   document.getElementById('btn-nova-postagem').addEventListener('click', function () {
     document.getElementById('blog-id').value = '';
@@ -267,9 +277,10 @@
       };
       var idx = list.findIndex(function (x) { return x.id === rec.id; });
       if (idx >= 0) list[idx] = rec; else list.push(rec);
-      D.setBlog(list);
-      renderBlog();
-      formBlogCard.style.display = 'none';
+      D.setBlog(list).then(function () {
+        renderBlog();
+        formBlogCard.style.display = 'none';
+      }).catch(errSave);
     });
   }
   renderBlog();
@@ -301,9 +312,10 @@
   }
   function removerGaleria(id) {
     var list = (D.getGallery() || []).filter(function (x) { return x.id !== id; });
-    D.setGallery(list);
-    renderGaleria();
-    formGaleriaCard.style.display = 'none';
+    D.setGallery(list).then(function () {
+      renderGaleria();
+      formGaleriaCard.style.display = 'none';
+    }).catch(errSave);
   }
   document.getElementById('btn-nova-midia').addEventListener('click', function () {
     document.getElementById('galeria-id').value = '';
@@ -325,9 +337,10 @@
       };
       var idx = list.findIndex(function (x) { return x.id === rec.id; });
       if (idx >= 0) list[idx] = rec; else list.push(rec);
-      D.setGallery(list);
-      renderGaleria();
-      formGaleriaCard.style.display = 'none';
+      D.setGallery(list).then(function () {
+        renderGaleria();
+        formGaleriaCard.style.display = 'none';
+      }).catch(errSave);
     });
   }
   renderGaleria();
@@ -364,9 +377,10 @@
     }
     function removerMembro(id) {
       var list = (D.getMembers() || []).filter(function (x) { return x.id !== id; });
-      D.setMembers(list);
-      renderMembros();
-      formMembroCard.style.display = 'none';
+      D.setMembers(list).then(function () {
+        renderMembros();
+        formMembroCard.style.display = 'none';
+      }).catch(errSave);
     }
     document.getElementById('btn-novo-membro').addEventListener('click', function () {
       document.getElementById('membro-id').value = '';
@@ -396,9 +410,10 @@
         if (!rec.senha && !existente) { alert('Informe uma senha para novo membro.'); return; }
         var idx = list.findIndex(function (x) { return x.id === rec.id; });
         if (idx >= 0) list[idx] = rec; else list.push(rec);
-        D.setMembers(list);
-        renderMembros();
-        formMembroCard.style.display = 'none';
+        D.setMembers(list).then(function () {
+          renderMembros();
+          formMembroCard.style.display = 'none';
+        }).catch(errSave);
       });
     }
     renderMembros();
@@ -432,9 +447,10 @@
     }
     function removerDoc(id) {
       var list = (D.getDocuments() || []).filter(function (x) { return x.id !== id; });
-      D.setDocuments(list);
-      renderDocumentos();
-      formDocCard.style.display = 'none';
+      D.setDocuments(list).then(function () {
+        renderDocumentos();
+        formDocCard.style.display = 'none';
+      }).catch(errSave);
     }
     document.getElementById('btn-novo-doc').addEventListener('click', function () {
       document.getElementById('doc-id').value = '';
@@ -457,9 +473,10 @@
         };
         var idx = list.findIndex(function (x) { return x.id === rec.id; });
         if (idx >= 0) list[idx] = rec; else list.push(rec);
-        D.setDocuments(list);
-        renderDocumentos();
-        formDocCard.style.display = 'none';
+        D.setDocuments(list).then(function () {
+          renderDocumentos();
+          formDocCard.style.display = 'none';
+        }).catch(errSave);
       });
     }
     renderDocumentos();
@@ -491,9 +508,10 @@
   }
   function removerPatroc(id) {
     var list = (D.getSponsors() || []).filter(function (x) { return x.id !== id; });
-    D.setSponsors(list);
-    renderPatrocinadores();
-    formPatrocCard.style.display = 'none';
+    D.setSponsors(list).then(function () {
+      renderPatrocinadores();
+      formPatrocCard.style.display = 'none';
+    }).catch(errSave);
   }
   document.getElementById('btn-novo-patroc').addEventListener('click', function () {
     document.getElementById('patroc-id').value = '';
@@ -514,9 +532,10 @@
       };
       var idx = list.findIndex(function (x) { return x.id === rec.id; });
       if (idx >= 0) list[idx] = rec; else list.push(rec);
-      D.setSponsors(list);
-      renderPatrocinadores();
-      formPatrocCard.style.display = 'none';
+      D.setSponsors(list).then(function () {
+        renderPatrocinadores();
+        formPatrocCard.style.display = 'none';
+      }).catch(errSave);
     });
   }
   renderPatrocinadores();
@@ -548,9 +567,12 @@
           facebook: document.getElementById('inst-facebook').value.trim(),
           instagram: document.getElementById('inst-instagram').value.trim(),
           youtube: document.getElementById('inst-youtube').value.trim()
-        });
-        alert('Conteúdo institucional salvo.');
+        }).then(function () {
+          alert('Conteúdo institucional salvo.');
+        }).catch(errSave);
       });
     }
   }
+
+  }); // D.ready
 })();

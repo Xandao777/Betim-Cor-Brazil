@@ -1,7 +1,6 @@
 (function () {
   'use strict';
 
-  var CHAVE = 'adminSession';
   var form = document.getElementById('form-admin-login');
   var erroEl = document.getElementById('admin-login-erro');
 
@@ -18,23 +17,29 @@
       mostrarErro('');
       var usuario = document.getElementById('admin-usuario').value.trim();
       var senha = document.getElementById('admin-senha').value;
-      var users = window.DadosSite && window.DadosSite.getAdminUsers ? window.DadosSite.getAdminUsers() : [];
-      var encontrado = users.find(function (u) {
-        return u.usuario.toLowerCase() === usuario.toLowerCase() && u.senha === senha;
-      });
-      if (encontrado) {
-        var sessao = {
-          id: encontrado.id,
-          usuario: encontrado.usuario,
-          nome: encontrado.nome,
-          perfil: encontrado.perfil || 'editor',
-          loginEm: new Date().toISOString()
-        };
-        sessionStorage.setItem(CHAVE, JSON.stringify(sessao));
-        window.location.href = 'painel.html';
-      } else {
-        mostrarErro('Usuário ou senha incorretos.');
-      }
+      fetch('/api/auth/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario: usuario, senha: senha })
+      })
+        .then(function (r) {
+          return r.json().then(function (data) {
+            if (!r.ok) throw new Error(data.error || 'Falha no login');
+            return data;
+          });
+        })
+        .then(function (data) {
+          sessionStorage.setItem('site_admin_jwt', data.token);
+          sessionStorage.setItem('site_admin_profile', JSON.stringify({
+            nome: data.nome,
+            perfil: data.perfil,
+            usuario: data.usuario
+          }));
+          window.location.href = 'painel.html';
+        })
+        .catch(function (err) {
+          mostrarErro(err.message || 'Usuário ou senha incorretos.');
+        });
     });
   }
 })();

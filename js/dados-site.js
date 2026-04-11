@@ -1,134 +1,170 @@
 /**
- * Camada de dados do site – localStorage
- * Usado pela área pública (para exibir conteúdo) e pelo admin (para persistir).
+ * Camada de dados — servidor (Supabase ou arquivo via API Express).
+ * Cache local após GET /api/public ou /api/full ou /api/member-bootstrap.
  */
 (function (window) {
   'use strict';
 
-  var PREFIX = 'site_';
-  var KEYS = {
-    events: PREFIX + 'events',
-    news: PREFIX + 'news',
-    blog: PREFIX + 'blog',
-    gallery: PREFIX + 'gallery',
-    members: PREFIX + 'members',
-    sponsors: PREFIX + 'sponsors',
-    institutional: PREFIX + 'institutional',
-    documents: PREFIX + 'documents',
-    adminUsers: PREFIX + 'adminUsers',
-    inscricoes: PREFIX + 'inscricoes'
-  };
+  var KEYS = ['events', 'news', 'blog', 'gallery', 'members', 'sponsors', 'documents', 'institutional', 'admin_users', 'inscricoes'];
+  var cache = {};
+  var readyResolve;
+  var ready = new Promise(function (resolve) {
+    readyResolve = resolve;
+  });
 
-  function get(key, defaultValue) {
-    try {
-      var raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : (defaultValue !== undefined ? defaultValue : []);
-    } catch (e) {
-      return defaultValue !== undefined ? defaultValue : [];
-    }
+  function applyPublic(pub) {
+    cache.events = pub.events || [];
+    cache.news = pub.news || [];
+    cache.blog = pub.blog || [];
+    cache.gallery = pub.gallery || [];
+    cache.sponsors = pub.sponsors || [];
+    cache.institutional = pub.institutional || {};
   }
 
-  function set(key, value) {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-      return true;
-    } catch (e) {
-      return false;
-    }
+  function applyFull(full) {
+    KEYS.forEach(function (k) {
+      if (full[k] !== undefined) cache[k] = full[k];
+    });
   }
 
-  // Dados iniciais (quando não existem no localStorage)
-  var defaults = {
-    institutional: {
-      historia: 'Nossa associação nasceu do desejo de unir a comunidade em torno de causas comuns. Ao longo dos anos, crescemos e ampliamos nosso impacto, sempre mantendo os valores de solidariedade e inclusão.',
-      missao: 'Promover o desenvolvimento social e cultural da comunidade, através de projetos, eventos e ações que fortaleçam os laços entre as pessoas e incentivem a participação cidadã.',
-      visao: 'Ser referência em ações comunitárias e culturais na região, reconhecida pela transparência, pelo impacto positivo e pela capacidade de mobilizar pessoas em prol do bem comum.',
-      objetivos: ['Realizar eventos culturais e formativos', 'Fomentar o voluntariado e a participação', 'Manter canal aberto de comunicação com a sociedade', 'Preservar e divulgar a memória e a cultura local'],
-      email: 'contato@associacao.org.br',
-      telefone: '(00) 0000-0000',
-      facebook: '',
-      instagram: '',
-      youtube: ''
-    },
-    events: [
-      { id: '1', titulo: 'Encontro Cultural', descricao: 'Um dia de atividades, oficinas e apresentações para toda a família. Local: Sede da Associação.', data: '2025-03-15', hora: '09:00', local: 'Sede da Associação', vagas: 100, inscricoesAtivas: true, publicado: true, destaque: true },
-      { id: '2', titulo: 'Workshop Voluntários', descricao: 'Formação para quem quer contribuir com nossos projetos. Inscrição gratuita.', data: '2025-03-22', hora: '14:00', local: 'Sede', vagas: 50, inscricoesAtivas: true, publicado: true, destaque: true },
-      { id: '3', titulo: 'Feira Comunitária', descricao: 'Feira de artesanato, gastronomia e troca de experiências. Participe!', data: '2025-04-05', hora: '10:00', local: 'Praça Central', vagas: 0, inscricoesAtivas: false, publicado: true, destaque: true }
-    ],
-    news: [
-      { id: '1', titulo: 'Novo projeto de inclusão digital', categoria: 'Projeto', resumo: 'Iniciamos as aulas de informática básica para a terceira idade. Saiba como participar.', conteudo: '', publicado: true, destaque: true, dataPublicacao: '2025-03-10', exclusivoMembros: false },
-      { id: '2', titulo: 'Assembleia geral – convocação', categoria: 'Comunicado', resumo: 'Convocamos todos os associados para a assembleia ordinária. Data e local no link.', conteudo: '', publicado: true, destaque: false, dataPublicacao: '2025-03-05', exclusivoMembros: true }
-    ],
-    blog: [
-      { id: '1', titulo: 'Como podemos ampliar o voluntariado?', categoria: 'Discussão', resumo: 'Sugestões e experiências de quem já participa.', conteudo: '', publicado: true, dataPublicacao: '2025-03-08' }
-    ],
-    gallery: [
-      { id: '1', titulo: 'Evento Cultural 2024', tipo: 'imagem', url: '', categoria: 'Eventos' },
-      { id: '2', titulo: 'Workshop Voluntários', tipo: 'imagem', url: '', categoria: 'Eventos' }
-    ],
-    members: [
-      { id: '1', usuario: 'membro', senha: 'demo123', nome: 'Membro', email: 'membro@exemplo.org', telefone: '', tipoAssociado: 'Associado', foto: '', ativo: true },
-      { id: '2', usuario: 'admin', senha: 'admin123', nome: 'Administrador', email: '', telefone: '', tipoAssociado: 'Administrador', foto: '', ativo: true }
-    ],
-    sponsors: [
-      { id: '1', nome: 'Patrocinador 1', descricao: '', logo: '' },
-      { id: '2', nome: 'Patrocinador 2', descricao: '', logo: '' }
-    ],
-    documents: [
-      { id: '1', titulo: 'Ata da Assembleia Geral – Março 2025', arquivo: '', categoria: 'ata', visivel: true },
-      { id: '2', titulo: 'Estatuto da Associação', arquivo: '', categoria: 'estatuto', visivel: true },
-      { id: '3', titulo: 'Relatório de atividades 2024', arquivo: '', categoria: 'relatorio', visivel: true }
-    ],
-    adminUsers: [
-      { id: '1', usuario: 'admin', senha: 'admin123', nome: 'Administrador', perfil: 'admin' },
-      { id: '2', usuario: 'editor', senha: 'editor123', nome: 'Editor', perfil: 'editor' }
-    ]
-  };
+  function authHeaderAdmin() {
+    var t = sessionStorage.getItem('site_admin_jwt');
+    return t ? { Authorization: 'Bearer ' + t } : {};
+  }
 
-  function ensureDefaults() {
-    var k;
-    for (k in KEYS) {
-      if (KEYS.hasOwnProperty(k) && k !== 'adminUsers') {
-        if (!localStorage.getItem(KEYS[k]) && defaults[k]) {
-          set(KEYS[k], defaults[k]);
-        }
+  function authHeaderMember() {
+    var t = sessionStorage.getItem('site_member_jwt');
+    return t ? { Authorization: 'Bearer ' + t } : {};
+  }
+
+  async function bootstrap() {
+    var r = await fetch('/api/public');
+    if (!r.ok) throw new Error('Falha ao carregar dados públicos');
+    var pub = await r.json();
+    applyPublic(pub);
+
+    var adminT = sessionStorage.getItem('site_admin_jwt');
+    var memT = sessionStorage.getItem('site_member_jwt');
+    if (adminT) {
+      var r2 = await fetch('/api/full', { headers: { Authorization: 'Bearer ' + adminT } });
+      if (r2.ok) {
+        applyFull(await r2.json());
+      }
+    } else if (memT) {
+      var r3 = await fetch('/api/member-bootstrap', { headers: { Authorization: 'Bearer ' + memT } });
+      if (r3.ok) {
+        applyFull(await r3.json());
       }
     }
-    if (!localStorage.getItem(KEYS.adminUsers)) {
-      set(KEYS.adminUsers, defaults.adminUsers);
-    }
   }
 
-  ensureDefaults();
+  function init() {
+    bootstrap()
+      .then(function () {
+        readyResolve();
+      })
+      .catch(function (e) {
+        console.error(e);
+        readyResolve();
+      });
+  }
+
+  init();
+
+  function putKey(key, body) {
+    var h = Object.assign({ 'Content-Type': 'application/json' }, authHeaderAdmin());
+    return fetch('/api/state/' + key, {
+      method: 'PUT',
+      headers: h,
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      if (!res.ok) return res.json().then(function (j) { throw new Error(j.error || res.statusText); });
+      cache[key] = body;
+    });
+  }
 
   window.DadosSite = {
-    KEYS: KEYS,
+    ready: ready,
+    refresh: function () {
+      return bootstrap();
+    },
     get: function (entidade) {
-      var key = KEYS[entidade];
-      return key ? get(key, defaults[entidade]) : null;
+      var map = {
+        events: 'events',
+        news: 'news',
+        blog: 'blog',
+        gallery: 'gallery',
+        members: 'members',
+        sponsors: 'sponsors',
+        institutional: 'institutional',
+        documents: 'documents',
+        adminUsers: 'admin_users',
+        inscricoes: 'inscricoes'
+      };
+      var k = map[entidade];
+      return k ? cache[k] : null;
     },
-    set: function (entidade, valor) {
-      var key = KEYS[entidade];
-      return key ? set(key, valor) : false;
+    getEvents: function () { return cache.events || []; },
+    setEvents: function (arr) { return putKey('events', arr); },
+    getNews: function () { return cache.news || []; },
+    setNews: function (arr) { return putKey('news', arr); },
+    getBlog: function () { return cache.blog || []; },
+    setBlog: function (arr) { return putKey('blog', arr); },
+    getGallery: function () { return cache.gallery || []; },
+    setGallery: function (arr) { return putKey('gallery', arr); },
+    getMembers: function () { return cache.members || []; },
+    setMembers: function (arr) { return putKey('members', arr); },
+    getSponsors: function () { return cache.sponsors || []; },
+    setSponsors: function (arr) { return putKey('sponsors', arr); },
+    getInstitutional: function () { return cache.institutional || {}; },
+    setInstitutional: function (obj) { return putKey('institutional', obj); },
+    getDocuments: function () { return cache.documents || []; },
+    setDocuments: function (arr) { return putKey('documents', arr); },
+    getAdminUsers: function () { return cache.admin_users || []; },
+    getInscricoes: function () { return cache.inscricoes || []; },
+    setInscricoes: function (arr) { return putKey('inscricoes', arr); },
+
+    addInscricaoPublica: function (item) {
+      return fetch('/api/inscricao/publica', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item)
+      }).then(function (res) {
+        if (!res.ok) return res.json().then(function (j) { throw new Error(j.error || res.statusText); });
+        return window.DadosSite.refresh();
+      });
     },
-    getEvents: function () { return get(KEYS.events, defaults.events); },
-    setEvents: function (arr) { return set(KEYS.events, arr); },
-    getNews: function () { return get(KEYS.news, defaults.news); },
-    setNews: function (arr) { return set(KEYS.news, arr); },
-    getBlog: function () { return get(KEYS.blog, defaults.blog); },
-    setBlog: function (arr) { return set(KEYS.blog, arr); },
-    getGallery: function () { return get(KEYS.gallery, defaults.gallery); },
-    setGallery: function (arr) { return set(KEYS.gallery, arr); },
-    getMembers: function () { return get(KEYS.members, defaults.members); },
-    setMembers: function (arr) { return set(KEYS.members, arr); },
-    getSponsors: function () { return get(KEYS.sponsors, defaults.sponsors); },
-    setSponsors: function (arr) { return set(KEYS.sponsors, arr); },
-    getInstitutional: function () { return get(KEYS.institutional, defaults.institutional); },
-    setInstitutional: function (obj) { return set(KEYS.institutional, obj); },
-    getDocuments: function () { return get(KEYS.documents, defaults.documents); },
-    setDocuments: function (arr) { return set(KEYS.documents, arr); },
-    getAdminUsers: function () { return get(KEYS.adminUsers, defaults.adminUsers); },
-    getInscricoes: function () { return get(KEYS.inscricoes, []); },
-    setInscricoes: function (arr) { return set(KEYS.inscricoes, arr); }
+
+    addInscricaoMembro: function (item) {
+      return fetch('/api/inscricao/membro', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaderMember()),
+        body: JSON.stringify(item)
+      }).then(function (res) {
+        if (!res.ok) return res.json().then(function (j) { throw new Error(j.error || res.statusText); });
+        return window.DadosSite.refresh();
+      });
+    },
+
+    removeInscricaoMembro: function (eventoId) {
+      return fetch('/api/inscricao/membro/' + encodeURIComponent(eventoId), {
+        method: 'DELETE',
+        headers: authHeaderMember()
+      }).then(function (res) {
+        if (!res.ok) return res.json().then(function (j) { throw new Error(j.error || res.statusText); });
+        return window.DadosSite.refresh();
+      });
+    },
+
+    salvarPerfilMembro: function (nome, email, telefone) {
+      return fetch('/api/member/perfil', {
+        method: 'PATCH',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaderMember()),
+        body: JSON.stringify({ nome: nome, email: email, telefone: telefone })
+      }).then(function (res) {
+        if (!res.ok) return res.json().then(function (j) { throw new Error(j.error || res.statusText); });
+        return window.DadosSite.refresh();
+      });
+    }
   };
 })(window);

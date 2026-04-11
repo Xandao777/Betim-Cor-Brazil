@@ -5,6 +5,10 @@
   'use strict';
 
   var D = window.DadosSite;
+  if (!D) return;
+
+  D.ready.then(function () {
+
   var CHAVE_USUARIO = 'membroUsuario';
 
   function getUsuarioLogado() {
@@ -86,15 +90,18 @@
     var list = D.getMembers() || [];
     var idx = list.findIndex(function (x) { return x.id === m.id; });
     if (idx < 0) return;
-    list[idx] = Object.assign({}, list[idx], {
-      nome: document.getElementById('perfil-nome').value.trim(),
-      email: document.getElementById('perfil-email').value.trim(),
-      telefone: document.getElementById('perfil-telefone').value.trim()
+    var nome = document.getElementById('perfil-nome').value.trim();
+    var email = document.getElementById('perfil-email').value.trim();
+    var telefone = document.getElementById('perfil-telefone').value.trim();
+    D.salvarPerfilMembro(nome, email, telefone).then(function () {
+      return D.refresh();
+    }).then(function () {
+      sessionStorage.setItem('membroNome', nome);
+      var nomeHeader = document.getElementById('nome-membro');
+      if (nomeHeader) nomeHeader.textContent = nome;
+    }).catch(function (e) {
+      alert(e.message || 'Não foi possível salvar o perfil.');
     });
-    D.setMembers(list);
-    sessionStorage.setItem('membroNome', list[idx].nome);
-    var nomeHeader = document.getElementById('nome-membro');
-    if (nomeHeader) nomeHeader.textContent = list[idx].nome;
   }
 
   function preencherDocumentos(categoria) {
@@ -146,10 +153,14 @@
       btn.addEventListener('click', function () {
         if (!confirm('Cancelar esta inscrição?')) return;
         var id = this.getAttribute('data-evento-id');
-        var list = (D.getInscricoes() || []).filter(function (i) { return !(i.membroUsuario === user && i.eventoId === id); });
-        D.setInscricoes(list);
-        preencherEventos();
-        preencherDashboard();
+        D.removeInscricaoMembro(id).then(function () {
+          return D.refresh();
+        }).then(function () {
+          preencherEventos();
+          preencherDashboard();
+        }).catch(function (e) {
+          alert(e.message || 'Erro ao cancelar.');
+        });
       });
     });
 
@@ -175,20 +186,21 @@
         var local = this.getAttribute('data-evento-local');
         var msg = 'Confirmar inscrição no evento "' + titulo + '"?\n\nData: ' + data + (hora ? ' às ' + hora : '') + (local ? '\nLocal: ' + local : '');
         if (!confirm(msg)) return;
-        var list = D.getInscricoes() || [];
-        list.push({
+        D.addInscricaoMembro({
           eventoId: this.getAttribute('data-evento-id'),
           eventoTitulo: titulo,
           eventoData: data,
           eventoHora: hora || '',
-          eventoLocal: local || '',
-          membroUsuario: user,
-          dataInscricao: new Date().toISOString().slice(0, 10)
+          eventoLocal: local || ''
+        }).then(function () {
+          return D.refresh();
+        }).then(function () {
+          preencherEventos();
+          preencherDashboard();
+          alert('Inscrição confirmada com sucesso! Você está inscrito(a) no evento. Acompanhe em "Minhas inscrições".');
+        }).catch(function (e) {
+          alert(e.message || 'Não foi possível inscrever.');
         });
-        D.setInscricoes(list);
-        preencherEventos();
-        preencherDashboard();
-        alert('Inscrição confirmada com sucesso! Você está inscrito(a) no evento. Acompanhe em "Minhas inscrições".');
       });
     });
   }
@@ -242,11 +254,13 @@
   }
 
   window.refreshAreaMembros = function () {
-    preencherDashboard();
-    preencherDocumentos(document.getElementById('filtro-documentos') && document.getElementById('filtro-documentos').value || undefined);
-    preencherRelatorios();
-    preencherEventos();
-    preencherNoticiasInternas();
+    D.refresh().then(function () {
+      preencherDashboard();
+      preencherDocumentos(document.getElementById('filtro-documentos') && document.getElementById('filtro-documentos').value || undefined);
+      preencherRelatorios();
+      preencherEventos();
+      preencherNoticiasInternas();
+    });
   };
 
   if (document.readyState === 'loading') {
@@ -254,4 +268,6 @@
   } else {
     init();
   }
+
+  }); // D.ready
 })();

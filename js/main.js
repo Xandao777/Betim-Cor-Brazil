@@ -35,21 +35,12 @@
     });
   }
 
-  // Área de membros: login funcional (usa DadosSite.getMembers se disponível)
+  // Área de membros: login via API (dados globais no servidor)
   (function () {
     var CHAVE_SESSAO = 'membroLogado';
     var CHAVE_USUARIO = 'membroUsuario';
     var CHAVE_NOME = 'membroNome';
-    function getUsuarios() {
-      if (window.DadosSite && typeof window.DadosSite.getMembers === 'function') {
-        var list = window.DadosSite.getMembers() || [];
-        return list.filter(function (u) { return u.ativo !== false; });
-      }
-      return [
-        { usuario: 'membro', senha: 'demo123', nome: 'Membro' },
-        { usuario: 'admin', senha: 'admin123', nome: 'Administrador' }
-      ];
-    }
+    var DS = window.DadosSite;
 
     var blocoLogin = document.getElementById('bloco-login');
     var blocoDashboard = document.getElementById('bloco-dashboard');
@@ -66,7 +57,7 @@
     }
 
     function atualizarTela() {
-      var logado = sessionStorage.getItem(CHAVE_SESSAO) === 'true';
+      var logado = !!sessionStorage.getItem('site_member_jwt');
       if (blocoLogin) blocoLogin.style.display = logado ? 'none' : 'block';
       if (blocoDashboard) blocoDashboard.style.display = logado ? 'block' : 'none';
       if (logado && nomeMembro) nomeMembro.textContent = sessionStorage.getItem(CHAVE_NOME) || 'Membro';
@@ -79,23 +70,37 @@
         mostrarErro('');
         var user = document.getElementById('login-email').value.trim();
         var senha = document.getElementById('login-senha').value;
-        var encontrado = getUsuarios().find(function (u) {
-          return (u.usuario.toLowerCase() === user.toLowerCase()) && (u.senha === senha);
-        });
-        if (encontrado) {
-          sessionStorage.setItem(CHAVE_SESSAO, 'true');
-          sessionStorage.setItem(CHAVE_USUARIO, encontrado.usuario);
-          sessionStorage.setItem(CHAVE_NOME, encontrado.nome);
-          formLogin.reset();
-          atualizarTela();
-        } else {
-          mostrarErro('Usuário ou senha incorretos. Tente novamente.');
-        }
+        fetch('/api/auth/member', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: user, senha: senha })
+        })
+          .then(function (r) {
+            return r.json().then(function (data) {
+              if (!r.ok) throw new Error(data.error || 'Falha no login');
+              return data;
+            });
+          })
+          .then(function (data) {
+            sessionStorage.setItem('site_member_jwt', data.token);
+            sessionStorage.setItem(CHAVE_SESSAO, 'true');
+            sessionStorage.setItem(CHAVE_USUARIO, data.usuario);
+            sessionStorage.setItem(CHAVE_NOME, data.nome);
+            formLogin.reset();
+            return DS && DS.refresh ? DS.refresh() : Promise.resolve();
+          })
+          .then(function () {
+            atualizarTela();
+          })
+          .catch(function (err) {
+            mostrarErro(err.message || 'Usuário ou senha incorretos. Tente novamente.');
+          });
       });
     }
 
     if (btnSair) {
       btnSair.addEventListener('click', function () {
+        sessionStorage.removeItem('site_member_jwt');
         sessionStorage.removeItem(CHAVE_SESSAO);
         sessionStorage.removeItem(CHAVE_USUARIO);
         sessionStorage.removeItem(CHAVE_NOME);
@@ -103,8 +108,10 @@
       });
     }
 
-    if (blocoLogin && blocoDashboard) {
-      atualizarTela();
+    if (blocoLogin && blocoDashboard && DS) {
+      DS.ready.then(function () {
+        atualizarTela();
+      });
     }
   })();
 
@@ -147,8 +154,12 @@
         window.renderEventosPorMes(indice, ano);
       }
     }
-    // inicializa texto e filtro
-    atualizarMes();
+    var bootMes = function () { atualizarMes(); };
+    if (window.DadosSite && window.DadosSite.ready) {
+      window.DadosSite.ready.then(bootMes);
+    } else {
+      atualizarMes();
+    }
     if (btnAnt) btnAnt.addEventListener('click', function () {
       indice--;
       if (indice < 0) { indice = 11; ano--; }
