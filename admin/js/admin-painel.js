@@ -1,4 +1,4 @@
-(function () {
+(async function () {
   'use strict';
 
   var D = window.DadosSite;
@@ -9,7 +9,17 @@
     var raw = sessionStorage.getItem('site_admin_profile');
     sessao = raw ? JSON.parse(raw) : null;
   } catch (e) {}
-  if (!sessionStorage.getItem('site_admin_jwt') || !sessao) {
+  if (!sessao) {
+    try {
+      var rs = await fetch('/api/auth/admin/session', { credentials: 'include' });
+      if (rs.ok) {
+        var sd = await rs.json();
+        sessao = { nome: sd.nome, perfil: sd.perfil, usuario: sd.usuario };
+        sessionStorage.setItem('site_admin_profile', JSON.stringify(sessao));
+      }
+    } catch (e) {}
+  }
+  if (!sessao) {
     window.location.href = 'index.html';
     return;
   }
@@ -17,9 +27,10 @@
   document.querySelectorAll('.admin-sidebar .sair a').forEach(function (a) {
     a.addEventListener('click', function (e) {
       e.preventDefault();
-      sessionStorage.removeItem('site_admin_jwt');
-      sessionStorage.removeItem('site_admin_profile');
-      window.location.href = 'index.html';
+      fetch('/api/auth/logout-admin', { method: 'POST', credentials: 'include' }).then(function () {
+        sessionStorage.removeItem('site_admin_profile');
+        window.location.href = 'index.html';
+      });
     });
   });
 

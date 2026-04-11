@@ -57,10 +57,18 @@
     }
 
     function atualizarTela() {
-      var logado = !!sessionStorage.getItem('site_member_jwt');
+      var logado = !!(DS && typeof DS.isMemberSession === 'function' && DS.isMemberSession());
       if (blocoLogin) blocoLogin.style.display = logado ? 'none' : 'block';
       if (blocoDashboard) blocoDashboard.style.display = logado ? 'block' : 'none';
-      if (logado && nomeMembro) nomeMembro.textContent = sessionStorage.getItem(CHAVE_NOME) || 'Membro';
+      if (logado && nomeMembro) {
+        var nome = sessionStorage.getItem(CHAVE_NOME);
+        if (!nome && DS.getMembers) {
+          var u = sessionStorage.getItem(CHAVE_USUARIO);
+          var mm = (DS.getMembers() || []).find(function (m) { return m.usuario === u; });
+          nome = mm ? mm.nome : '';
+        }
+        nomeMembro.textContent = nome || 'Membro';
+      }
       if (logado && typeof window.refreshAreaMembros === 'function') window.refreshAreaMembros();
     }
 
@@ -73,6 +81,7 @@
         fetch('/api/auth/member', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ usuario: user, senha: senha })
         })
           .then(function (r) {
@@ -82,7 +91,6 @@
             });
           })
           .then(function (data) {
-            sessionStorage.setItem('site_member_jwt', data.token);
             sessionStorage.setItem(CHAVE_SESSAO, 'true');
             sessionStorage.setItem(CHAVE_USUARIO, data.usuario);
             sessionStorage.setItem(CHAVE_NOME, data.nome);
@@ -100,11 +108,12 @@
 
     if (btnSair) {
       btnSair.addEventListener('click', function () {
-        sessionStorage.removeItem('site_member_jwt');
-        sessionStorage.removeItem(CHAVE_SESSAO);
-        sessionStorage.removeItem(CHAVE_USUARIO);
-        sessionStorage.removeItem(CHAVE_NOME);
-        atualizarTela();
+        fetch('/api/auth/logout-member', { method: 'POST', credentials: 'include' }).then(function () {
+          sessionStorage.removeItem(CHAVE_SESSAO);
+          sessionStorage.removeItem(CHAVE_USUARIO);
+          sessionStorage.removeItem(CHAVE_NOME);
+          atualizarTela();
+        });
       });
     }
 

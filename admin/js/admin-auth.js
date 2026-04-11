@@ -20,6 +20,7 @@
       fetch('/api/auth/admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ usuario: usuario, senha: senha })
       })
         .then(function (r) {
@@ -29,7 +30,6 @@
           });
         })
         .then(function (data) {
-          sessionStorage.setItem('site_admin_jwt', data.token);
           sessionStorage.setItem('site_admin_profile', JSON.stringify({
             nome: data.nome,
             perfil: data.perfil,

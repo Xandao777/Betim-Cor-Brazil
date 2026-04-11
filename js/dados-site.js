@@ -1,6 +1,6 @@
 /**
- * Camada de dados — servidor (Supabase ou arquivo via API Express).
- * Cache local após GET /api/public ou /api/full ou /api/member-bootstrap.
+ * Camada de dados — API Express (PostgreSQL no Railway ou arquivo local).
+ * Cache em memória após GET /api/public ou /api/full ou /api/member-bootstrap.
  */
 (function (window) {
   'use strict';
@@ -27,33 +27,36 @@
     });
   }
 
-  function authHeaderAdmin() {
-    var t = sessionStorage.getItem('site_admin_jwt');
-    return t ? { Authorization: 'Bearer ' + t } : {};
-  }
-
-  function authHeaderMember() {
-    var t = sessionStorage.getItem('site_member_jwt');
-    return t ? { Authorization: 'Bearer ' + t } : {};
-  }
+  var sessionKind = null;
 
   async function bootstrap() {
+    try {
+      sessionStorage.removeItem('site_admin_jwt');
+      sessionStorage.removeItem('site_member_jwt');
+    } catch (e) {}
+    sessionKind = null;
     var r = await fetch('/api/public');
     if (!r.ok) throw new Error('Falha ao carregar dados públicos');
     var pub = await r.json();
     applyPublic(pub);
 
-    var adminT = sessionStorage.getItem('site_admin_jwt');
-    var memT = sessionStorage.getItem('site_member_jwt');
-    if (adminT) {
-      var r2 = await fetch('/api/full', { headers: { Authorization: 'Bearer ' + adminT } });
-      if (r2.ok) {
-        applyFull(await r2.json());
-      }
-    } else if (memT) {
-      var r3 = await fetch('/api/member-bootstrap', { headers: { Authorization: 'Bearer ' + memT } });
-      if (r3.ok) {
-        applyFull(await r3.json());
+    var r2 = await fetch('/api/full', { credentials: 'include' });
+    if (r2.ok) {
+      applyFull(await r2.json());
+      sessionKind = 'admin';
+      return;
+    }
+    var r3 = await fetch('/api/member-bootstrap', { credentials: 'include' });
+    if (r3.ok) {
+      applyFull(await r3.json());
+      sessionKind = 'member';
+      var mems = cache.members || [];
+      if (mems.length) {
+        try {
+          sessionStorage.setItem('membroUsuario', mems[0].usuario || '');
+          sessionStorage.setItem('membroNome', mems[0].nome || '');
+          sessionStorage.setItem('membroLogado', 'true');
+        } catch (e) {}
       }
     }
   }
@@ -72,10 +75,10 @@
   init();
 
   function putKey(key, body) {
-    var h = Object.assign({ 'Content-Type': 'application/json' }, authHeaderAdmin());
     return fetch('/api/state/' + key, {
       method: 'PUT',
-      headers: h,
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(body)
     }).then(function (res) {
       if (!res.ok) return res.json().then(function (j) { throw new Error(j.error || res.statusText); });
@@ -124,10 +127,18 @@
     getInscricoes: function () { return cache.inscricoes || []; },
     setInscricoes: function (arr) { return putKey('inscricoes', arr); },
 
+    sessionKind: function () {
+      return sessionKind;
+    },
+    isMemberSession: function () {
+      return sessionKind === 'member';
+    },
+
     addInscricaoPublica: function (item) {
       return fetch('/api/inscricao/publica', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(item)
       }).then(function (res) {
         if (!res.ok) return res.json().then(function (j) { throw new Error(j.error || res.statusText); });
@@ -138,7 +149,8 @@
     addInscricaoMembro: function (item) {
       return fetch('/api/inscricao/membro', {
         method: 'POST',
-        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaderMember()),
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(item)
       }).then(function (res) {
         if (!res.ok) return res.json().then(function (j) { throw new Error(j.error || res.statusText); });
@@ -149,7 +161,7 @@
     removeInscricaoMembro: function (eventoId) {
       return fetch('/api/inscricao/membro/' + encodeURIComponent(eventoId), {
         method: 'DELETE',
-        headers: authHeaderMember()
+        credentials: 'include'
       }).then(function (res) {
         if (!res.ok) return res.json().then(function (j) { throw new Error(j.error || res.statusText); });
         return window.DadosSite.refresh();
@@ -159,7 +171,8 @@
     salvarPerfilMembro: function (nome, email, telefone) {
       return fetch('/api/member/perfil', {
         method: 'PATCH',
-        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaderMember()),
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ nome: nome, email: email, telefone: telefone })
       }).then(function (res) {
         if (!res.ok) return res.json().then(function (j) { throw new Error(j.error || res.statusText); });

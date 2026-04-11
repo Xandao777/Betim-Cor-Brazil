@@ -2,10 +2,13 @@
 
 /**
  * Persistência em PostgreSQL (Railway: variável DATABASE_URL).
- * Tabela app_state — mesma ideia do site: uma linha por chave (events, news, …).
+ * Tabela app_state — uma linha por chave (events, news, …), payload JSONB.
+ * Simples e suficiente para muitas associações; para milhões de linhas, auditoria
+ * fina ou BI pesado em SQL, o modelo normalmente evoluiria para tabelas dedicadas.
  */
 
 var { Pool } = require('pg');
+var pwd = require('./passwords.cjs');
 
 function createPool(databaseUrl) {
   var isLocal = /localhost|127\.0\.0\.1/.test(databaseUrl);
@@ -45,10 +48,14 @@ async function seed(pool, KEYS, DEFAULTS) {
     await client.query('BEGIN');
     for (var i = 0; i < KEYS.length; i++) {
       var k = KEYS[i];
+      var payload = DEFAULTS[k];
+      if (k === 'members' || k === 'admin_users') {
+        payload = pwd.hashPasswordsInArray(JSON.parse(JSON.stringify(DEFAULTS[k])));
+      }
       await client.query(
         `INSERT INTO app_state (key, payload, updated_at) VALUES ($1, $2::jsonb, NOW())
          ON CONFLICT (key) DO UPDATE SET payload = EXCLUDED.payload, updated_at = NOW()`,
-        [k, JSON.stringify(DEFAULTS[k])]
+        [k, JSON.stringify(payload)]
       );
     }
     await client.query('COMMIT');

@@ -4,11 +4,16 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const express = require('express');
+const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const DEFAULTS = require('./server/site-defaults.cjs');
 const pgStore = require('./server/pg-store.cjs');
+const pwd = require('./server/passwords.cjs');
+const { createLimiters } = require('./server/rate-limit.cjs');
 
-var DATA_FILE = path.join(__dirname, 'data', 'site-data.json');
+var DATA_FILE = process.env.SITE_DATA_FILE
+  ? path.resolve(process.env.SITE_DATA_FILE)
+  : path.join(__dirname, 'data', 'site-data.json');
 var KEYS = ['events', 'news', 'blog', 'gallery', 'members', 'sponsors', 'documents', 'institutional', 'admin_users', 'inscricoes'];
 
 /** Pool PostgreSQL quando DATABASE_URL está definida (ex.: Railway Postgres plugin) */
@@ -17,6 +22,59 @@ var pgPool = null;
 var JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-altere-em-producao';
 if (!process.env.JWT_SECRET && process.env.RAILWAY_ENVIRONMENT) {
   console.warn('AVISO: defina JWT_SECRET nas variáveis do Railway para sessões seguras.');
+}
+
+/** Cookies HttpOnly — o JWT não fica em sessionStorage (mitiga roubo via XSS). */
+var COOKIE_ADMIN = 'site_admin_session';
+var COOKIE_MEMBER = 'site_member_session';
+
+function sessionCookieOptions() {
+  var o = {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  };
+  if (process.env.NODE_ENV === 'production' || process.env.FORCE_SECURE_COOKIES === '1') {
+    o.secure = true;
+  }
+  return o;
+}
+
+function setSessionCookie(res, name, token) {
+  res.cookie(name, token, sessionCookieOptions());
+}
+
+function clearSessionCookie(res, name) {
+  res.clearCookie(name, { path: '/', httpOnly: true, sameSite: 'lax' });
+}
+
+/**
+ * Com sessão por cookie, exige Origin/Referer alinhados ao host (mitiga CSRF entre sites).
+ * Login público e inscrição sem cookie de sessão continuam permitidos.
+ */
+function csrfOriginGuard(req, res, next) {
+  if (req.path.indexOf('/api/') !== 0) return next();
+  var method = req.method;
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return next();
+  if (req.path === '/api/auth/admin' || req.path === '/api/auth/member') return next();
+  if (req.path === '/api/auth/logout-admin' || req.path === '/api/auth/logout-member') return next();
+  if (req.path === '/api/inscricao/publica') return next();
+  var hasAuthCookie = req.cookies && (req.cookies[COOKIE_ADMIN] || req.cookies[COOKIE_MEMBER]);
+  if (!hasAuthCookie) return next();
+  var host = req.get('Host');
+  var proto = (req.get('x-forwarded-proto') || req.protocol || 'http').split(',')[0].trim();
+  var expected = proto + '://' + host;
+  var origin = req.get('Origin');
+  if (origin) {
+    if (origin !== expected) return res.status(403).json({ error: 'Origem inválida' });
+    return next();
+  }
+  var ref = req.get('Referer') || '';
+  if (ref.indexOf(expected + '/') === 0 || ref === expected) return next();
+  var auth = req.get('Authorization') || '';
+  if (auth.indexOf('Bearer ') === 0) return next();
+  return res.status(403).json({ error: 'Origem inválida' });
 }
 
 function mergeDefaults(state) {
@@ -71,6 +129,19 @@ async function saveKey(key, payload) {
   await saveStateFull(state);
 }
 
+/** Migra senha em texto antigo para bcrypt após login bem-sucedido. */
+async function upgradeLegacyPassword(key, userId, plain) {
+  var state = await loadState();
+  var list = state[key] || [];
+  var item = list.find(function (x) { return String(x.id) === String(userId); });
+  if (!item || pwd.isBcryptHash(item.senha)) return;
+  var newList = list.map(function (x) {
+    if (String(x.id) !== String(userId)) return x;
+    return Object.assign({}, x, { senha: pwd.hashPassword(plain) });
+  });
+  await saveKey(key, newList);
+}
+
 function filterPublic(state) {
   return {
     events: state.events,
@@ -98,18 +169,55 @@ function signMember(member) {
   );
 }
 
-function verifyToken(req) {
+function getTokenString(req) {
   var h = req.headers.authorization;
-  if (!h || h.indexOf('Bearer ') !== 0) return null;
+  if (h && h.indexOf('Bearer ') === 0) return h.slice(7);
+  if (req.cookies) {
+    if (req.cookies[COOKIE_ADMIN]) return req.cookies[COOKIE_ADMIN];
+    if (req.cookies[COOKIE_MEMBER]) return req.cookies[COOKIE_MEMBER];
+  }
+  return null;
+}
+
+function verifyToken(req) {
+  var raw = getTokenString(req);
+  if (!raw) return null;
   try {
-    return jwt.verify(h.slice(7), JWT_SECRET);
+    return jwt.verify(raw, JWT_SECRET);
   } catch (e) {
     return null;
   }
 }
 
+var rateLimits = createLimiters();
+
 var app = express();
+if (process.env.RAILWAY_ENVIRONMENT || process.env.TRUST_PROXY) {
+  app.set('trust proxy', 1);
+}
+
+app.use(function (req, res, next) {
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: http: https:",
+      "font-src 'self'",
+      "connect-src 'self'",
+      "frame-ancestors 'self'",
+      "base-uri 'self'",
+      "form-action 'self'"
+    ].join('; ')
+  );
+  next();
+});
+
+app.use(cookieParser());
 app.use(express.json({ limit: '5mb' }));
+app.use('/api', rateLimits.apiGlobal);
+app.use(csrfOriginGuard);
 
 var logoPath = path.join(__dirname, 'img', 'logo.jpg');
 app.get('/favicon.ico', function (req, res) {
@@ -128,11 +236,11 @@ app.get('/apple-touch-icon.png', function (req, res) {
   res.status(404).end();
 });
 
-app.get('/api/health', function (req, res) {
+app.get('/api/health', rateLimits.publicGet, function (req, res) {
   res.json({ ok: true, backend: pgPool ? 'postgres' : 'file' });
 });
 
-app.get('/api/public', async function (req, res) {
+app.get('/api/public', rateLimits.publicGet, async function (req, res) {
   try {
     var state = await loadState();
     res.json(filterPublic(state));
@@ -149,7 +257,7 @@ app.get('/api/full', async function (req, res) {
   }
   try {
     var state = await loadState();
-    res.json(state);
+    res.json(pwd.stripPasswordsFromState(state));
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: String(e.message) });
@@ -178,7 +286,11 @@ app.get('/api/member-bootstrap', async function (req, res) {
       sponsors: state.sponsors,
       institutional: state.institutional,
       documents: state.documents,
-      members: members,
+      members: members.map(function (m) {
+        var o = Object.assign({}, m);
+        o.senha = '';
+        return o;
+      }),
       inscricoes: inscricoes
     });
   } catch (e) {
@@ -187,7 +299,7 @@ app.get('/api/member-bootstrap', async function (req, res) {
   }
 });
 
-app.post('/api/auth/admin', async function (req, res) {
+app.post('/api/auth/admin', rateLimits.login, async function (req, res) {
   var usuario = (req.body && req.body.usuario) ? String(req.body.usuario).trim() : '';
   var senha = (req.body && req.body.senha) ? String(req.body.senha) : '';
   if (!usuario || !senha) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
@@ -195,12 +307,16 @@ app.post('/api/auth/admin', async function (req, res) {
     var state = await loadState();
     var users = state.admin_users || [];
     var found = users.find(function (u) {
-      return u.usuario && u.usuario.toLowerCase() === usuario.toLowerCase() && u.senha === senha;
+      return u.usuario && u.usuario.toLowerCase() === usuario.toLowerCase();
     });
-    if (!found) return res.status(401).json({ error: 'Usuário ou senha incorretos' });
+    if (!found || !pwd.verifyPassword(senha, found.senha)) {
+      return res.status(401).json({ error: 'Usuário ou senha incorretos' });
+    }
+    await upgradeLegacyPassword('admin_users', found.id, senha);
     var token = signAdmin(found);
+    clearSessionCookie(res, COOKIE_MEMBER);
+    setSessionCookie(res, COOKIE_ADMIN, token);
     res.json({
-      token: token,
       nome: found.nome,
       perfil: found.perfil || 'editor',
       usuario: found.usuario
@@ -211,7 +327,7 @@ app.post('/api/auth/admin', async function (req, res) {
   }
 });
 
-app.post('/api/auth/member', async function (req, res) {
+app.post('/api/auth/member', rateLimits.login, async function (req, res) {
   var usuario = (req.body && req.body.usuario) ? String(req.body.usuario).trim() : '';
   var senha = (req.body && req.body.senha) ? String(req.body.senha) : '';
   if (!usuario || !senha) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
@@ -219,12 +335,16 @@ app.post('/api/auth/member', async function (req, res) {
     var state = await loadState();
     var members = state.members || [];
     var found = members.find(function (m) {
-      return m.usuario === usuario && m.senha === senha && m.ativo !== false;
+      return m.usuario === usuario && m.ativo !== false;
     });
-    if (!found) return res.status(401).json({ error: 'Usuário ou senha incorretos' });
+    if (!found || !pwd.verifyPassword(senha, found.senha)) {
+      return res.status(401).json({ error: 'Usuário ou senha incorretos' });
+    }
+    await upgradeLegacyPassword('members', found.id, senha);
     var token = signMember(found);
+    clearSessionCookie(res, COOKIE_ADMIN);
+    setSessionCookie(res, COOKIE_MEMBER, token);
     res.json({
-      token: token,
       nome: found.nome,
       usuario: found.usuario
     });
@@ -232,6 +352,39 @@ app.post('/api/auth/member', async function (req, res) {
     console.error(e);
     res.status(500).json({ error: String(e.message) });
   }
+});
+
+app.get('/api/auth/admin/session', function (req, res) {
+  var payload = verifyToken(req);
+  if (!payload || payload.t !== 'admin') {
+    return res.status(401).json({ error: 'Não autorizado' });
+  }
+  res.json({
+    usuario: payload.usuario,
+    nome: payload.nome,
+    perfil: payload.perfil || 'editor'
+  });
+});
+
+app.get('/api/auth/member/session', function (req, res) {
+  var payload = verifyToken(req);
+  if (!payload || payload.t !== 'member') {
+    return res.status(401).json({ error: 'Não autorizado' });
+  }
+  res.json({
+    usuario: payload.usuario,
+    nome: payload.nome
+  });
+});
+
+app.post('/api/auth/logout-admin', function (req, res) {
+  clearSessionCookie(res, COOKIE_ADMIN);
+  res.json({ ok: true });
+});
+
+app.post('/api/auth/logout-member', function (req, res) {
+  clearSessionCookie(res, COOKIE_MEMBER);
+  res.json({ ok: true });
 });
 
 function assertAdminEditor(payload, key) {
@@ -250,7 +403,13 @@ app.put('/api/state/:key', async function (req, res) {
   var err = assertAdminEditor(payload, key);
   if (err) return res.status(403).json({ error: err });
   try {
-    await saveKey(key, req.body);
+    var body = req.body;
+    if (key === 'members') {
+      body = pwd.mergeMembersSave(await loadState(), body);
+    } else if (key === 'admin_users') {
+      body = pwd.mergeAdminUsersSave(await loadState(), body);
+    }
+    await saveKey(key, body);
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
@@ -258,7 +417,7 @@ app.put('/api/state/:key', async function (req, res) {
   }
 });
 
-app.post('/api/inscricao/publica', async function (req, res) {
+app.post('/api/inscricao/publica', rateLimits.inscricaoPublica, async function (req, res) {
   try {
     var b = req.body || {};
     var eventoId = b.eventoId;
@@ -349,6 +508,44 @@ app.patch('/api/member/perfil', async function (req, res) {
   }
 });
 
+/**
+ * Não servir o diretório inteiro: evita expor node_modules/, data/, server/, testes, etc.
+ * (express.static na raiz expõe qualquer ficheiro existente, p.ex. site-data.json.)
+ */
+var STATIC_BLOCK_PREFIXES = [
+  '/node_modules',
+  '/server',
+  '/test',
+  '/data',
+  '/docs',
+  '/coverage',
+  '/supabase',
+  '/.git'
+];
+var STATIC_BLOCK_EXACT = {
+  '/server.cjs': true,
+  '/package.json': true,
+  '/package-lock.json': true,
+  '/jest.config.cjs': true,
+  '/README.md': true,
+  '/.gitignore': true,
+  '/.nvmrc': true,
+  '/.env': true,
+  '/.env.local': true,
+  '/.env.production': true
+};
+app.use(function (req, res, next) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  var p = req.path || '';
+  if (p.indexOf('..') !== -1) return res.status(400).end();
+  if (STATIC_BLOCK_EXACT[p]) return res.status(404).end();
+  for (var i = 0; i < STATIC_BLOCK_PREFIXES.length; i++) {
+    var pref = STATIC_BLOCK_PREFIXES[i];
+    if (p === pref || p.indexOf(pref + '/') === 0) return res.status(404).end();
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname), {
   index: ['index.html'],
   extensions: ['html']
@@ -384,14 +581,22 @@ function iniciar(porta, tentativas) {
 
 var maxTentativas = portFixo ? 1 : 15;
 
-initDatabase()
-  .then(function () {
-    iniciar(inicial, maxTentativas);
-  })
-  .catch(function (err) {
-    console.error('Erro ao iniciar banco:', err.message);
-    if (process.env.DATABASE_URL) {
-      process.exit(1);
-    }
-    iniciar(inicial, maxTentativas);
-  });
+function startHttpServer() {
+  initDatabase()
+    .then(function () {
+      iniciar(inicial, maxTentativas);
+    })
+    .catch(function (err) {
+      console.error('Erro ao iniciar banco:', err.message);
+      if (process.env.DATABASE_URL) {
+        process.exit(1);
+      }
+      iniciar(inicial, maxTentativas);
+    });
+}
+
+module.exports = { app: app, DATA_FILE: DATA_FILE };
+
+if (require.main === module) {
+  startHttpServer();
+}

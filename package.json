@@ -8,11 +8,20 @@
   },
   "scripts": {
     "start": "node server.cjs",
-    "serve:local": "node server.cjs"
+    "serve:local": "node server.cjs",
+    "test": "jest --runInBand",
+    "test:coverage": "jest --runInBand --coverage"
   },
   "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "bcryptjs": "^2.4.3",
     "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
   }
 }

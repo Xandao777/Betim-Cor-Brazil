@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+coverage/
 
 # Estado local quando roda sem Supabase
 data/site-data.json
