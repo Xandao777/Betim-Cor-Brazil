@@ -76,6 +76,8 @@
       var el = document.getElementById('secao-' + secao);
       if (el) el.classList.add('ativo');
       if (secao === 'dashboard') atualizarDashboard();
+      if (secao === 'formularios') renderFormularios();
+      if (secao === 'inscricoes') renderInscricoes();
       if (secao === 'institucional' && isAdmin) carregarFormInstitucional();
       if (secao === 'patrocinadores') renderPatrocinadores();
       if (secao === 'galeria') renderGaleria();
@@ -97,8 +99,104 @@
     if (elN) elN.textContent = String(news.length);
     if (elM) elM.textContent = String(members.length);
     if (elS) elS.textContent = String(sponsors.length);
+    var cCont = D.getMensagensContato ? D.getMensagensContato() : [];
+    var cDoa = D.getPedidosDoacao ? D.getPedidosDoacao() : [];
+    var cMem = D.getMensagensMembros ? D.getMensagensMembros() : [];
+    var elC = document.getElementById('dashboard-contato-count');
+    var elD = document.getElementById('dashboard-doacao-count');
+    var elMm = document.getElementById('dashboard-membro-msg-count');
+    if (elC) elC.textContent = String((cCont || []).length);
+    if (elD) elD.textContent = String((cDoa || []).length);
+    if (elMm) elMm.textContent = String((cMem || []).length);
+    var ins = D.getInscricoes ? D.getInscricoes() : [];
+    var elIns = document.getElementById('dashboard-inscricoes-count');
+    if (elIns) elIns.textContent = String((ins || []).length);
   }
   atualizarDashboard();
+
+  function formatarDataHoraIso(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleString('pt-BR');
+    } catch (e) {
+      return String(iso);
+    }
+  }
+
+  function renderFormularios() {
+    var cont = (D.getMensagensContato && D.getMensagensContato()) || [];
+    var doa = (D.getPedidosDoacao && D.getPedidosDoacao()) || [];
+    var mem = (D.getMensagensMembros && D.getMensagensMembros()) || [];
+
+    var tbC = document.querySelector('#tabela-form-contato tbody');
+    var vazioC = document.getElementById('form-contato-vazio');
+    var acoesC = document.getElementById('form-contato-acoes');
+    if (tbC) {
+      var rowsC = cont.slice().reverse().map(function (m) {
+        return '<tr><td>' + escHtml(formatarDataHoraIso(m.criadoEm)) + '</td><td>' + escHtml(m.nome) + '</td><td>' + escHtml(m.email) + '</td><td>' + escHtml(m.assunto) + '</td><td class="admin-celula-texto">' + escHtml(m.mensagem) + '</td></tr>';
+      }).join('');
+      tbC.innerHTML = rowsC || '';
+      if (vazioC) vazioC.style.display = cont.length ? 'none' : 'block';
+      if (acoesC) acoesC.style.display = isAdmin && cont.length ? 'block' : 'none';
+    }
+
+    var tbD = document.querySelector('#tabela-form-doacao tbody');
+    var vazioD = document.getElementById('form-doacao-vazio');
+    var acoesD = document.getElementById('form-doacao-acoes');
+    if (tbD) {
+      tbD.innerHTML = doa.slice().reverse().map(function (p) {
+        var vr = p.valorReais != null ? String(p.valorReais) : '—';
+        return '<tr><td>' + escHtml(formatarDataHoraIso(p.criadoEm)) + '</td><td>' + escHtml(p.nome || '—') + '</td><td>' + escHtml(p.email) + '</td><td>' + escHtml(vr) + '</td></tr>';
+      }).join('');
+      if (vazioD) vazioD.style.display = doa.length ? 'none' : 'block';
+      if (acoesD) acoesD.style.display = isAdmin && doa.length ? 'block' : 'none';
+    }
+
+    var tbM = document.querySelector('#tabela-form-membro tbody');
+    var vazioM = document.getElementById('form-membro-vazio');
+    var acoesM = document.getElementById('form-membro-acoes');
+    if (tbM) {
+      tbM.innerHTML = mem.slice().reverse().map(function (x) {
+        var tipoLabel = x.tipo === 'voluntariado' ? 'Voluntariado' : (x.tipo === 'suporte' ? 'Suporte' : escHtml(x.tipo));
+        var det = '';
+        if (x.tipo === 'voluntariado') {
+          det = (x.area ? 'Área: ' + escHtml(x.area) + ' · ' : '') + escHtml(x.mensagem || '');
+        } else {
+          det = 'Assunto: ' + escHtml(x.assunto || '') + ' · ' + escHtml(x.mensagem || '');
+        }
+        var who = escHtml(x.membroNome || '') + (x.membroUsuario ? ' <small>(' + escHtml(x.membroUsuario) + ')</small>' : '');
+        return '<tr><td>' + escHtml(formatarDataHoraIso(x.criadoEm)) + '</td><td>' + tipoLabel + '</td><td>' + who + '</td><td class="admin-celula-texto">' + det + '</td></tr>';
+      }).join('');
+      if (vazioM) vazioM.style.display = mem.length ? 'none' : 'block';
+      if (acoesM) acoesM.style.display = isAdmin && mem.length ? 'block' : 'none';
+    }
+    atualizarDashboard();
+  }
+
+  var btnLimparCont = document.getElementById('btn-limpar-contato');
+  if (btnLimparCont) {
+    btnLimparCont.addEventListener('click', function () {
+      if (!isAdmin) return;
+      if (!confirm('Apagar todas as mensagens de contato?')) return;
+      D.setMensagensContato([]).then(function () { return D.refresh(); }).then(renderFormularios).catch(errSave);
+    });
+  }
+  var btnLimparDoa = document.getElementById('btn-limpar-doacao');
+  if (btnLimparDoa) {
+    btnLimparDoa.addEventListener('click', function () {
+      if (!isAdmin) return;
+      if (!confirm('Apagar todos os pedidos de doação registados?')) return;
+      D.setPedidosDoacao([]).then(function () { return D.refresh(); }).then(renderFormularios).catch(errSave);
+    });
+  }
+  var btnLimparMem = document.getElementById('btn-limpar-membro-msg');
+  if (btnLimparMem) {
+    btnLimparMem.addEventListener('click', function () {
+      if (!isAdmin) return;
+      if (!confirm('Apagar todas as mensagens de membros (voluntariado e suporte)?')) return;
+      D.setMensagensMembros([]).then(function () { return D.refresh(); }).then(renderFormularios).catch(errSave);
+    });
+  }
 
   function carregarFormInstitucional() {
     if (!isAdmin) return;
@@ -191,6 +289,135 @@
     });
   }
   renderEventos();
+
+  function attrSafe(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;');
+  }
+
+  function contactoInscricaoHtml(i) {
+    if (i.membroUsuario) {
+      var m = (D.getMembers() || []).find(function (x) {
+        return x.usuario === i.membroUsuario;
+      });
+      var bits = [];
+      if (m && m.email) bits.push(escHtml(m.email));
+      if (m && m.telefone) bits.push(escHtml(m.telefone));
+      return bits.length ? bits.join(' · ') : '<small>—</small>';
+    }
+    var pub = [];
+    if (i.email) pub.push(escHtml(i.email));
+    if (i.telefone) pub.push(escHtml(i.telefone));
+    return pub.length ? pub.join(' · ') : '—';
+  }
+
+  function nomeInscritoHtml(i) {
+    if (i.membroUsuario) {
+      var m = (D.getMembers() || []).find(function (x) {
+        return x.usuario === i.membroUsuario;
+      });
+      var nome = m && m.nome ? m.nome : '';
+      return escHtml(nome || '—') + ' <small>(' + escHtml(i.membroUsuario) + ')</small>';
+    }
+    return escHtml(i.nome || '—');
+  }
+
+  function renderInscricoes() {
+    var tbody = document.querySelector('#tabela-inscricoes tbody');
+    var vazio = document.getElementById('inscricoes-vazio');
+    var sel = document.getElementById('filtro-inscricao-evento');
+    if (!tbody) return;
+
+    var filtroVal = sel ? sel.value : '';
+    var events = D.getEvents() || [];
+    if (sel) {
+      var prev = filtroVal;
+      var opts = '<option value="">Todos os eventos</option>';
+      events.forEach(function (e) {
+        opts += '<option value="' + attrSafe(e.id) + '">' + escHtml(e.titulo || e.id || '') + '</option>';
+      });
+      sel.innerHTML = opts;
+      if (prev && [].some.call(sel.options, function (o) { return o.value === prev; })) sel.value = prev;
+    }
+
+    var list = D.getInscricoes() || [];
+    var enriched = list.map(function (rec, idx) {
+      return { rec: rec, idx: idx };
+    });
+    if (filtroVal) {
+      enriched = enriched.filter(function (w) {
+        return String(w.rec.eventoId || '') === String(filtroVal);
+      });
+    }
+    enriched.sort(function (a, b) {
+      var da = a.rec.dataInscricao || '';
+      var db = b.rec.dataInscricao || '';
+      return db.localeCompare(da);
+    });
+
+    if (enriched.length === 0) {
+      tbody.innerHTML = '';
+      if (vazio) vazio.style.display = 'block';
+      return;
+    }
+    if (vazio) vazio.style.display = 'none';
+
+    tbody.innerHTML = enriched
+      .map(function (w) {
+        var i = w.rec;
+        var origem = i.membroUsuario ? 'Associado' : 'Site público';
+        var evTit = i.eventoTitulo || '';
+        var evMeta = [i.eventoData || '', i.eventoHora || '', i.eventoLocal || ''].filter(Boolean).join(' · ');
+        var evCell =
+          '<strong>' +
+          escHtml(evTit || i.eventoId || '—') +
+          '</strong>' +
+          (evMeta ? '<br><small>' + escHtml(evMeta) + '</small>' : '');
+        return (
+          '<tr><td>' +
+          escHtml(i.dataInscricao || '—') +
+          '</td><td>' +
+          evCell +
+          '</td><td>' +
+          escHtml(origem) +
+          '</td><td>' +
+          nomeInscritoHtml(i) +
+          '</td><td class="admin-celula-texto">' +
+          contactoInscricaoHtml(i) +
+          '</td><td class="acoes"><button type="button" class="btn btn-remove btn-remove-inscricao" data-idx="' +
+          w.idx +
+          '">Remover</button></td></tr>'
+        );
+      })
+      .join('');
+
+    tbody.querySelectorAll('.btn-remove-inscricao').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var ix = parseInt(this.getAttribute('data-idx'), 10);
+        if (isNaN(ix)) return;
+        if (!confirm('Remover esta inscrição da lista?')) return;
+        var full = D.getInscricoes() || [];
+        if (ix < 0 || ix >= full.length) return;
+        var next = full.slice(0, ix).concat(full.slice(ix + 1));
+        D.setInscricoes(next)
+          .then(function () {
+            renderInscricoes();
+            atualizarDashboard();
+          })
+          .catch(errSave);
+      });
+    });
+  }
+
+  var filtroInscEl = document.getElementById('filtro-inscricao-evento');
+  if (filtroInscEl && !filtroInscEl.dataset.wiredInsc) {
+    filtroInscEl.dataset.wiredInsc = '1';
+    filtroInscEl.addEventListener('change', function () {
+      renderInscricoes();
+    });
+  }
 
   // ---- NOTÍCIAS ----
   var formNoticiaCard = document.getElementById('form-noticia-card');

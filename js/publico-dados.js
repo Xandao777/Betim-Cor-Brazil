@@ -21,6 +21,10 @@
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
+  function escapeAttr(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+
   // ---- Página de eventos: listar eventos publicados (com filtro de mês) ----
   (function () {
     var container = document.querySelector('.lista-eventos');
@@ -58,13 +62,14 @@
         var art = document.createElement('article');
         art.className = 'item-evento';
         var href = 'evento.html?id=' + encodeURIComponent(e.id || '');
+        var metaHtml = meta.length ? '<p class=\"item-evento-meta\">' + meta.map(function (m) { return '<span>' + escapeHtml(m) + '</span>'; }).join('') + '</p>' : '';
         art.innerHTML =
-          '<a href=\"' + href + '\" class=\"item-evento-link-externo\" aria-label=\"Ver página do evento ' + (e.titulo || '') + '\">' +
+          '<a href=\"' + href + '\" class=\"item-evento-link-externo\" aria-label=\"Ver página do evento ' + escapeAttr(e.titulo || '') + '\">' +
             '<div class=\"item-evento-data\"><span class=\"dia\">' + fd.dia + '</span><span class=\"mes\">' + fd.mes + '</span></div>' +
             '<div>' +
-              '<h3>' + (e.titulo || '') + '</h3>' +
-              (meta.length ? '<p class=\"item-evento-meta\">' + meta.map(function (m) { return '<span>' + m + '</span>'; }).join('') + '</p>' : '') +
-              '<p>' + (e.descricao || '') + '</p>' +
+              '<h3>' + escapeHtml(e.titulo || '') + '</h3>' +
+              metaHtml +
+              '<p>' + escapeHtml(e.descricao || '') + '</p>' +
               '<span class=\"link-cta\">Ver detalhes do evento</span>' +
             '</div>' +
           '</a>';
@@ -88,7 +93,7 @@
     var html = list.map(function (e) {
       var fd = formatarData(e.data);
       var href = 'evento.html?id=' + encodeURIComponent(e.id || '');
-      return '<article class="card card-evento"><div class="card-evento-data"><span class="dia">' + fd.dia + '</span><span class="mes">' + fd.mes + '</span></div><h3>' + (e.titulo || '') + '</h3><p>' + (e.descricao || '') + '</p><a href="' + href + '" class="link-cta">Ver página do evento</a></article>';
+      return '<article class="card card-evento"><div class="card-evento-data"><span class="dia">' + fd.dia + '</span><span class="mes">' + fd.mes + '</span></div><h3>' + escapeHtml(e.titulo || '') + '</h3><p>' + escapeHtml(e.descricao || '') + '</p><a href="' + href + '" class="link-cta">Ver página do evento</a></article>';
     }).join('');
     container.innerHTML = html;
   })();
@@ -97,10 +102,11 @@
   (function () {
     var container = document.querySelector('.noticias-grid');
     if (!container) return;
-    var list = (D.getNews() || []).filter(function (n) { return n.publicado !== false; }).slice(0, 6);
+    var list = (D.getNews() || []).filter(function (n) { return n.publicado !== false && !n.exclusivoMembros; }).slice(0, 6);
     if (list.length === 0) return;
     container.innerHTML = list.map(function (n) {
-      return '<article class="card card-noticia"><div class="card-noticia-img" style="background: linear-gradient(135deg, var(--vermelho), var(--amarelo-verde));"></div><div class="card-noticia-body"><span class="tag">' + (n.categoria || '') + '</span><h3>' + (n.titulo || '') + '</h3><p>' + (n.resumo || '') + '</p><a href="noticias.html" class="link-cta">Ler mais</a></div></article>';
+      var hrefN = 'noticia.html?id=' + encodeURIComponent(String(n.id));
+      return '<article class="card card-noticia"><div class="card-noticia-img" style="background: linear-gradient(135deg, var(--vermelho), var(--amarelo-verde));"></div><div class="card-noticia-body"><span class="tag">' + escapeHtml(n.categoria || '') + '</span><h3>' + escapeHtml(n.titulo || '') + '</h3><p>' + escapeHtml(n.resumo || '') + '</p><a href="' + hrefN + '" class="link-cta">Ler mais</a></div></article>';
     }).join('');
   })();
 
@@ -108,10 +114,11 @@
   (function () {
     var container = document.querySelector('.pagina-interna .lista-posts');
     if (!container || window.location.href.indexOf('noticias') === -1) return;
-    var list = (D.getNews() || []).filter(function (n) { return n.publicado !== false; });
+    var list = (D.getNews() || []).filter(function (n) { return n.publicado !== false && !n.exclusivoMembros; });
     if (list.length === 0) return;
     container.innerHTML = list.map(function (n) {
-      return '<article class="post-card"><div class="post-card-img" aria-hidden="true"></div><div><span class="tag">' + (n.categoria || '') + '</span><h3>' + (n.titulo || '') + '</h3><p class="meta">' + (n.dataPublicacao || '') + '</p><p>' + (n.resumo || '') + '</p><a href="#" class="link-cta">Ler mais</a></div></article>';
+      var hrefN = 'noticia.html?id=' + encodeURIComponent(String(n.id));
+      return '<article class="post-card"><div class="post-card-img" aria-hidden="true"></div><div><span class="tag">' + escapeHtml(n.categoria || '') + '</span><h3>' + escapeHtml(n.titulo || '') + '</h3><p class="meta">' + escapeHtml(n.dataPublicacao || '') + '</p><p>' + escapeHtml(n.resumo || '') + '</p><a href="' + hrefN + '" class="link-cta">Ler mais</a></div></article>';
     }).join('');
   })();
 
@@ -171,6 +178,50 @@
       '<p class="section-cta"><a href="blog.html" class="btn btn-outline">← Voltar ao blog</a></p>';
     try {
       document.title = (b.titulo || 'Post') + ' | Blog | Associação';
+    } catch (e) {}
+  })();
+
+  // ---- Página notícia individual (noticia.html?id=) ----
+  (function () {
+    var path = (window.location.pathname || '').replace(/\\/g, '/');
+    if (!/noticia\.html$/i.test(path)) return;
+    var root = document.getElementById('noticia-artigo');
+    if (!root) return;
+    var params = new URLSearchParams(window.location.search);
+    var pid = params.get('id');
+    if (!pid) {
+      root.innerHTML = '<p class="galeria-vazio">Nenhuma notícia indicada.</p>';
+      return;
+    }
+    var list = D.getNews() || [];
+    var n = list.find(function (x) { return String(x.id) === String(pid); });
+    if (!n || n.publicado === false) {
+      root.innerHTML = '<p class="galeria-vazio">Notícia não encontrada ou não publicada.</p>';
+      return;
+    }
+    if (n.exclusivoMembros) {
+      root.innerHTML =
+        '<p class="admin-aviso">Esta comunicação é exclusiva para associados.</p>' +
+        '<p class="section-cta"><a href="area-membros.html" class="btn btn-outline">Entrar na área de membros</a> <a href="noticias.html" class="btn btn-outline">Voltar às notícias</a></p>';
+      return;
+    }
+    var fd = formatarData(n.dataPublicacao);
+    var meta = (n.categoria ? escapeHtml(n.categoria) + ' · ' : '') + escapeHtml(String(fd.dia) + ' ' + fd.mes + ' ' + fd.ano);
+    var raw = (n.conteudo || '').trim();
+    var conteudo;
+    if (raw) {
+      conteudo = escapeHtml(raw).replace(/\r\n/g, '\n').split(/\n\n+/).map(function (block) {
+        return '<p>' + block.replace(/\n/g, '<br>') + '</p>';
+      }).join('');
+    } else {
+      conteudo = '<p class="intro">' + escapeHtml(n.resumo || '') + '</p>';
+    }
+    root.innerHTML =
+      '<header class="blog-post-cabecalho"><p class="tag">' + escapeHtml(n.categoria || '') + '</p><h1>' + escapeHtml(n.titulo || '') + '</h1><p class="meta blog-post-meta">' + meta + '</p></header>' +
+      '<div class="blog-post-texto">' + conteudo + '</div>' +
+      '<p class="section-cta"><a href="noticias.html" class="btn btn-outline">← Voltar às notícias</a></p>';
+    try {
+      document.title = (n.titulo || 'Notícia') + ' | Notícias | Associação';
     } catch (e) {}
   })();
 

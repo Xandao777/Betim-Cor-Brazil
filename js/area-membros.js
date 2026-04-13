@@ -249,10 +249,80 @@
     if (formPerfil) formPerfil.addEventListener('submit', function (e) { e.preventDefault(); salvarPerfil(); });
 
     var formVol = document.getElementById('form-voluntariado');
-    if (formVol) formVol.addEventListener('submit', function (e) { e.preventDefault(); alert('Obrigado! Sua manifestação de interesse foi registrada. A associação entrará em contato.'); formVol.reset(); });
+    if (formVol) {
+      formVol.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var areaEl = document.getElementById('vol-area');
+        var msgEl = document.getElementById('vol-mensagem');
+        var area = areaEl ? areaEl.value : '';
+        var mensagem = msgEl ? msgEl.value.trim() : '';
+        if (!area && !mensagem) {
+          alert('Escolha uma área ou escreva uma mensagem.');
+          return;
+        }
+        var btn = formVol.querySelector('button[type="submit"]');
+        if (btn) btn.disabled = true;
+        fetch('/api/member/mensagem', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ tipo: 'voluntariado', area: area, mensagem: mensagem })
+        })
+          .then(function (r) {
+            return r.json().then(function (data) {
+              if (!r.ok) throw new Error(data.error || 'Falha ao enviar');
+              return data;
+            });
+          })
+          .then(function () {
+            alert('Obrigado! O seu interesse foi registado. A associação entrará em contacto.');
+            formVol.reset();
+          })
+          .catch(function (err) {
+            alert(err.message || 'Não foi possível enviar.');
+          })
+          .finally(function () {
+            if (btn) btn.disabled = false;
+          });
+      });
+    }
 
     var formSup = document.getElementById('form-suporte');
-    if (formSup) formSup.addEventListener('submit', function (e) { e.preventDefault(); alert('Mensagem enviada. A diretoria responderá em breve.'); formSup.reset(); });
+    if (formSup) {
+      formSup.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var assEl = document.getElementById('sup-assunto');
+        var msgEl = document.getElementById('sup-mensagem');
+        var btn = formSup.querySelector('button[type="submit"]');
+        if (btn) btn.disabled = true;
+        fetch('/api/member/mensagem', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            tipo: 'suporte',
+            assunto: assEl ? assEl.value : '',
+            mensagem: msgEl ? msgEl.value.trim() : ''
+          })
+        })
+          .then(function (r) {
+            return r.json().then(function (data) {
+              if (!r.ok) throw new Error(data.error || 'Falha ao enviar');
+              return data;
+            });
+          })
+          .then(function () {
+            alert('Mensagem enviada. A diretoria responderá em breve.');
+            formSup.reset();
+          })
+          .catch(function (err) {
+            alert(err.message || 'Não foi possível enviar.');
+          })
+          .finally(function () {
+            if (btn) btn.disabled = false;
+          });
+      });
+    }
 
     preencherDashboard();
     preencherDocumentos();

@@ -99,13 +99,159 @@ main {
   border-bottom: 1px solid rgba(46, 40, 31, 0.08);
   box-shadow: 0 10px 30px rgba(24, 20, 14, 0.06);
 }
+
+/* Cabeçalho em faixas horizontais (cartaz pan-africano: creme, zigzag, centro, losangos, amarelo) */
+.header--cultural {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  background: #14120e;
+  border-bottom: none;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.28);
+  backdrop-filter: none;
+}
+
+/* Faixa creme + seta amarela */
+.header-poster-top {
+  flex-shrink: 0;
+  height: clamp(11px, 2.6vw, 16px);
+  background: #ebe4d4;
+  position: relative;
+  width: 100%;
+  border-bottom: 1px solid rgba(30, 26, 20, 0.08);
+}
+.header-poster-top::after {
+  content: '';
+  position: absolute;
+  right: 5%;
+  top: 0;
+  height: 100%;
+  width: clamp(56px, 12vw, 132px);
+  background: #f2c40c;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  filter: drop-shadow(-1px 0 0 rgba(198, 40, 40, 0.25));
+}
+
+/* Zigue-zage vermelho/amarelo em toda a largura */
+.header-poster-h-zigzag {
+  flex-shrink: 0;
+  height: clamp(10px, 2.2vw, 14px);
+  width: 100%;
+  background-color: #f2c40c;
+  background-image: url('../img/header-h-zigzag.svg');
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+  background-position: left center;
+}
+
+/* Miolo: logo e menu — fundo com cor nas laterais + textura suave (menos “vazio”) */
+.header-poster-main {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  min-height: 4.75rem;
+  width: 100%;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  background-color: #f5efe3;
+  background-image:
+    radial-gradient(ellipse 55% 160% at 0% 50%, rgba(198, 40, 40, 0.11), transparent 58%),
+    radial-gradient(ellipse 55% 160% at 100% 50%, rgba(13, 79, 60, 0.12), transparent 58%),
+    radial-gradient(ellipse 70% 120% at 50% 40%, rgba(255, 253, 247, 0.95), transparent 72%),
+    linear-gradient(
+      90deg,
+      rgba(242, 196, 12, 0.06) 0%,
+      transparent 14%,
+      transparent 50%,
+      transparent 86%,
+      rgba(242, 196, 12, 0.06) 100%
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, transparent 42%);
+}
+
+.header-poster-main::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('../img/header-main-texture.svg');
+  background-repeat: repeat;
+  background-size: 40px 40px;
+  opacity: 0.055;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.header-poster-main::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #c62828 0%, #f2c40c 35%, #0d4f3c 100%);
+  opacity: 0.45;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Cabeçalho em largura total do ecrã (o .container do site continua 1180px no miolo).
+   Assim a navegação deixa de ficar espremida na mesma coluna do conteúdo. */
+.header--cultural .header-poster-main .container.header-inner {
+  position: relative;
+  z-index: 1;
+  margin: 0 auto;
+  max-width: none;
+  width: 100%;
+  padding-left: clamp(1.25rem, 4vw, 3rem);
+  padding-right: clamp(1.25rem, 4vw, 3rem);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Faixa verde com losangos em linha horizontal */
+.header-poster-h-diamonds {
+  flex-shrink: 0;
+  height: clamp(16px, 3.5vw, 22px);
+  width: 100%;
+  background-color: #0d4f3c;
+  background-image: url('../img/header-h-diamonds.svg');
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+  background-position: left center;
+}
+
+/* Barra inferior amarela */
+.header-poster-bottom {
+  flex-shrink: 0;
+  height: clamp(8px, 1.8vw, 12px);
+  width: 100%;
+  background: #f2c40c;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  border-top: 1px solid rgba(30, 26, 20, 0.06);
+}
+
+@media (max-width: 768px) {
+  .header-poster-main {
+    min-height: 4.5rem;
+  }
+}
+
 .header-inner {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: clamp(1rem, 2.5vw, 2rem);
   min-height: 5rem;
 }
 .logo {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 0.85rem;
@@ -159,12 +305,93 @@ main {
   gap: 0.5rem 0.75rem;
   flex-wrap: wrap;
 }
+
+/* Desktop: cabeçalho cultural — logo + menu como um bloco centrado na faixa.
+   Outros cabeçalhos: nav continua a crescer à direita do logo. */
+@media (min-width: 769px) {
+  .header-inner .nav {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex: 1 1 0;
+    min-width: 0;
+    padding-right: clamp(0.25rem, 1vw, 0.75rem);
+    margin-left: 0;
+  }
+  .header--cultural .header-inner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: clamp(1.25rem, 3vw, 2.75rem);
+  }
+  .header--cultural .header-inner .logo {
+    flex-shrink: 0;
+  }
+  .header--cultural .header-inner .nav {
+    flex: 0 1 auto;
+    min-width: 0;
+    width: max-content;
+    max-width: 100%;
+    padding-right: 0;
+  }
+  .nav-list {
+    flex-wrap: nowrap;
+    align-items: center;
+    padding-inline-end: 0.5rem;
+    gap: 0.55rem 1rem;
+  }
+  .nav-list > li {
+    display: flex;
+    align-items: center;
+  }
+  .nav-list a {
+    white-space: nowrap;
+  }
+}
+
+/* Scroll horizontal quando ainda faltar largura; barra fina visível (antes estava escondida). */
+@media (min-width: 769px) {
+  .header-inner .nav {
+    overflow-x: auto;
+    overflow-y: visible;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(13, 79, 60, 0.45) rgba(13, 79, 60, 0.08);
+  }
+  .header-inner .nav::-webkit-scrollbar {
+    height: 5px;
+  }
+  .header-inner .nav::-webkit-scrollbar-track {
+    background: rgba(13, 79, 60, 0.06);
+    border-radius: 4px;
+  }
+  .header-inner .nav::-webkit-scrollbar-thumb {
+    background: rgba(13, 79, 60, 0.38);
+    border-radius: 4px;
+  }
+}
 .nav-list a {
   font-weight: 600;
   color: var(--cinza-800);
   padding: 0.65rem 0.9rem;
   border-radius: 999px;
 }
+
+@media (min-width: 769px) {
+  .nav-list a {
+    padding: 0.7rem 1.05rem;
+    font-size: 0.9375rem;
+  }
+  .nav-list a[href="doar.html"],
+  .btn-doacao,
+  .btn-doação,
+  .btn-doaÃ§Ã£o {
+    padding: 0.72rem 1.15rem;
+  }
+}
+
 .nav-list a:hover { color: var(--verde); text-decoration: none; }
 .nav-list li:not(:last-child) a:hover { background: rgba(15, 90, 67, 0.07); }
 .nav-membros {
@@ -1171,7 +1398,10 @@ a.patrocinador-item.patrocinador-item--link:hover {
 
 /* ===== Responsivo ===== */
 @media (max-width: 768px) {
-  .menu-toggle { display: flex; }
+  .menu-toggle {
+    display: flex;
+    margin-left: auto;
+  }
   .nav {
     position: absolute;
     top: calc(100% + 0.5rem);

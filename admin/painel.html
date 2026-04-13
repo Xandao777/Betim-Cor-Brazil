@@ -21,7 +21,9 @@
       </div>
       <nav class="admin-sidebar-nav" aria-label="Secções">
         <a href="#" data-secao="dashboard" class="ativo">Dashboard</a>
+        <a href="#" data-secao="formularios">Formulários recebidos</a>
         <a href="#" data-secao="eventos">Eventos</a>
+        <a href="#" data-secao="inscricoes">Inscrições em eventos</a>
         <a href="#" data-secao="noticias">Notícias</a>
         <a href="#" data-secao="blog">Blog</a>
         <a href="#" data-secao="galeria">Galeria</a>
@@ -48,7 +50,54 @@
             <li><span class="admin-dashboard-label">Notícias</span> <strong id="dashboard-news-count">—</strong></li>
             <li><span class="admin-dashboard-label">Membros</span> <strong id="dashboard-members-count">—</strong></li>
             <li><span class="admin-dashboard-label">Patrocinadores</span> <strong id="dashboard-sponsors-count">—</strong></li>
+            <li><span class="admin-dashboard-label">Mensagens (contato)</span> <strong id="dashboard-contato-count">—</strong></li>
+            <li><span class="admin-dashboard-label">Pedidos de doação</span> <strong id="dashboard-doacao-count">—</strong></li>
+            <li><span class="admin-dashboard-label">Mensagens de membros</span> <strong id="dashboard-membro-msg-count">—</strong></li>
+            <li><span class="admin-dashboard-label">Inscrições em eventos</span> <strong id="dashboard-inscricoes-count">—</strong></li>
           </ul>
+        </div>
+      </section>
+
+      <!-- Formulários do site -->
+      <section id="secao-formularios" class="admin-secao">
+        <h1>Formulários recebidos</h1>
+        <p class="admin-secao-intro">Contato público, intenções de doação e mensagens da área de membros (voluntariado e suporte).</p>
+
+        <div class="admin-form-card">
+          <h3>Contato (página Contato)</h3>
+          <p class="admin-aviso" id="form-contato-vazio" style="display: none;">Nenhuma mensagem.</p>
+          <div class="admin-tabela-wrapper">
+            <table class="admin-tabela" id="tabela-form-contato">
+              <thead><tr><th>Data</th><th>Nome</th><th>E-mail</th><th>Assunto</th><th>Mensagem</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="form-actions" id="form-contato-acoes" style="display: none;"><button type="button" id="btn-limpar-contato" class="btn btn-outline">Limpar todas (contato)</button></p>
+        </div>
+
+        <div class="admin-form-card">
+          <h3>Doação (página Doar)</h3>
+          <p class="admin-aviso">Registo de intenção — o pagamento em si faz-se à parte (PIX, link, etc.).</p>
+          <p class="admin-aviso" id="form-doacao-vazio" style="display: none;">Nenhum pedido.</p>
+          <div class="admin-tabela-wrapper">
+            <table class="admin-tabela" id="tabela-form-doacao">
+              <thead><tr><th>Data</th><th>Nome</th><th>E-mail</th><th>Valor (R$)</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="form-actions" id="form-doacao-acoes" style="display: none;"><button type="button" id="btn-limpar-doacao" class="btn btn-outline">Limpar todos (doação)</button></p>
+        </div>
+
+        <div class="admin-form-card">
+          <h3>Área de membros (voluntariado e suporte)</h3>
+          <p class="admin-aviso" id="form-membro-vazio" style="display: none;">Nenhuma mensagem.</p>
+          <div class="admin-tabela-wrapper">
+            <table class="admin-tabela" id="tabela-form-membro">
+              <thead><tr><th>Data</th><th>Tipo</th><th>Membro</th><th>Detalhes</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="form-actions" id="form-membro-acoes" style="display: none;"><button type="button" id="btn-limpar-membro-msg" class="btn btn-outline">Limpar todas (membros)</button></p>
         </div>
       </section>
 
@@ -104,6 +153,36 @@
         <div class="admin-tabela-wrapper">
           <table class="admin-tabela" id="tabela-eventos">
             <thead><tr><th>Título</th><th>Data</th><th>Publicado</th><th class="acoes">Ações</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Inscrições em eventos (público + associados) -->
+      <section id="secao-inscricoes" class="admin-secao">
+        <h1>Inscrições em eventos</h1>
+        <p class="admin-secao-intro">Pessoas inscritas pela página do evento (visitantes) ou pela área de membros (associados).</p>
+        <div class="admin-form-card" style="max-width: 420px;">
+          <div class="form-group">
+            <label for="filtro-inscricao-evento">Filtrar por evento</label>
+            <select id="filtro-inscricao-evento" aria-label="Filtrar inscrições por evento">
+              <option value="">Todos os eventos</option>
+            </select>
+          </div>
+        </div>
+        <p id="inscricoes-vazio" class="admin-aviso" style="display: none;">Nenhuma inscrição registada.</p>
+        <div class="admin-tabela-wrapper">
+          <table class="admin-tabela" id="tabela-inscricoes">
+            <thead>
+              <tr>
+                <th>Data inscrição</th>
+                <th>Evento</th>
+                <th>Origem</th>
+                <th>Inscrito</th>
+                <th>Contacto</th>
+                <th class="acoes">Ações</th>
+              </tr>
+            </thead>
             <tbody></tbody>
           </table>
         </div>

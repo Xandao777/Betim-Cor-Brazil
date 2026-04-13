@@ -2,6 +2,11 @@
 node_modules/
 coverage/
 
+# Segredos (SMTP, JWT local, etc.)
+.env
+.env.local
+.env.*.local
+
 # Estado local quando roda sem Supabase
 data/site-data.json
 

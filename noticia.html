@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Calendário de eventos da Associação. Veja eventos passados e futuros e inscreva-se online.">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="Eventos | Associação">
-  <meta property="og:description" content="Calendário de eventos da Associação. Veja eventos passados e futuros e inscreva-se online.">
+  <meta name="description" content="Notícia da Associação Betim Cor Brazil.">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Notícia | Associação">
+  <meta property="og:description" content="Notícias e comunicados da associação.">
   <meta property="og:locale" content="pt_BR">
-  <title>Eventos | Associação</title>
+  <title>Notícia | Associação</title>
   <link rel="icon" href="img/logo.jpg" type="image/jpeg">
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -24,7 +24,7 @@
       <nav class="nav" aria-label="Menu principal">
         <ul class="nav-list">
           <li><a href="index.html#nos">Nós</a></li>
-          <li><a href="eventos.html" aria-current="page">Eventos</a></li>
+          <li><a href="eventos.html">Eventos</a></li>
           <li><a href="noticias.html">Notícias</a></li>
           <li><a href="blog.html">Blog</a></li>
           <li><a href="galeria.html">Galeria</a></li>
@@ -43,21 +43,8 @@
 
   <main id="main" class="pagina-interna">
     <div class="container">
-      <h1>Eventos e Atividades</h1>
-      <p class="intro">Confira o calendário de eventos, destaques de atividades realizadas e inscreva-se online.</p>
-
-      <section class="calendario-nav" aria-label="Navegação do calendário">
-        <span class="calendario-mes" id="mes-atual" aria-live="polite"></span>
-        <div>
-          <button type="button" class="btn btn-outline" id="btn-ant">Anterior</button>
-          <button type="button" class="btn btn-outline" id="btn-prox">Próximo</button>
-        </div>
-      </section>
-
-      <section id="inscricao" class="lista-eventos" aria-labelledby="titulo-lista">
-        <h2 id="titulo-lista" class="sr-only">Lista de eventos e inscrições</h2>
-        <!-- Cards de eventos gerados via JavaScript; cada um leva para evento.html?id=... -->
-      </section>
+      <p class="intro"><a href="noticias.html">Notícias</a></p>
+      <article id="noticia-artigo" class="blog-post-artigo" aria-live="polite"></article>
     </div>
   </main>
 

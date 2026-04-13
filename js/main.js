@@ -25,13 +25,40 @@
     });
   }
 
-  // Formulário de contato
+  // Formulário de contato → API (guardado no servidor para a equipa consultar no painel)
   var formContato = document.getElementById('form-contato');
   if (formContato) {
     formContato.addEventListener('submit', function (e) {
       e.preventDefault();
-      alert('Mensagem enviada com sucesso! Entraremos em contato em breve.');
-      formContato.reset();
+      var btn = formContato.querySelector('button[type="submit"]');
+      if (btn) btn.disabled = true;
+      fetch('/api/form/contato', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          nome: document.getElementById('nome').value,
+          email: document.getElementById('email').value,
+          assunto: document.getElementById('assunto').value,
+          mensagem: document.getElementById('mensagem').value
+        })
+      })
+        .then(function (r) {
+          return r.json().then(function (data) {
+            if (!r.ok) throw new Error(data.error || 'Falha ao enviar');
+            return data;
+          });
+        })
+        .then(function () {
+          alert('Mensagem enviada com sucesso! Entraremos em contato em breve.');
+          formContato.reset();
+        })
+        .catch(function (err) {
+          alert(err.message || 'Não foi possível enviar. Tente novamente ou use o e-mail da página.');
+        })
+        .finally(function () {
+          if (btn) btn.disabled = false;
+        });
     });
   }
 
@@ -139,13 +166,44 @@
       e.preventDefault();
       var valorOutro = document.getElementById('valor-outro');
       var selected = formDoacao.querySelector('input[name="valor"]:checked');
-      if (selected && selected.value === 'outro' && (!valorOutro.value || valorOutro.value <= 0)) {
+      if (!selected) {
+        alert('Selecione um valor.');
+        return;
+      }
+      if (selected.value === 'outro' && (!valorOutro.value || valorOutro.value <= 0)) {
         alert('Informe o valor da doação.');
         return;
       }
-      alert('Obrigado pela sua doação! Em produção, você será redirecionado ao pagamento. Verifique seu e-mail para instruções.');
-      formDoacao.reset();
-      grupoOutro.style.display = 'none';
+      var btn = formDoacao.querySelector('button[type="submit"]');
+      if (btn) btn.disabled = true;
+      fetch('/api/form/doacao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          nome: document.getElementById('nome-doacao').value,
+          email: document.getElementById('email-doacao').value,
+          valor: selected.value,
+          valor_outro: valorOutro ? valorOutro.value : ''
+        })
+      })
+        .then(function (r) {
+          return r.json().then(function (data) {
+            if (!r.ok) throw new Error(data.error || 'Falha ao registar');
+            return data;
+          });
+        })
+        .then(function () {
+          alert('Obrigado! O seu pedido foi registado. A associação enviará instruções de pagamento (PIX ou link) para o e-mail indicado.');
+          formDoacao.reset();
+          grupoOutro.style.display = 'none';
+        })
+        .catch(function (err) {
+          alert(err.message || 'Não foi possível enviar. Tente novamente.');
+        })
+        .finally(function () {
+          if (btn) btn.disabled = false;
+        });
     });
   }
 

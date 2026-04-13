@@ -179,6 +179,44 @@ describe('API (integração, ficheiro temporário)', function () {
     await request(app).post('/api/inscricao/publica').send({ nome: 'x' }).expect(400);
   });
 
+  test('POST /api/form/contato grava mensagem', async function () {
+    await request(app)
+      .post('/api/form/contato')
+      .send({ nome: 'Visitante', email: 'v@exemplo.org', assunto: 'duvida', mensagem: 'Olá' })
+      .expect(200);
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var full = await agent.get('/api/full').expect(200);
+    expect(Array.isArray(full.body.mensagens_contato)).toBe(true);
+    expect(full.body.mensagens_contato.length).toBeGreaterThanOrEqual(1);
+    var last = full.body.mensagens_contato[full.body.mensagens_contato.length - 1];
+    expect(last.email).toBe('v@exemplo.org');
+  });
+
+  test('POST /api/form/contato sem mensagem → 400', async function () {
+    await request(app)
+      .post('/api/form/contato')
+      .send({ nome: 'A', email: 'a@b.co', assunto: 'x', mensagem: '' })
+      .expect(400);
+  });
+
+  test('POST /api/form/doacao', async function () {
+    await request(app)
+      .post('/api/form/doacao')
+      .send({ nome: 'Doador', email: 'd@exemplo.org', valor: '50' })
+      .expect(200);
+  });
+
+  test('POST /api/member/mensagem suporte com sessão', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/member').send({ usuario: 'membro', senha: 'demo123' }).expect(200);
+    await agent
+      .post('/api/member/mensagem')
+      .set(mutatingHeaders())
+      .send({ tipo: 'suporte', assunto: 'duvida', mensagem: 'Preciso de informação' })
+      .expect(200);
+  });
+
   test('GET /api/auth/admin/session sem login → 401', async function () {
     await request(app).get('/api/auth/admin/session').expect(401);
   });

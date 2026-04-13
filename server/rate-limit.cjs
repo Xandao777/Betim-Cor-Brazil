@@ -54,11 +54,21 @@ function createLimiters() {
     handler: json429('Demasiadas inscrições a partir deste endereço. Tente mais tarde.')
   });
 
+  /** Formulários públicos: contato, intenção de doação (por IP). */
+  var formPublico = rateLimit({
+    windowMs: 60 * 1000,
+    max: intEnv('RATE_LIMIT_FORM_PUBLICO_MAX', 20),
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: json429('Demasiados envios a partir deste endereço. Tente mais tarde.')
+  });
+
   return {
     apiGlobal: apiGlobal,
     publicGet: publicGet,
     login: login,
-    inscricaoPublica: inscricaoPublica
+    inscricaoPublica: inscricaoPublica,
+    formPublico: formPublico
   };
 }
 

@@ -1,5 +1,7 @@
 'use strict';
 
+require('dotenv').config();
+
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
@@ -12,11 +14,26 @@ const pwd = require('./server/passwords.cjs');
 const { createLimiters } = require('./server/rate-limit.cjs');
 const docUpload = require('./server/document-upload.cjs');
 const galleryUpload = require('./server/gallery-upload.cjs');
+const smtpMail = require('./server/smtp-mail.cjs');
 
 var DATA_FILE = process.env.SITE_DATA_FILE
   ? path.resolve(process.env.SITE_DATA_FILE)
   : path.join(__dirname, 'data', 'site-data.json');
-var KEYS = ['events', 'news', 'blog', 'gallery', 'members', 'sponsors', 'documents', 'institutional', 'admin_users', 'inscricoes'];
+var KEYS = [
+  'events',
+  'news',
+  'blog',
+  'gallery',
+  'members',
+  'sponsors',
+  'documents',
+  'institutional',
+  'admin_users',
+  'inscricoes',
+  'mensagens_contato',
+  'pedidos_doacao',
+  'mensagens_membros'
+];
 
 /** Pool PostgreSQL quando DATABASE_URL está definida (ex.: Railway Postgres plugin) */
 var pgPool = null;
@@ -62,6 +79,7 @@ function csrfOriginGuard(req, res, next) {
   if (req.path === '/api/auth/admin' || req.path === '/api/auth/member') return next();
   if (req.path === '/api/auth/logout-admin' || req.path === '/api/auth/logout-member') return next();
   if (req.path === '/api/inscricao/publica') return next();
+  if (req.path === '/api/form/contato' || req.path === '/api/form/doacao') return next();
   var hasAuthCookie = req.cookies && (req.cookies[COOKIE_ADMIN] || req.cookies[COOKIE_MEMBER]);
   if (!hasAuthCookie) return next();
   var host = req.get('Host');
@@ -401,10 +419,29 @@ app.post('/api/auth/logout-member', function (req, res) {
 
 function assertAdminEditor(payload, key) {
   var perfil = payload.perfil || 'editor';
-  if (perfil === 'editor' && (key === 'members' || key === 'documents' || key === 'institutional')) {
+  if (
+    perfil === 'editor' &&
+    (key === 'members' ||
+      key === 'documents' ||
+      key === 'institutional' ||
+      key === 'mensagens_contato' ||
+      key === 'pedidos_doacao' ||
+      key === 'mensagens_membros')
+  ) {
     return 'Sem permissão para editar esta seção';
   }
   return null;
+}
+
+function clampStr(v, max) {
+  if (v === undefined || v === null) return '';
+  var s = String(v).trim();
+  if (s.length > max) s = s.slice(0, max);
+  return s;
+}
+
+function newFormId() {
+  return Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
 }
 
 app.put('/api/state/:key', async function (req, res) {
@@ -504,6 +541,97 @@ app.post('/api/inscricao/publica', rateLimits.inscricaoPublica, async function (
   }
 });
 
+app.post('/api/form/contato', rateLimits.formPublico, async function (req, res) {
+  try {
+    var b = req.body || {};
+    var nome = clampStr(b.nome, 200);
+    var email = clampStr(b.email, 200);
+    var assunto = clampStr(b.assunto, 80);
+    var mensagem = clampStr(b.mensagem, 8000);
+    if (!nome || !email || !assunto || !mensagem) {
+      return res.status(400).json({ error: 'Preencha nome, e-mail, assunto e mensagem.' });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'E-mail inválido.' });
+    }
+    var state = await loadState();
+    var list = state.mensagens_contato || [];
+    list.push({
+      id: newFormId(),
+      nome: nome,
+      email: email,
+      assunto: assunto,
+      mensagem: mensagem,
+      criadoEm: new Date().toISOString()
+    });
+    await saveKey('mensagens_contato', list);
+    smtpMail
+      .notifyAfterFormSubmit({
+        type: 'contato',
+        institutional: state.institutional || {},
+        data: { nome: nome, email: email, assunto: assunto, mensagem: mensagem }
+      })
+      .catch(function (err) {
+        console.error('[smtp]', err.message || err);
+      });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: String(e.message) });
+  }
+});
+
+app.post('/api/form/doacao', rateLimits.formPublico, async function (req, res) {
+  try {
+    var b = req.body || {};
+    var email = clampStr(b.email, 200);
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Informe um e-mail válido.' });
+    }
+    var nome = clampStr(b.nome, 200);
+    var valorRaw = b.valor;
+    var valorOutro = b.valor_outro;
+    var reais = null;
+    if (valorRaw === 'outro' || valorRaw === 'Outro') {
+      var n = parseFloat(String(valorOutro), 10);
+      if (!isFinite(n) || n < 1) {
+        return res.status(400).json({ error: 'Informe o valor da doação (mínimo R$ 1).' });
+      }
+      reais = Math.round(n * 100) / 100;
+    } else {
+      var v = parseFloat(String(valorRaw), 10);
+      if (!isFinite(v) || v < 1) {
+        return res.status(400).json({ error: 'Selecione um valor ou "Outro" com quantia válida.' });
+      }
+      reais = Math.round(v * 100) / 100;
+    }
+    var state = await loadState();
+    var list = state.pedidos_doacao || [];
+    list.push({
+      id: newFormId(),
+      nome: nome,
+      email: email,
+      valorReais: reais,
+      criadoEm: new Date().toISOString(),
+      nota: 'Intenção registada no site — conclua o pagamento (PIX/gateway) por contacto direto com a associação.'
+    });
+    await saveKey('pedidos_doacao', list);
+    smtpMail
+      .notifyAfterFormSubmit({
+        type: 'doacao',
+        institutional: state.institutional || {},
+        data: { nome: nome, email: email, valorReais: reais }
+      })
+      .catch(function (err) {
+        console.error('[smtp]', err.message || err);
+      });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: String(e.message) });
+  }
+});
+
 app.post('/api/inscricao/membro', async function (req, res) {
   var payload = verifyToken(req);
   if (!payload || payload.t !== 'member') return res.status(401).json({ error: 'Não autorizado' });
@@ -540,6 +668,97 @@ app.delete('/api/inscricao/membro/:eventoId', async function (req, res) {
       return !(i.membroUsuario === usuario && String(i.eventoId) === String(eventoId));
     });
     await saveKey('inscricoes', list);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: String(e.message) });
+  }
+});
+
+app.post('/api/member/mensagem', async function (req, res) {
+  var payload = verifyToken(req);
+  if (!payload || payload.t !== 'member') return res.status(401).json({ error: 'Não autorizado' });
+  try {
+    var b = req.body || {};
+    var tipo = clampStr(b.tipo, 40);
+    if (tipo !== 'voluntariado' && tipo !== 'suporte') {
+      return res.status(400).json({ error: 'Tipo inválido.' });
+    }
+    var state = await loadState();
+    var membro = (state.members || []).find(function (m) {
+      return String(m.id) === String(payload.sub);
+    });
+    var membroNome = membro ? membro.nome || '' : payload.nome || '';
+    var membroUsuario = payload.usuario || '';
+
+    if (tipo === 'voluntariado') {
+      var area = clampStr(b.area, 80);
+      var msgVol = clampStr(b.mensagem, 8000);
+      if (!area && !msgVol) {
+        return res.status(400).json({ error: 'Escolha uma área ou escreva uma mensagem.' });
+      }
+      var listV = state.mensagens_membros || [];
+      listV.push({
+        id: newFormId(),
+        tipo: 'voluntariado',
+        membroUsuario: membroUsuario,
+        membroNome: clampStr(membroNome, 200),
+        area: area,
+        mensagem: msgVol,
+        criadoEm: new Date().toISOString()
+      });
+      await saveKey('mensagens_membros', listV);
+      var emailVol = membro && membro.email ? String(membro.email).trim() : '';
+      smtpMail
+        .notifyAfterFormSubmit({
+          type: 'membro_voluntariado',
+          institutional: state.institutional || {},
+          data: {
+            membroNome: clampStr(membroNome, 200),
+            membroUsuario: membroUsuario,
+            membroEmail: emailVol,
+            area: area,
+            mensagem: msgVol
+          }
+        })
+        .catch(function (err) {
+          console.error('[smtp]', err.message || err);
+        });
+      return res.json({ ok: true });
+    }
+
+    var assunto = clampStr(b.assunto, 80);
+    var msgSup = clampStr(b.mensagem, 8000);
+    if (!assunto || !msgSup) {
+      return res.status(400).json({ error: 'Preencha assunto e mensagem.' });
+    }
+    var listS = state.mensagens_membros || [];
+    listS.push({
+      id: newFormId(),
+      tipo: 'suporte',
+      membroUsuario: membroUsuario,
+      membroNome: clampStr(membroNome, 200),
+      assunto: assunto,
+      mensagem: msgSup,
+      criadoEm: new Date().toISOString()
+    });
+    await saveKey('mensagens_membros', listS);
+    var emailSup = membro && membro.email ? String(membro.email).trim() : '';
+    smtpMail
+      .notifyAfterFormSubmit({
+        type: 'membro_suporte',
+        institutional: state.institutional || {},
+        data: {
+          membroNome: clampStr(membroNome, 200),
+          membroUsuario: membroUsuario,
+          membroEmail: emailSup,
+          assunto: assunto,
+          mensagem: msgSup
+        }
+      })
+      .catch(function (err) {
+        console.error('[smtp]', err.message || err);
+      });
     res.json({ ok: true });
   } catch (e) {
     console.error(e);

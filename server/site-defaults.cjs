@@ -54,5 +54,11 @@ module.exports = {
     { id: '1', usuario: 'admin', senha: 'admin123', nome: 'Administrador', perfil: 'admin' },
     { id: '2', usuario: 'editor', senha: 'editor123', nome: 'Editor', perfil: 'editor' }
   ],
-  inscricoes: []
+  inscricoes: [],
+  /** Mensagens do formulário público de contato (site/contato.html). */
+  mensagens_contato: [],
+  /** Intenções de doação (site/doar.html) — não é pagamento; só registo para contacto. */
+  pedidos_doacao: [],
+  /** Voluntariado e suporte enviados pela área de membros. */
+  mensagens_membros: []
 };

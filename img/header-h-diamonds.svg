@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="44" height="22" viewBox="0 0 44 22">
+  <!-- Losangos em fila horizontal, repete em X -->
+  <rect width="44" height="22" fill="#0d4f3c"/>
+  <g transform="translate(22,11)">
+    <polygon points="0,-9 9,0 0,9 -9,0" fill="#c62828"/>
+    <polygon points="0,-6 6,0 0,6 -6,0" fill="#f2c40c"/>
+    <polygon points="0,-3.5 3.5,0 0,3.5 -3.5,0" fill="#0d4f3c"/>
+  </g>
+</svg>

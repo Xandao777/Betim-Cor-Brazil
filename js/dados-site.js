@@ -5,7 +5,21 @@
 (function (window) {
   'use strict';
 
-  var KEYS = ['events', 'news', 'blog', 'gallery', 'members', 'sponsors', 'documents', 'institutional', 'admin_users', 'inscricoes'];
+  var KEYS = [
+    'events',
+    'news',
+    'blog',
+    'gallery',
+    'members',
+    'sponsors',
+    'documents',
+    'institutional',
+    'admin_users',
+    'inscricoes',
+    'mensagens_contato',
+    'pedidos_doacao',
+    'mensagens_membros'
+  ];
   var cache = {};
   var readyResolve;
   var ready = new Promise(function (resolve) {
@@ -126,6 +140,12 @@
     getAdminUsers: function () { return cache.admin_users || []; },
     getInscricoes: function () { return cache.inscricoes || []; },
     setInscricoes: function (arr) { return putKey('inscricoes', arr); },
+    getMensagensContato: function () { return cache.mensagens_contato || []; },
+    setMensagensContato: function (arr) { return putKey('mensagens_contato', arr); },
+    getPedidosDoacao: function () { return cache.pedidos_doacao || []; },
+    setPedidosDoacao: function (arr) { return putKey('pedidos_doacao', arr); },
+    getMensagensMembros: function () { return cache.mensagens_membros || []; },
+    setMensagensMembros: function (arr) { return putKey('mensagens_membros', arr); },
 
     sessionKind: function () {
       return sessionKind;
