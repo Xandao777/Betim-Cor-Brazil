@@ -367,18 +367,41 @@
     if (urlEl) urlEl.value = '';
     atualizarPreviewCapaEvento('');
   }
+  function moverEvento(id, dir) {
+    var list = (D.getEvents() || []).slice();
+    var i = list.findIndex(function (x) { return x.id === id; });
+    if (i < 0) return;
+    var j = i + dir;
+    if (j < 0 || j >= list.length) return;
+    var tmp = list[i];
+    list[i] = list[j];
+    list[j] = tmp;
+    D.setEvents(list).then(renderEventos).catch(errSave);
+  }
   function renderEventos() {
     var tbody = document.querySelector('#tabela-eventos tbody');
     if (!tbody) return;
     var list = D.getEvents() || [];
-    tbody.innerHTML = list.map(function (e) {
+    tbody.innerHTML = list.map(function (e, idx) {
       var ins = countInscritosEvento(e.id);
       var ver =
         '<a href="../evento.html?id=' +
         encodeURIComponent(e.id || '') +
         '" class="btn btn-outline btn-sm" target="_blank" rel="noopener">Ver</a> ';
+      var ordem =
+        '<button type="button" class="btn btn-outline btn-sm btn-evento-up" data-id="' +
+        escHtml(e.id) +
+        '"' +
+        (idx === 0 ? ' disabled' : '') +
+        '>↑</button> <button type="button" class="btn btn-outline btn-sm btn-evento-down" data-id="' +
+        escHtml(e.id) +
+        '"' +
+        (idx === list.length - 1 ? ' disabled' : '') +
+        '>↓</button>';
       return (
-        '<tr><td>' +
+        '<tr><td class="acoes">' +
+        ordem +
+        '</td><td>' +
         escHtml(e.titulo || '') +
         '</td><td>' +
         escHtml(e.data || '') +
@@ -402,6 +425,12 @@
     });
     tbody.querySelectorAll('.btn-remove-evento').forEach(function (b) {
       b.addEventListener('click', function () { if (confirm('Excluir este evento?')) removerEvento(this.getAttribute('data-id')); });
+    });
+    tbody.querySelectorAll('.btn-evento-up').forEach(function (b) {
+      b.addEventListener('click', function () { moverEvento(this.getAttribute('data-id'), -1); });
+    });
+    tbody.querySelectorAll('.btn-evento-down').forEach(function (b) {
+      b.addEventListener('click', function () { moverEvento(this.getAttribute('data-id'), 1); });
     });
   }
   function editarEvento(id) {

@@ -34,7 +34,11 @@ function registerAdminRoutes(app, deps) {
       var collection = b.collection;
       var msgId = b.id != null ? String(b.id) : '';
       var lida = b.lida !== false;
-      if (collection !== 'mensagens_contato' && collection !== 'mensagens_membros') {
+      if (
+        collection !== 'mensagens_contato' &&
+        collection !== 'mensagens_membros' &&
+        collection !== 'pedidos_doacao'
+      ) {
         return res.status(400).json({ error: 'Coleção inválida' });
       }
       if (!msgId) return res.status(400).json({ error: 'ID obrigatório' });

@@ -100,6 +100,8 @@
         <p class="admin-secao-intro">Contato público, intenções de doação e mensagens da área de membros (voluntariado e suporte).</p>
         <div class="admin-toolbar">
           <label>Filtro: <select id="filtro-form-lidas"><option value="todas">Todas</option><option value="nao_lidas">Só não lidas</option></select></label>
+          <label>Desde: <input type="date" id="filtro-form-desde" class="admin-input-date"></label>
+          <button type="button" id="filtro-form-desde-limpar" class="btn btn-outline btn-sm">Limpar data</button>
           <button type="button" id="btn-export-contato-csv" class="btn btn-outline btn-sm">Exportar contato (CSV)</button>
           <button type="button" id="btn-export-doacao-csv" class="btn btn-outline btn-sm">Exportar doações (CSV)</button>
         </div>
@@ -122,7 +124,7 @@
           <p class="admin-aviso" id="form-doacao-vazio" style="display: none;">Nenhum pedido.</p>
           <div class="admin-tabela-wrapper">
             <table class="admin-tabela" id="tabela-form-doacao">
-              <thead><tr><th>Data</th><th>Nome</th><th>E-mail</th><th>Valor (R$)</th><th>Estado</th></tr></thead>
+              <thead><tr><th>Data</th><th>Nome</th><th>E-mail</th><th>Valor (R$)</th><th>Estado</th><th class="acoes">Lida</th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
@@ -203,7 +205,7 @@
         <p><button type="button" id="btn-novo-evento" class="btn btn-primary">+ Novo evento</button></p>
         <div class="admin-tabela-wrapper">
           <table class="admin-tabela" id="tabela-eventos">
-            <thead><tr><th>Título</th><th>Data</th><th>Inscritos</th><th>Publicado</th><th class="acoes">Ações</th></tr></thead>
+            <thead><tr><th>Ordem</th><th>Título</th><th>Data</th><th>Inscritos</th><th>Publicado</th><th class="acoes">Ações</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>

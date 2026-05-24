@@ -16,6 +16,15 @@
     return esc(s).replace(/"/g, '&quot;');
   }
 
+  function toastOk(msg) {
+    if (window.SiteToast) window.SiteToast.success(msg);
+    else alert(msg);
+  }
+  function toastErr(msg) {
+    if (window.SiteToast) window.SiteToast.error(msg);
+    else alert(msg);
+  }
+
   function getUsuarioLogado() {
     if (!D || !D.isMemberSession()) return null;
     var list = D.getMembers() || [];
@@ -141,11 +150,9 @@
     }).then(function () {
       var nomeHeader = document.getElementById('nome-membro');
       if (nomeHeader) nomeHeader.textContent = nome;
-      if (window.SiteToast) window.SiteToast.success('Perfil atualizado.');
-      else alert('Perfil atualizado.');
+      toastOk('Perfil atualizado.');
     }).catch(function (e) {
-      if (window.SiteToast) window.SiteToast.error(e.message || 'Não foi possível salvar o perfil.');
-      else alert(e.message || 'Não foi possível salvar o perfil.');
+      toastErr(e.message || 'Não foi possível salvar o perfil.');
     });
   }
 
@@ -222,7 +229,7 @@
           preencherEventos();
           preencherDashboard();
         }).catch(function (e) {
-          alert(e.message || 'Erro ao cancelar.');
+          toastErr(e.message || 'Erro ao cancelar.');
         });
       });
     });
@@ -293,9 +300,9 @@
         }).then(function () {
           preencherEventos();
           preencherDashboard();
-          alert('Inscrição confirmada com sucesso! Você está inscrito(a) no evento. Acompanhe em "Minhas inscrições".');
+          toastOk('Inscrição confirmada! Acompanhe em "Minhas inscrições".');
         }).catch(function (e) {
-          alert(e.message || 'Não foi possível inscrever.');
+          toastErr(e.message || 'Não foi possível inscrever.');
         });
       });
     });
@@ -365,7 +372,7 @@
         var area = areaEl ? areaEl.value : '';
         var mensagem = msgEl ? msgEl.value.trim() : '';
         if (!area && !mensagem) {
-          alert('Escolha uma área ou escreva uma mensagem.');
+          toastErr('Escolha uma área ou escreva uma mensagem.');
           return;
         }
         var btn = formVol.querySelector('button[type="submit"]');
@@ -383,11 +390,11 @@
             });
           })
           .then(function () {
-            alert('Obrigado! O seu interesse foi registado. A associação entrará em contacto.');
+            toastOk('Obrigado! O seu interesse foi registado. A associação entrará em contacto.');
             formVol.reset();
           })
           .catch(function (err) {
-            alert(err.message || 'Não foi possível enviar.');
+            toastErr(err.message || 'Não foi possível enviar.');
           })
           .finally(function () {
             if (btn) btn.disabled = false;
@@ -420,11 +427,11 @@
             });
           })
           .then(function () {
-            alert('Mensagem enviada. A diretoria responderá em breve.');
+            toastOk('Mensagem enviada. A diretoria responderá em breve.');
             formSup.reset();
           })
           .catch(function (err) {
-            alert(err.message || 'Não foi possível enviar.');
+            toastErr(err.message || 'Não foi possível enviar.');
           })
           .finally(function () {
             if (btn) btn.disabled = false;
@@ -508,7 +515,7 @@
           })
           .then(function () {
             if (errEl) errEl.style.display = 'none';
-            alert('Senha atualizada. Faça login com a nova senha.');
+            toastOk('Senha atualizada. Faça login com a nova senha.');
             window.location.href = 'area-membros.html';
           })
           .catch(function (err) {
@@ -542,11 +549,11 @@
           .then(function () {
             formSenha.reset();
             if (window.SiteToast) window.SiteToast.success('Senha atualizada.');
-            else alert('Senha atualizada.');
+            else toastOk('Senha atualizada.');
           })
           .catch(function (err) {
             if (window.SiteToast) window.SiteToast.error(err.message || 'Não foi possível alterar a senha.');
-            else alert(err.message || 'Não foi possível alterar a senha.');
+            else toastErr(err.message || 'Não foi possível alterar a senha.');
           });
       });
     }

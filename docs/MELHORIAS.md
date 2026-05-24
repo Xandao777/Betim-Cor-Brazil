@@ -2,6 +2,8 @@
 
 Documento de referência com tudo que **deve ser melhorado** no sistema, organizado por prioridade e área. Baseado na análise do código em maio de 2026.
 
+> **Nota:** Várias entradas `[ ]` abaixo estão desatualizadas (já implementadas no código). Ver **`docs/PLANO-IMPLEMENTACAO.md`** (o que foi feito recentemente) e **`docs/ADMIN-MELHORIAS.md`** (painel). Checklist de deploy: **`docs/RAILWAY-CHECKLIST.md`**.
+
 **Legenda de prioridade**
 
 | Nível | Significado |

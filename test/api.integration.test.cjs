@@ -300,4 +300,57 @@ describe('API (integração, ficheiro temporário)', function () {
     await agent.post('/api/auth/logout-admin').set(mutatingHeaders()).expect(200);
     await agent.get('/api/full').expect(401);
   });
+
+  test('PUT /api/state/events com If-Match inválido → 409', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var full = await agent.get('/api/full').set(mutatingHeaders()).expect(200);
+    var h = mutatingHeaders();
+    h['If-Match'] = 'etag-invalido-000000000000';
+    await agent
+      .put('/api/state/events')
+      .set(h)
+      .send(full.body.events || [])
+      .expect(409);
+  });
+
+  test('POST /api/admin/mark-read em pedidos_doacao', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    await agent
+      .post('/api/form/doacao')
+      .send({
+        nome: 'Doador Teste',
+        email: 'doador@teste.local',
+        valor: '50',
+        consentimento: true
+      })
+      .expect(200);
+    var full = await agent.get('/api/full').set(mutatingHeaders()).expect(200);
+    var list = full.body.pedidos_doacao || [];
+    expect(list.length).toBeGreaterThan(0);
+    var id = list[list.length - 1].id;
+    await agent
+      .post('/api/admin/mark-read')
+      .set(mutatingHeaders())
+      .send({ collection: 'pedidos_doacao', id: id, lida: true })
+      .expect(200);
+    var full2 = await agent.get('/api/full').set(mutatingHeaders()).expect(200);
+    var item = (full2.body.pedidos_doacao || []).find(function (p) {
+      return String(p.id) === String(id);
+    });
+    expect(item.lida).toBe(true);
+  });
+
+  test('GET /sitemap.xml dinâmico', async function () {
+    var res = await request(app).get('/sitemap.xml').expect(200);
+    expect(res.headers['content-type']).toMatch(/xml/);
+    expect(res.text).toMatch(/eventos\.html/);
+    expect(res.text).toMatch(/urlset/);
+  });
+
+  test('GET página inexistente HTML → 404 custom', async function () {
+    var res = await request(app).get('/pagina-que-nao-existe-xyz.html').set('Accept', 'text/html').expect(404);
+    expect(res.text).toMatch(/não encontrada/i);
+  });
 });

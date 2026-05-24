@@ -17,7 +17,7 @@ Site institucional da associação, com identidade visual em **vermelho, amarelo
 └── docs/                # Documentação interna
 ```
 
-Ver também `docs/ESTRUTURA.md`.
+Ver também `docs/ESTRUTURA.md`, `docs/PLANO-IMPLEMENTACAO.md` e `docs/RAILWAY-CHECKLIST.md`.
 
 ## Estrutura do site
 

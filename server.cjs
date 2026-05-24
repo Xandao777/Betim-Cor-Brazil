@@ -22,7 +22,14 @@ const s3Storage = require('./server/s3-storage.cjs');
 const { registerAdminRoutes } = require('./server/admin-routes.cjs');
 const turnstile = require('./server/turnstile.cjs');
 const auditLog = require('./server/audit-log.cjs');
+const stateEtag = require('./server/state-etag.cjs');
 const crypto = require('crypto');
+
+/** Incrementa a cada gravação — invalida cache de GET /api/public. */
+var publicDataRevision = 0;
+function bumpPublicCache() {
+  publicDataRevision += 1;
+}
 
 /** Site estático (HTML, CSS, JS, imagens, admin) — URLs públicas inalteradas. */
 var PUBLIC_DIR = path.join(__dirname, 'public');
@@ -160,11 +167,12 @@ async function saveKey(key, payload) {
   if (KEYS.indexOf(key) === -1) throw new Error('Chave inválida');
   if (pgPool) {
     await pgStore.saveKey(pgPool, key, payload);
-    return;
+  } else {
+    var state = await loadState();
+    state[key] = payload;
+    await saveStateFull(state);
   }
-  var state = await loadState();
-  state[key] = payload;
-  await saveStateFull(state);
+  bumpPublicCache();
 }
 
 /** Migra senha em texto antigo para bcrypt após login bem-sucedido. */
@@ -293,7 +301,12 @@ app.get('/api/config', rateLimits.publicGet, function (req, res) {
 app.get('/api/public', rateLimits.publicGet, async function (req, res) {
   try {
     var state = await loadState();
-    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+    var etag = 'W/"pub-' + publicDataRevision + '"';
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'public, max-age=60, must-revalidate');
+    if (req.get('If-None-Match') === etag) {
+      return res.status(304).end();
+    }
     res.json(filterPublic(state));
   } catch (e) {
     console.error(e);
@@ -323,7 +336,9 @@ app.get('/api/full', async function (req, res) {
   }
   try {
     var state = await loadState();
-    res.json(pwd.stripPasswordsFromState(state));
+    var safe = pwd.stripPasswordsFromState(state);
+    safe._keyEtags = stateEtag.keyEtags(state, KEYS);
+    res.json(safe);
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: String(e.message) });
@@ -505,13 +520,23 @@ app.put('/api/state/:key', async function (req, res) {
   var err = assertAdminEditor(payload, key);
   if (err) return res.status(403).json({ error: err });
   try {
+    var stateBefore = await loadState();
+    var currentEtag = stateEtag.etagForPayload(stateBefore[key]);
+    var ifMatch = (req.get('If-Match') || '').replace(/^"|"$/g, '');
+    if (ifMatch && ifMatch !== currentEtag) {
+      return res.status(409).json({
+        error: 'Conflito: outra pessoa ou outro separador alterou estes dados. Atualize a página e grave de novo.',
+        etag: currentEtag
+      });
+    }
     var body = req.body;
     if (key === 'members') {
-      body = pwd.mergeMembersSave(await loadState(), body);
+      body = pwd.mergeMembersSave(stateBefore, body);
     } else if (key === 'admin_users') {
-      body = pwd.mergeAdminUsersSave(await loadState(), body);
+      body = pwd.mergeAdminUsersSave(stateBefore, body);
     }
     await saveKey(key, body);
+    var newEtag = stateEtag.etagForPayload(body);
     if (key !== 'admin_audit_log') {
       try {
         var stateAfter = await loadState();
@@ -526,7 +551,7 @@ app.put('/api/state/:key', async function (req, res) {
         console.error('[audit]', auditErr.message || auditErr);
       }
     }
-    res.json({ ok: true });
+    res.json({ ok: true, etag: newEtag });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: String(e.message) });
@@ -718,6 +743,7 @@ app.post('/api/form/doacao', rateLimits.formPublico, async function (req, res) {
       email: email,
       valorReais: reais,
       estado: 'pendente',
+      lida: false,
       criadoEm: new Date().toISOString(),
       nota: 'Intenção registada no site — conclua o pagamento (PIX/gateway) por contacto direto com a associação.'
     });
@@ -1028,6 +1054,52 @@ var STATIC_BLOCK_PREFIXES = [
   '/supabase',
   '/.git'
 ];
+/** Sitemap com páginas estáticas + eventos/notícias/blog publicados. */
+app.get('/sitemap.xml', rateLimits.publicGet, async function (req, res) {
+  try {
+    var state = await loadState();
+    var pub = filterPublic(state);
+    var base = (process.env.SITE_PUBLIC_URL || '').trim().replace(/\/$/, '');
+    var paths = [
+      '/index.html',
+      '/eventos.html',
+      '/noticias.html',
+      '/blog.html',
+      '/galeria.html',
+      '/contato.html',
+      '/voluntariado.html',
+      '/doar.html',
+      '/privacidade.html'
+    ];
+    (pub.events || []).forEach(function (e) {
+      if (e.id) paths.push('/evento.html?id=' + encodeURIComponent(String(e.id)));
+    });
+    (pub.news || []).forEach(function (n) {
+      if (n.id) paths.push('/noticia.html?id=' + encodeURIComponent(String(n.id)));
+    });
+    (pub.blog || []).forEach(function (b) {
+      if (b.id) paths.push('/blog-post.html?id=' + encodeURIComponent(String(b.id)));
+    });
+    var body = paths
+      .map(function (p) {
+        var loc = base ? base + p : p;
+        return '<url><loc>' + loc.replace(/&/g, '&amp;') + '</loc><changefreq>weekly</changefreq></url>';
+      })
+      .join('');
+    var xml =
+      '<?xml version="1.0" encoding="UTF-8"?>' +
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
+      body +
+      '</urlset>';
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.send(xml);
+  } catch (e) {
+    console.error(e);
+    res.status(500).end();
+  }
+});
+
 registerAdminRoutes(app, {
   verifyToken: verifyToken,
   loadState: loadState,
@@ -1080,6 +1152,10 @@ app.use(
 app.use(function (req, res) {
   if (req.path.indexOf('/api') === 0) {
     return res.status(404).json({ error: 'Not found' });
+  }
+  var p404 = path.join(PUBLIC_DIR, '404.html');
+  if (fs.existsSync(p404) && req.accepts('html')) {
+    return res.status(404).sendFile(p404);
   }
   res.status(404).send('Not found');
 });

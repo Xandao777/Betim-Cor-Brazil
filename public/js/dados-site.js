@@ -21,6 +21,7 @@
     'mensagens_membros'
   ];
   var cache = {};
+  var keyEtags = {};
   var readyResolve;
   var ready = new Promise(function (resolve) {
     readyResolve = resolve;
@@ -39,6 +40,7 @@
     KEYS.forEach(function (k) {
       if (full[k] !== undefined) cache[k] = full[k];
     });
+    keyEtags = full._keyEtags || {};
   }
 
   var sessionKind = null;
@@ -113,14 +115,27 @@
   init();
 
   function putKey(key, body) {
+    var headers = { 'Content-Type': 'application/json' };
+    if (keyEtags[key]) headers['If-Match'] = keyEtags[key];
     return fetch('/api/state/' + key, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       credentials: 'include',
       body: JSON.stringify(body)
     }).then(function (res) {
-      if (!res.ok) return res.json().then(function (j) { throw new Error(j.error || res.statusText); });
-      cache[key] = body;
+      return res.json().then(function (j) {
+        if (res.status === 409) {
+          return bootstrap().then(function () {
+            throw new Error(
+              j.error || 'Conflito: dados atualizados noutro separador. Revise e grave de novo.'
+            );
+          });
+        }
+        if (!res.ok) throw new Error(j.error || res.statusText);
+        cache[key] = body;
+        if (j.etag) keyEtags[key] = j.etag;
+        return j;
+      });
     });
   }
 

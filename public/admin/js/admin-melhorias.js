@@ -23,6 +23,19 @@
     var attrSafe = AP.attrSafe;
 
     var formFiltroLidas = 'todas';
+    var formFiltroDesde = '';
+
+    function passaFiltroData(criadoEm) {
+      if (!formFiltroDesde) return true;
+      if (!criadoEm) return false;
+      return String(criadoEm).slice(0, 10) >= formFiltroDesde;
+    }
+
+    function filtrarPorData(list) {
+      return list.filter(function (m) {
+        return passaFiltroData(m.criadoEm);
+      });
+    }
     var sitePublicUrl = '';
 
     // ---- Modal confirmar ----
@@ -169,7 +182,8 @@
     function updateSidebarBadges() {
       var c = countUnread(D.getMensagensContato ? D.getMensagensContato() : []);
       var m = countUnread(D.getMensagensMembros ? D.getMensagensMembros() : []);
-      var total = c + m;
+      var d = countUnread(D.getPedidosDoacao ? D.getPedidosDoacao() : []);
+      var total = c + m + d;
       var link = document.querySelector('.admin-sidebar a[data-secao="formularios"]');
       if (link) {
         var old = link.querySelector('.admin-nav-badge');
@@ -195,7 +209,10 @@
 
       var cards = document.getElementById('admin-dashboard-cards');
       if (cards) {
-        var unreadTotal = countUnread(D.getMensagensContato()) + countUnread(D.getMensagensMembros());
+        var unreadTotal =
+          countUnread(D.getMensagensContato()) +
+          countUnread(D.getMensagensMembros()) +
+          countUnread(D.getPedidosDoacao() || []);
         var doaPend = (D.getPedidosDoacao() || []).filter(function (p) {
           return (p.estado || 'pendente') === 'pendente';
         }).length;
@@ -377,11 +394,13 @@
     // ---- Formulários: lida + filtro ----
     var origForm = AP.renderFormularios;
     AP.renderFormularios = function () {
-      var cont = (D.getMensagensContato() || []).slice();
-      var mem = (D.getMensagensMembros() || []).slice();
+      var cont = filtrarPorData((D.getMensagensContato() || []).slice());
+      var mem = filtrarPorData((D.getMensagensMembros() || []).slice());
+      var doaAll = filtrarPorData((D.getPedidosDoacao && D.getPedidosDoacao()) || []);
       if (formFiltroLidas === 'nao_lidas') {
         cont = cont.filter(isUnread);
         mem = mem.filter(isUnread);
+        doaAll = doaAll.filter(isUnread);
       }
 
       var tbC = document.querySelector('#tabela-form-contato tbody');
@@ -471,7 +490,7 @@
       if (acoesC) acoesC.style.display = isAdmin && (D.getMensagensContato() || []).length ? 'block' : 'none';
       if (acoesM) acoesM.style.display = isAdmin && (D.getMensagensMembros() || []).length ? 'block' : 'none';
 
-      var doa = (D.getPedidosDoacao && D.getPedidosDoacao()) || [];
+      var doa = doaAll;
       var tbD = document.querySelector('#tabela-form-doacao tbody');
       var vazioD = document.getElementById('form-doacao-vazio');
       var acoesD = document.getElementById('form-doacao-acoes');
@@ -479,17 +498,19 @@
         tbD.innerHTML = doa
           .slice()
           .reverse()
-          .map(function (p, revIdx) {
+          .map(function (p) {
             var vr = p.valorReais != null ? String(p.valorReais) : '—';
             var est = p.estado || 'pendente';
-            var realIdx = doa.length - 1 - revIdx;
             var opts = ['pendente', 'contactado', 'concluido']
               .map(function (s) {
                 return '<option value="' + s + '"' + (est === s ? ' selected' : '') + '>' + s + '</option>';
               })
               .join('');
+            var clsD = isUnread(p) ? ' admin-row-unread' : '';
             return (
-              '<tr><td>' +
+              '<tr class="' +
+              clsD +
+              '"><td>' +
               escHtml(AP.formatarDataHoraIso(p.criadoEm)) +
               '</td><td>' +
               escHtml(p.nome || '—') +
@@ -497,19 +518,29 @@
               escHtml(p.email) +
               '</td><td>' +
               escHtml(vr) +
-              '</td><td><select class="select-estado-doacao" data-idx="' +
-              realIdx +
+              '</td><td><select class="select-estado-doacao" data-id="' +
+              attrSafe(p.id) +
               '">' +
               opts +
-              '</select></td></tr>'
+              '</select></td><td class="acoes"><button type="button" class="btn btn-outline btn-sm btn-mark-read" data-col="pedidos_doacao" data-id="' +
+              attrSafe(p.id) +
+              '" data-lida="' +
+              (isUnread(p) ? '1' : '0') +
+              '">' +
+              (isUnread(p) ? 'Marcar lida' : 'Não lida') +
+              '</button></td></tr>'
             );
           })
           .join('');
+        wireMarkRead(tbD);
         tbD.querySelectorAll('.select-estado-doacao').forEach(function (sel) {
           sel.addEventListener('change', function () {
-            var ix = parseInt(this.getAttribute('data-idx'), 10);
-            var list = (D.getPedidosDoacao && D.getPedidosDoacao()) || [];
-            if (isNaN(ix) || ix < 0 || ix >= list.length) return;
+            var pid = this.getAttribute('data-id');
+            var list = ((D.getPedidosDoacao && D.getPedidosDoacao()) || []).slice();
+            var ix = list.findIndex(function (x) {
+              return String(x.id) === String(pid);
+            });
+            if (ix < 0) return;
             list[ix] = Object.assign({}, list[ix], { estado: this.value });
             D.setPedidosDoacao(list).catch(AP.errSave);
           });
@@ -544,6 +575,21 @@
         AP.renderFormularios();
       });
     }
+    var filtroDesde = document.getElementById('filtro-form-desde');
+    if (filtroDesde) {
+      filtroDesde.addEventListener('change', function () {
+        formFiltroDesde = this.value || '';
+        AP.renderFormularios();
+      });
+    }
+    var btnLimparDesde = document.getElementById('filtro-form-desde-limpar');
+    if (btnLimparDesde) {
+      btnLimparDesde.addEventListener('click', function () {
+        formFiltroDesde = '';
+        if (filtroDesde) filtroDesde.value = '';
+        AP.renderFormularios();
+      });
+    }
 
     var btnCsvCont = document.getElementById('btn-export-contato-csv');
     if (btnCsvCont) {
@@ -564,9 +610,9 @@
         var list = D.getPedidosDoacao() || [];
         exportCsv(
           'doacoes-' + new Date().toISOString().slice(0, 10) + '.csv',
-          ['data', 'nome', 'email', 'valor', 'estado'],
+          ['data', 'nome', 'email', 'valor', 'estado', 'lida'],
           list.map(function (p) {
-            return [p.criadoEm, p.nome, p.email, p.valorReais, p.estado];
+            return [p.criadoEm, p.nome, p.email, p.valorReais, p.estado, p.lida ? 'sim' : 'nao'];
           })
         );
       });

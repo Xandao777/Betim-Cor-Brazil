@@ -710,6 +710,11 @@ body.admin-app .admin-dashboard-resumo.card:hover {
 }
 .admin-topbar-left { flex: 1; min-width: 200px; position: relative; }
 .admin-topbar-right { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.admin-input-date {
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+}
 .admin-busca-input {
   width: 100%;
   max-width: 360px;
