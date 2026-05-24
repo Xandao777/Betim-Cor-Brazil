@@ -12,11 +12,22 @@ var pwd = require('./passwords.cjs');
 
 function createPool(databaseUrl) {
   var isLocal = /localhost|127\.0\.0\.1/.test(databaseUrl);
+  /** Rede interna Railway — Postgres não usa TLS; forçar SSL aqui falha ou bloqueia a ligação. */
+  var isRailwayInternal = /\.railway\.internal/i.test(databaseUrl);
+  var useSsl = !isLocal && !isRailwayInternal;
   return new Pool({
     connectionString: databaseUrl,
     max: 10,
-    ssl: isLocal ? false : { rejectUnauthorized: false }
+    connectionTimeoutMillis: intEnv('PG_CONNECT_TIMEOUT_MS', 15000),
+    ssl: useSsl ? { rejectUnauthorized: false } : false
   });
+}
+
+function intEnv(name, def) {
+  var v = process.env[name];
+  if (v === undefined || v === '') return def;
+  var n = parseInt(v, 10);
+  return isNaN(n) || n < 1000 ? def : n;
 }
 
 async function ensureSchema(pool) {

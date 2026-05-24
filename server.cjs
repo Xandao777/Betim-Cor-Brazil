@@ -106,10 +106,14 @@ function mergeDefaults(state) {
 }
 
 async function initDatabase() {
-  if (!process.env.DATABASE_URL) return;
+  if (!process.env.DATABASE_URL) {
+    console.log('[db] DATABASE_URL não definida — modo arquivo local.');
+    return;
+  }
+  console.log('[db] A ligar ao PostgreSQL…');
   pgPool = pgStore.createPool(process.env.DATABASE_URL);
   await pgStore.ensureSchema(pgPool);
-  console.log('Banco PostgreSQL pronto (DATABASE_URL).');
+  console.log('[db] PostgreSQL pronto (tabela app_state).');
 }
 
 async function loadState() {
@@ -864,15 +868,26 @@ function iniciar(porta, tentativas) {
 var maxTentativas = portFixo ? 1 : 15;
 
 function startHttpServer() {
+  console.log(
+    '[startup] Node ' +
+      process.version +
+      ' | PORT=' +
+      (process.env.PORT || '(auto)') +
+      ' | DATABASE_URL=' +
+      (process.env.DATABASE_URL ? 'sim' : 'não') +
+      (process.env.RAILWAY_ENVIRONMENT ? ' | Railway' : '')
+  );
   initDatabase()
     .then(function () {
       iniciar(inicial, maxTentativas);
     })
     .catch(function (err) {
-      console.error('Erro ao iniciar banco:', err.message);
-      if (process.env.DATABASE_URL) {
-        process.exit(1);
-      }
+      console.error('[db] Falha ao iniciar:', err && err.message ? err.message : err);
+      if (err && err.stack) console.error(err.stack);
+      pgPool = null;
+      console.warn(
+        '[db] A continuar sem PostgreSQL (dados em ficheiro local). Corrija DATABASE_URL no Railway.'
+      );
       iniciar(inicial, maxTentativas);
     });
 }
@@ -880,5 +895,13 @@ function startHttpServer() {
 module.exports = { app: app, DATA_FILE: DATA_FILE };
 
 if (require.main === module) {
+  process.on('uncaughtException', function (err) {
+    console.error('[fatal] uncaughtException:', err && err.stack ? err.stack : err);
+    process.exit(1);
+  });
+  process.on('unhandledRejection', function (reason) {
+    console.error('[fatal] unhandledRejection:', reason);
+    process.exit(1);
+  });
   startHttpServer();
 }
