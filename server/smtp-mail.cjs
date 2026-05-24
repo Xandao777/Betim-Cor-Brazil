@@ -13,6 +13,7 @@
  *   SMTP_NOTIFY_TO     — destinatário(s) das notificações, separados por vírgula
  *                        (se vazio, usa o e-mail institucional do painel)
  *   SMTP_AUTO_REPLY_CONTATO — "1" envia cópia de confirmação ao visitante no formulário de contato
+ *   SMTP_AUTO_REPLY_DOACAO — "1" envia confirmação ao doador (com chave PIX se definida no painel)
  *   SMTP_TLS_INSECURE  — "1" desativa verificação do certificado TLS (só para testes / servidores com cert inválido)
  */
 
@@ -145,6 +146,39 @@ async function sendAdminNotification(opts) {
   return { ok: true };
 }
 
+async function sendDoacaoAutoReply(toEmail, nome, valorReais, institutional) {
+  if (process.env.SMTP_AUTO_REPLY_DOACAO !== '1') return { skipped: true };
+  if (!validEmail(toEmail)) return { skipped: true };
+  var transport = getTransporter();
+  if (!transport) return { skipped: true };
+  var from = getFromAddress();
+  if (!from) return { skipped: true };
+
+  var inst = institutional || {};
+  var pix = (inst.pixChave || '').trim();
+  var nomeLinha = nome ? 'Olá, ' + nome + '.\n\n' : 'Olá.\n\n';
+  var text =
+    nomeLinha +
+    'Recebemos o seu pedido de doação de R$ ' +
+    String(valorReais != null ? valorReais : '') +
+    '.\n\n';
+  if (pix) {
+    text += 'Chave PIX da associação: ' + pix + '\n';
+    if (inst.pixTitular) text += 'Titular: ' + inst.pixTitular + '\n';
+    text += '\n';
+  }
+  text +=
+    'Após o pagamento, a equipa pode confirmar por e-mail. Obrigado pelo apoio à nossa causa.';
+
+  await transport.sendMail({
+    from: from,
+    to: toEmail.trim(),
+    subject: 'Pedido de doação recebido',
+    text: text
+  });
+  return { ok: true };
+}
+
 async function sendVisitorAutoReply(toEmail, nome) {
   if (process.env.SMTP_AUTO_REPLY_CONTATO !== '1') return { skipped: true };
   if (!validEmail(toEmail)) return { skipped: true };
@@ -220,6 +254,7 @@ async function notifyAfterFormSubmit(params) {
         String(d.valorReais != null ? d.valorReais : '') +
         '\n'
     });
+    await sendDoacaoAutoReply(d.email, d.nome, d.valorReais, inst);
     return;
   }
 

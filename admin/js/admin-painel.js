@@ -48,6 +48,11 @@
     else alert(msg);
   }
 
+  function toastWarn(msg) {
+    if (window.SiteToast) window.SiteToast.info(msg);
+    else alert(msg);
+  }
+
   // Mostrar usuário e esconder itens restritos a admin
   var infoEl = document.getElementById('admin-usuario-info');
   if (infoEl) infoEl.textContent = 'Logado como ' + sessao.nome + ' (' + perfil + '). ';
@@ -745,11 +750,11 @@
           categoria: document.getElementById('galeria-categoria').value.trim()
         };
         if (!rec.titulo) {
-          alert('Informe o título.');
+          toastWarn('Informe o título.');
           return;
         }
         if (!mediaUrl) {
-          alert('Envie um ficheiro ou informe uma URL.');
+          toastWarn('Envie um ficheiro ou informe uma URL.');
           return;
         }
         var idx = list.findIndex(function (x) { return x.id === rec.id; });
@@ -844,7 +849,7 @@
           foto: (existente && existente.foto) || '',
           ativo: document.getElementById('membro-ativo').checked
         };
-        if (!rec.senha && !existente) { alert('Informe uma senha para novo membro.'); return; }
+        if (!rec.senha && !existente) { toastWarn('Informe uma senha para novo membro.'); return; }
         var idx = list.findIndex(function (x) { return x.id === rec.id; });
         if (idx >= 0) list[idx] = rec; else list.push(rec);
         D.setMembers(list).then(function () {
@@ -940,11 +945,11 @@
             visivel: document.getElementById('doc-visivel').checked
           };
           if (!rec.titulo) {
-            alert('Informe o título.');
+            toastWarn('Informe o título.');
             return;
           }
           if (!arquivoUrl) {
-            alert('Envie um arquivo do computador ou informe um link externo.');
+            toastWarn('Envie um arquivo do computador ou informe um link externo.');
             return;
           }
           var idx = list.findIndex(function (x) { return x.id === rec.id; });

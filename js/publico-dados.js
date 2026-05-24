@@ -84,30 +84,110 @@
     renderEventosPorMes();
   })();
 
-  // ---- Home: eventos em destaque (até 3, cada card leva para evento.html?id=...) ----
+  // ---- Home: eventos em destaque (até 3) ----
   (function () {
     var container = document.querySelector('.eventos-cards');
     if (!container) return;
-    var list = (D.getEvents() || []).filter(function (e) { return e.publicado !== false && e.destaque; }).sort(function (a, b) { return (a.data || '').localeCompare(b.data || ''); }).slice(0, 3);
-    if (list.length === 0) return;
-    var html = list.map(function (e) {
-      var fd = formatarData(e.data);
-      var href = 'evento.html?id=' + encodeURIComponent(e.id || '');
-      return '<article class="card card-evento"><div class="card-evento-data"><span class="dia">' + fd.dia + '</span><span class="mes">' + fd.mes + '</span></div><h3>' + escapeHtml(e.titulo || '') + '</h3><p>' + escapeHtml(e.descricao || '') + '</p><a href="' + href + '" class="link-cta">Ver página do evento</a></article>';
-    }).join('');
-    container.innerHTML = html;
+    var publicados = (D.getEvents() || [])
+      .filter(function (e) {
+        return e.publicado !== false;
+      })
+      .sort(function (a, b) {
+        return (a.data || '').localeCompare(b.data || '');
+      });
+    var list = publicados
+      .filter(function (e) {
+        return e.destaque;
+      })
+      .slice(0, 3);
+    if (list.length === 0) list = publicados.slice(0, 3);
+    if (list.length === 0) {
+      container.innerHTML = '<p class="admin-aviso">Nenhum evento publicado no momento.</p>';
+      return;
+    }
+    container.innerHTML = list
+      .map(function (e) {
+        var fd = formatarData(e.data);
+        var href = 'evento.html?id=' + encodeURIComponent(e.id || '');
+        return (
+          '<article class="card card-evento"><div class="card-evento-data"><span class="dia">' +
+          fd.dia +
+          '</span><span class="mes">' +
+          fd.mes +
+          '</span></div><h3>' +
+          escapeHtml(e.titulo || '') +
+          '</h3><p>' +
+          escapeHtml(e.descricao || '') +
+          '</p><a href="' +
+          href +
+          '" class="link-cta">Ver página do evento</a></article>'
+        );
+      })
+      .join('');
   })();
 
-  // ---- Home: notícias em destaque ----
+  // ---- Home: notícias em destaque (até 3) ----
   (function () {
     var container = document.querySelector('.noticias-grid');
     if (!container) return;
-    var list = (D.getNews() || []).filter(function (n) { return n.publicado !== false && !n.exclusivoMembros; }).slice(0, 6);
-    if (list.length === 0) return;
-    container.innerHTML = list.map(function (n) {
-      var hrefN = 'noticia.html?id=' + encodeURIComponent(String(n.id));
-      return '<article class="card card-noticia"><div class="card-noticia-img" style="background: linear-gradient(135deg, var(--vermelho), var(--amarelo-verde));"></div><div class="card-noticia-body"><span class="tag">' + escapeHtml(n.categoria || '') + '</span><h3>' + escapeHtml(n.titulo || '') + '</h3><p>' + escapeHtml(n.resumo || '') + '</p><a href="' + hrefN + '" class="link-cta">Ler mais</a></div></article>';
-    }).join('');
+    var publicadas = (D.getNews() || [])
+      .filter(function (n) {
+        return n.publicado !== false && !n.exclusivoMembros;
+      })
+      .sort(function (a, b) {
+        return (b.dataPublicacao || '').localeCompare(a.dataPublicacao || '');
+      });
+    var list = publicadas
+      .filter(function (n) {
+        return n.destaque;
+      })
+      .slice(0, 3);
+    if (list.length === 0) list = publicadas.slice(0, 3);
+    if (list.length === 0) {
+      container.innerHTML = '<p class="admin-aviso">Nenhuma notícia publicada no momento.</p>';
+      return;
+    }
+    container.innerHTML = list
+      .map(function (n) {
+        var hrefN = 'noticia.html?id=' + encodeURIComponent(String(n.id));
+        return (
+          '<article class="card card-noticia"><div class="card-noticia-img" style="background: linear-gradient(135deg, var(--vermelho), var(--verde));"></div><div class="card-noticia-body"><span class="tag">' +
+          escapeHtml(n.categoria || '') +
+          '</span><h3>' +
+          escapeHtml(n.titulo || '') +
+          '</h3><p>' +
+          escapeHtml(n.resumo || '') +
+          '</p><a href="' +
+          hrefN +
+          '" class="link-cta">Ler mais</a></div></article>'
+        );
+      })
+      .join('');
+  })();
+
+  // ---- Home: mini galeria (até 4 itens com URL) ----
+  (function () {
+    var container = document.querySelector('.galeria-mini');
+    if (!container) return;
+    var list = (D.getGallery() || [])
+      .filter(function (g) {
+        return g.url;
+      })
+      .slice(0, 4);
+    if (list.length === 0) {
+      container.innerHTML = '<p class="admin-aviso">Nenhuma imagem na galeria no momento.</p>';
+      return;
+    }
+    container.innerHTML = list
+      .map(function (g) {
+        var u = g.url;
+        var isVid = g.tipo === 'video' || /\.(mp4|webm|ogv|mov|m4v)(\?|$)/i.test(u);
+        var thumb = isVid
+          ? '<div class="galeria-thumb galeria-thumb-video" aria-hidden="true">▶</div>'
+          : '<img class="galeria-thumb" src="' + escapeAttr(u) + '" alt="' + escapeAttr(g.titulo || '') + '" loading="lazy">';
+        return '<a href="galeria.html" class="galeria-mini-item">' + thumb + '</a>';
+      })
+      .join('');
   })();
 
   // ---- Página notícias: lista de notícias ----
@@ -336,6 +416,16 @@
         a.classList.add('social-link-desativado');
         a.setAttribute('aria-disabled', 'true');
       }
+    });
+
+    document.querySelectorAll('.footer-bottom p').forEach(function (p) {
+      if (p.querySelector('a[href*="privacidade"]')) return;
+      var link = document.createElement('a');
+      link.href = 'privacidade.html';
+      link.textContent = 'Privacidade';
+      link.style.marginRight = '0.75rem';
+      p.insertBefore(document.createTextNode(' '), p.firstChild);
+      p.insertBefore(link, p.firstChild);
     });
 
     document.querySelectorAll('a[data-inst-mailto]').forEach(function (a) {

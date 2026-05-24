@@ -697,7 +697,9 @@ main {
   box-shadow: var(--sombra);
   position: relative;
 }
-.galeria-thumb { width: 100%; height: 100%; transition: transform var(--transicao), filter var(--transicao); }
+.galeria-thumb { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform var(--transicao), filter var(--transicao); }
+.galeria-thumb-video { display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--verde), var(--vermelho)); color: #fff; font-size: 1.5rem; }
+.secao-carregando { opacity: 0.85; }
 .galeria-mini-item:hover .galeria-thumb {
   transform: scale(1.05);
   filter: saturate(1.1);

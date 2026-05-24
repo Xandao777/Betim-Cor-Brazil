@@ -103,6 +103,7 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 - [x] Nova inscrição pública dispara e-mail à equipa (tipo `inscricao` em `smtp-mail.cjs`), se SMTP configurado.
 - [ ] Confirmar SMTP no Railway e testar envio real.
+- [x] Auto-resposta ao doador (`SMTP_AUTO_REPLY_DOACAO=1`) — implementado; ativar e testar em produção.
 - [ ] Auto-resposta ao visitante (`SMTP_AUTO_REPLY_CONTATO`) — ativar e testar em produção.
 
 ### 4.3 Inscrição pública
@@ -116,7 +117,7 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 ### 5.1 Feedback com `alert()`
 
 - [x] Toasts acessíveis (`js/toast.js`) no site público e mensagens principais do admin.
-- [ ] Substituir `alert()` restantes no painel admin (confirms, validações pontuais).
+- [x] Validações do painel usam toasts em vez de `alert()` (erros de gravação ainda usam `alert` se `SiteToast` falhar).
 
 ### 5.2 Estados de carregamento e erro
 
@@ -124,8 +125,9 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 5.3 Conteúdo placeholder no HTML
 
-- [ ] `index.html`, `noticias.html` e outras ainda têm **textos e cards estáticos de exemplo** que somem quando o JS carrega — flash de conteúdo incorreto.
-- [ ] **Melhoria:** skeleton loaders ou remover placeholders; só mostrar secções após `D.ready`.
+- [x] `index.html`: eventos, notícias e mini-galeria sem cards estáticos; mensagem “A carregar…” até `D.ready`.
+- [x] `publico-dados.js`: home preenche sempre (fallback sem `destaque`, até 3 itens; galeria até 4 fotos).
+- [ ] Revisar outras páginas (`noticias.html`, etc.) se ainda houver exemplos estáticos.
 
 ### 5.4 Redes sociais e contacto
 
@@ -322,6 +324,7 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 ## 13. LGPD e privacidade (P1–P2)
 
 - [x] Página `privacidade.html` (texto base — rever com assessoria jurídica se necessário).
+- [x] Link **Privacidade** no rodapé (injetado por `publico-dados.js` em todas as páginas com `.footer-bottom`).
 - [x] Consentimento obrigatório em contato, doação e inscrição pública (+ validação na API).
 - [ ] Retenção de dados: prazo para apagar mensagens antigas e inscrições.
 - [ ] Direito de acesso/eliminação — processo manual hoje; **P2:** endpoint ou fluxo no admin para exportar/apagar dados de um titular.
