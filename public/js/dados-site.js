@@ -117,26 +117,52 @@
   function putKey(key, body) {
     var headers = { 'Content-Type': 'application/json' };
     if (keyEtags[key]) headers['If-Match'] = keyEtags[key];
-    return fetch('/api/state/' + key, {
+    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timeoutId = controller
+      ? setTimeout(function () {
+          controller.abort();
+        }, 90000)
+      : null;
+    var fetchOpts = {
       method: 'PUT',
       headers: headers,
       credentials: 'include',
       body: JSON.stringify(body)
-    }).then(function (res) {
-      return res.json().then(function (j) {
-        if (res.status === 409) {
-          return bootstrap().then(function () {
-            throw new Error(
-              j.error || 'Conflito: dados atualizados noutro separador. Revise e grave de novo.'
-            );
-          });
+    };
+    if (controller) fetchOpts.signal = controller.signal;
+    return fetch('/api/state/' + key, fetchOpts)
+      .then(function (res) {
+        if (timeoutId) clearTimeout(timeoutId);
+        return res.text().then(function (text) {
+          var j = {};
+          if (text) {
+            try {
+              j = JSON.parse(text);
+            } catch (parseErr) {
+              if (!res.ok) throw new Error(res.statusText || 'Erro ao guardar');
+              throw parseErr;
+            }
+          }
+          if (res.status === 409) {
+            return bootstrap().then(function () {
+              throw new Error(
+                j.error || 'Conflito: dados atualizados noutro separador. Revise e grave de novo.'
+              );
+            });
+          }
+          if (!res.ok) throw new Error(j.error || res.statusText);
+          cache[key] = body;
+          if (j.etag) keyEtags[key] = j.etag;
+          return j;
+        });
+      })
+      .catch(function (err) {
+        if (timeoutId) clearTimeout(timeoutId);
+        if (err && err.name === 'AbortError') {
+          throw new Error('Tempo esgotado ao guardar. Verifique a ligação e tente de novo.');
         }
-        if (!res.ok) throw new Error(j.error || res.statusText);
-        cache[key] = body;
-        if (j.etag) keyEtags[key] = j.etag;
-        return j;
+        throw err;
       });
-    });
   }
 
   window.DadosSite = {

@@ -805,12 +805,21 @@ body.admin-app .admin-dashboard-resumo.card:hover {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.35);
-  z-index: 100;
-  display: flex;
+  z-index: 10000;
+  display: none;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-weight: 600;
+  pointer-events: none;
+}
+.admin-saving-overlay.is-active {
+  display: flex;
+  pointer-events: auto;
+}
+.admin-saving-overlay[hidden] {
+  display: none !important;
+  pointer-events: none;
 }
 .admin-modal {
   position: fixed;
