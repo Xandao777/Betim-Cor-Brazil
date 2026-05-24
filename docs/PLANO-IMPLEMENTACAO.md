@@ -28,12 +28,17 @@ Ordem de execução (código que o assistente pode fazer no repositório).
 | B4 | Playwright E2E mínimo (`e2e/smoke.spec.cjs`) | [x] |
 | B5 | ESLint + job CI (`npm run lint`) | [x] |
 
-## Fase C — Só configuração / conteúdo (equipa)
+## Fase C — Produção (equipa + suporte em código)
 
-| # | Item |
-|---|------|
-| C1 | SMTP, Turnstile, volume `uploads/` ou S3 |
-| C2 | Senhas demo, conteúdo institucional real |
-| C3 | Gateway de pagamento (se necessário) |
+| # | Item | Estado |
+|---|------|--------|
+| C1 | SMTP, Turnstile, volume `uploads/` ou S3 | [ ] Railway — ver `docs/FASE-C-GUIA.md` |
+| C1b | Painel: checklist produção + `POST /api/admin/test-smtp` | [x] |
+| C1c | `GET /api/health` e `GET /api/admin/status` estendidos | [x] |
+| C1d | Script `npm run check:production` | [x] |
+| C2 | Senhas demo, conteúdo institucional real | [ ] equipa no painel |
+| C2b | Avisos utilizadores demo + checklist institucional no dashboard | [x] |
+| C3 | Gateway de pagamento (se necessário) | [ ] opcional — site usa PIX + registo |
+| C3b | Texto claro na página Doar (sem cobrança automática) | [x] |
 
 *Atualizado: maio de 2026*

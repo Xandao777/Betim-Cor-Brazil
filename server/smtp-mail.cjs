@@ -397,9 +397,42 @@ async function sendPasswordResetEmail(toEmail, nome, resetLink) {
   return true;
 }
 
+/**
+ * E-mail de teste SMTP (painel admin). Não envia em NODE_ENV=test.
+ * @param {string} toEmail
+ * @param {object} [institutional]
+ */
+async function sendTestEmail(toEmail, _institutional) {
+  var to = String(toEmail || '').trim();
+  if (!validEmail(to)) return { ok: false, error: 'invalid_email' };
+  if (process.env.NODE_ENV === 'test') return { ok: false, error: 'test_env' };
+  var transport = getTransporter();
+  if (!transport) {
+    logMissingConfigOnce();
+    return { ok: false, error: 'smtp_not_configured' };
+  }
+  var from = getFromAddress();
+  if (!from) return { ok: false, error: 'no_from' };
+  var site = (process.env.SITE_PUBLIC_URL || '').trim().replace(/\/$/, '') || '(não definido)';
+  await transport.sendMail({
+    from: from,
+    to: to,
+    subject: 'Teste SMTP — Betim Cor Brazil',
+    text:
+      'Este é um e-mail de teste enviado pelo painel administrativo.\n\n' +
+      'Se recebeu esta mensagem, o SMTP no Railway está a funcionar.\n\n' +
+      'Site público: ' +
+      site +
+      '\n'
+  });
+  return { ok: true, to: to };
+}
+
 module.exports = {
   sendAdminNotification: sendAdminNotification,
   notifyAfterFormSubmit: notifyAfterFormSubmit,
   sendPasswordResetEmail: sendPasswordResetEmail,
-  smtpOptions: smtpOptions
+  sendTestEmail: sendTestEmail,
+  smtpOptions: smtpOptions,
+  resolveRecipients: resolveRecipients
 };

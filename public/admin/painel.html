@@ -60,6 +60,17 @@
         <h1>Dashboard</h1>
         <p class="admin-secao-intro">Visão geral do site e atalhos rápidos.</p>
         <p id="dashboard-status-linha" class="admin-aviso admin-status-linha"></p>
+        <div class="card admin-deploy-card" id="dashboard-deploy-wrap" style="display: none;">
+          <h3>Configuração de produção</h3>
+          <p class="admin-secao-intro">Revise SMTP, uploads e conteúdo antes de abrir o site ao público. Guia: <code>docs/FASE-C-GUIA.md</code> e <code>docs/RAILWAY-CHECKLIST.md</code>.</p>
+          <ul id="dashboard-deploy-checklist" class="admin-deploy-checklist"></ul>
+          <p id="dashboard-deploy-warnings" class="admin-aviso admin-deploy-warnings"></p>
+          <div class="form-actions admin-deploy-actions">
+            <button type="button" id="btn-test-smtp" class="btn btn-outline btn-sm">Enviar e-mail de teste SMTP</button>
+            <a href="#" id="admin-link-site-deploy" class="btn btn-outline btn-sm" target="_blank" rel="noopener">Abrir site público</a>
+          </div>
+          <p id="dashboard-deploy-test-result" class="admin-aviso" hidden></p>
+        </div>
         <div class="admin-dashboard-grid" id="admin-dashboard-cards"></div>
         <div class="admin-dashboard-duo">
           <div class="admin-form-card">

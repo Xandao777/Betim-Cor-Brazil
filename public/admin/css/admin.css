@@ -903,6 +903,32 @@ body.admin-app .admin-dashboard-resumo.card:hover {
   font-size: 0.8rem;
 }
 
+.admin-deploy-card {
+  margin-bottom: 1.25rem;
+}
+.admin-deploy-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.75rem;
+}
+.admin-deploy-checklist li {
+  padding: 0.25rem 0;
+  font-size: 0.9rem;
+}
+.admin-deploy-ok {
+  color: var(--admin-ok, #15803d);
+}
+.admin-deploy-pending {
+  color: var(--admin-muted, #6b7280);
+}
+.admin-deploy-warnings {
+  margin-bottom: 0.75rem;
+}
+.admin-deploy-actions {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .admin-audit-filters {
   display: flex;
   flex-wrap: wrap;

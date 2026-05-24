@@ -387,6 +387,73 @@
     };
     AP.atualizarDashboard();
 
+    function renderDeployStatus(st) {
+      var wrap = document.getElementById('dashboard-deploy-wrap');
+      var list = document.getElementById('dashboard-deploy-checklist');
+      var warnEl = document.getElementById('dashboard-deploy-warnings');
+      var linkDeploy = document.getElementById('admin-link-site-deploy');
+      if (!wrap || !list) return;
+      var isAdminRole = AP.isAdmin && AP.isAdmin();
+      if (!isAdminRole) return;
+      wrap.style.display = 'block';
+
+      var rows = [
+        { ok: st.smtp, label: 'SMTP (notificações e recuperação de senha)' },
+        { ok: st.turnstile, label: 'Turnstile CAPTCHA (opcional)' },
+        {
+          ok: st.uploadsPersistent,
+          label:
+            st.uploads === 's3'
+              ? 'Uploads em S3/R2 (persistente)'
+              : 'Uploads no disco (montar volume /uploads no Railway)'
+        },
+        { ok: st.siteUrl, label: 'SITE_PUBLIC_URL definido' },
+        { ok: !st.demoSeedAllowed, label: 'Seed demo desativado (ALLOW_DEMO_SEED)' }
+      ];
+      if (st.smtp) {
+        rows.push({
+          ok: st.smtpAutoReply && st.smtpAutoReply.contato,
+          label: 'Auto-resposta contato (SMTP_AUTO_REPLY_CONTATO)'
+        });
+        rows.push({
+          ok: st.smtpAutoReply && st.smtpAutoReply.doacao,
+          label: 'Auto-resposta doação (SMTP_AUTO_REPLY_DOACAO)'
+        });
+        rows.push({
+          ok: st.smtpAutoReply && st.smtpAutoReply.inscricao,
+          label: 'Comprovante inscrição (SMTP_AUTO_REPLY_INSCRICAO)'
+        });
+      }
+      if (st.institutional && st.institutional.items) {
+        st.institutional.items.forEach(function (it) {
+          rows.push({ ok: it.ok, label: 'Conteúdo: ' + it.label });
+        });
+      }
+      list.innerHTML = rows
+        .map(function (r) {
+          return (
+            '<li class="' +
+            (r.ok ? 'admin-deploy-ok' : 'admin-deploy-pending') +
+            '">' +
+            (r.ok ? '✓' : '○') +
+            ' ' +
+            escHtml(r.label) +
+            '</li>'
+          );
+        })
+        .join('');
+
+      var warnings = st.warnings || [];
+      if (warnEl) {
+        warnEl.textContent = warnings.length ? warnings.join(' ') : '';
+        warnEl.style.display = warnings.length ? 'block' : 'none';
+      }
+      if (linkDeploy && st.siteUrl) {
+        linkDeploy.href = st.siteUrl;
+        linkDeploy.style.display = '';
+      } else if (linkDeploy) linkDeploy.style.display = 'none';
+    }
+
     fetch('/api/admin/status', { credentials: 'include' })
       .then(function (r) {
         return r.ok ? r.json() : {};
@@ -402,10 +469,51 @@
             (st.backend || '—') +
             ' · SMTP: ' +
             (st.smtp ? 'configurado' : 'não configurado (e-mails desativados)') +
+            ' · Uploads: ' +
+            (st.uploads === 's3' ? 'S3/R2' : 'disco') +
             (sitePublicUrl ? ' · Site: ' + sitePublicUrl : '');
         }
+        renderDeployStatus(st);
       })
       .catch(function () {});
+
+    var btnTestSmtp = document.getElementById('btn-test-smtp');
+    if (btnTestSmtp) {
+      btnTestSmtp.addEventListener('click', function () {
+        var out = document.getElementById('dashboard-deploy-test-result');
+        btnTestSmtp.disabled = true;
+        if (out) {
+          out.hidden = false;
+          out.textContent = 'A enviar e-mail de teste…';
+        }
+        fetch('/api/admin/test-smtp', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}'
+        })
+          .then(function (r) {
+            return r.json().then(function (b) {
+              return { ok: r.ok, body: b };
+            });
+          })
+          .then(function (res) {
+            if (out) {
+              out.textContent = res.ok
+                ? 'E-mail de teste enviado para ' + (res.body.to || 'destinatário configurado') + '.'
+                : res.body.error || 'Falha ao enviar.';
+            }
+            if (res.ok && window.SiteToast) window.SiteToast.success('E-mail de teste enviado.');
+            else if (!res.ok && window.SiteToast) window.SiteToast.error(res.body.error || 'Erro SMTP');
+          })
+          .catch(function () {
+            if (out) out.textContent = 'Erro de rede ao testar SMTP.';
+          })
+          .finally(function () {
+            btnTestSmtp.disabled = false;
+          });
+      });
+    }
 
     // ---- Formulários: lida + filtro ----
     var origForm = AP.renderFormularios;

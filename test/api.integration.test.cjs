@@ -36,6 +36,8 @@ describe('API (integração, ficheiro temporário)', function () {
     var res = await request(app).get('/api/health').expect(200);
     expect(res.body.ok).toBe(true);
     expect(['file', 'postgres']).toContain(res.body.backend);
+    expect(typeof res.body.smtp).toBe('boolean');
+    expect(['disk', 's3']).toContain(res.body.uploads);
   });
 
   test('GET /index.html serve a partir de public/', async function () {
@@ -405,5 +407,26 @@ describe('API (integração, ficheiro temporário)', function () {
       .set(mutatingHeaders())
       .expect(200);
     expect(vazio.body.entries.length).toBe(0);
+  });
+
+  test('GET /api/admin/status devolve checklist de deploy', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var res = await agent.get('/api/admin/status').set(mutatingHeaders()).expect(200);
+    expect(res.body).toHaveProperty('smtp');
+    expect(res.body).toHaveProperty('turnstile');
+    expect(res.body).toHaveProperty('uploads');
+    expect(res.body.institutional).toHaveProperty('items');
+    expect(Array.isArray(res.body.institutional.items)).toBe(true);
+  });
+
+  test('POST /api/admin/test-smtp sem SMTP → 400', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    await agent
+      .post('/api/admin/test-smtp')
+      .set(mutatingHeaders())
+      .send({ to: 'teste@exemplo.org' })
+      .expect(400);
   });
 });

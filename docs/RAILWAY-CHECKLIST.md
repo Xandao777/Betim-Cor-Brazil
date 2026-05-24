@@ -2,6 +2,8 @@
 
 Use ao configurar ou rever o deploy em [Railway](https://railway.app).
 
+**Guia passo a passo (Fase C):** [FASE-C-GUIA.md](./FASE-C-GUIA.md) — inclui teste SMTP no painel admin e checklist no dashboard.
+
 ## Serviço Web (Node)
 
 | Variável | Obrigatório | Exemplo / notas |

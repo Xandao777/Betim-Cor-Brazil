@@ -290,7 +290,15 @@ app.get('/apple-touch-icon.png', function (req, res) {
 });
 
 app.get('/api/health', rateLimits.publicGet, function (req, res) {
-  res.json({ ok: true, backend: pgPool ? 'postgres' : 'file' });
+  var deployStatus = require('./server/deploy-status.cjs');
+  var brief = deployStatus.buildDeployStatus();
+  res.json({
+    ok: true,
+    backend: pgPool ? 'postgres' : 'file',
+    smtp: brief.smtp,
+    turnstile: brief.turnstile,
+    uploads: brief.uploads
+  });
 });
 
 app.get('/api/config', rateLimits.publicGet, function (req, res) {
