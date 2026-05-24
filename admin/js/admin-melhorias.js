@@ -271,6 +271,86 @@
               .join('')
           : '<li class="admin-aviso">Nenhuma doação pendente.</li>';
       }
+
+      var chartEl = document.getElementById('dashboard-inscricoes-chart');
+      if (chartEl) {
+        var mesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        var buckets = [];
+        var nowD = new Date();
+        for (var mi = 5; mi >= 0; mi--) {
+          var md = new Date(nowD.getFullYear(), nowD.getMonth() - mi, 1);
+          var mk =
+            md.getFullYear() +
+            '-' +
+            (md.getMonth() + 1 < 10 ? '0' : '') +
+            (md.getMonth() + 1);
+          buckets.push({ key: mk, label: mesNomes[md.getMonth()] + ' ' + String(md.getFullYear()).slice(2) });
+        }
+        var counts = {};
+        buckets.forEach(function (b) {
+          counts[b.key] = 0;
+        });
+        (D.getInscricoes() || []).forEach(function (ins) {
+          var ym = String(ins.dataInscricao || '').slice(0, 7);
+          if (counts[ym] !== undefined) counts[ym]++;
+        });
+        var maxC = 1;
+        buckets.forEach(function (b) {
+          if (counts[b.key] > maxC) maxC = counts[b.key];
+        });
+        chartEl.innerHTML = buckets
+          .map(function (b) {
+            var n = counts[b.key];
+            var pct = maxC ? Math.round((n / maxC) * 100) : 0;
+            return (
+              '<div class="admin-bar-col"><div class="admin-bar-track"><div class="admin-bar-fill" style="height:' +
+              pct +
+              '%" title="' +
+              n +
+              ' inscrições"></div></div><span class="admin-bar-label">' +
+              escHtml(b.label) +
+              '</span><span class="admin-bar-num">' +
+              n +
+              '</span></div>'
+            );
+          })
+          .join('');
+      }
+
+      if (isAdmin) {
+        var auditWrap = document.getElementById('dashboard-audit-wrap');
+        var auditList = document.getElementById('dashboard-audit-list');
+        if (auditWrap) auditWrap.style.display = 'block';
+        if (auditList) {
+          fetch('/api/admin/audit-log?limit=12', { credentials: 'include' })
+            .then(function (r) {
+              return r.ok ? r.json() : { entries: [] };
+            })
+            .then(function (data) {
+              var entries = data.entries || [];
+              auditList.innerHTML = entries.length
+                ? entries
+                    .map(function (e) {
+                      return (
+                        '<li><time>' +
+                        escHtml(AP.formatarDataHoraIso(e.em)) +
+                        '</time> — <strong>' +
+                        escHtml(e.usuario || '—') +
+                        '</strong> ' +
+                        escHtml(e.acao || '') +
+                        ' <em>' +
+                        escHtml(e.chave || '') +
+                        '</em></li>'
+                      );
+                    })
+                    .join('')
+                : '<li class="admin-aviso">Nenhuma alteração registada ainda.</li>';
+            })
+            .catch(function () {
+              auditList.innerHTML = '<li class="admin-aviso">Não foi possível carregar o log.</li>';
+            });
+        }
+      }
     };
     AP.atualizarDashboard();
 
@@ -324,7 +404,15 @@
               escHtml(m.assunto) +
               '</td><td class="admin-celula-texto">' +
               escHtml(m.mensagem) +
-              '</td><td class="acoes"><button type="button" class="btn btn-outline btn-sm btn-mark-read" data-col="mensagens_contato" data-id="' +
+              '</td><td class="acoes">' +
+              (m.email
+                ? '<a class="btn btn-outline btn-sm" href="mailto:' +
+                  encodeURIComponent(m.email) +
+                  '?subject=' +
+                  encodeURIComponent('Re: ' + (m.assunto || 'Contato')) +
+                  '">Responder</a> '
+                : '') +
+              '<button type="button" class="btn btn-outline btn-sm btn-mark-read" data-col="mensagens_contato" data-id="' +
               attrSafe(m.id) +
               '" data-lida="' +
               (isUnread(m) ? '1' : '0') +
@@ -750,6 +838,21 @@
       var dupB = e.target.closest('[data-dup-blog]');
       if (dupB && AP.duplicarBlog) AP.duplicarBlog(dupB.getAttribute('data-dup-blog'));
     });
+
+    var menuBtn = document.getElementById('admin-menu-toggle');
+    var sidebarEl = document.querySelector('.admin-sidebar');
+    if (menuBtn && sidebarEl) {
+      menuBtn.addEventListener('click', function () {
+        var open = sidebarEl.classList.toggle('admin-sidebar--open');
+        menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+      document.addEventListener('click', function (ev) {
+        if (!sidebarEl.classList.contains('admin-sidebar--open')) return;
+        if (sidebarEl.contains(ev.target) || menuBtn.contains(ev.target)) return;
+        sidebarEl.classList.remove('admin-sidebar--open');
+        menuBtn.setAttribute('aria-expanded', 'false');
+      });
+    }
 
     AP.publicUrl = publicUrl;
   });

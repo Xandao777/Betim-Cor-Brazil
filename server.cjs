@@ -20,6 +20,9 @@ const { getSeedDefaults, assertProductionConfig } = require('./server/seed.cjs')
 const publicFilter = require('./server/public-filter.cjs');
 const s3Storage = require('./server/s3-storage.cjs');
 const { registerAdminRoutes } = require('./server/admin-routes.cjs');
+const turnstile = require('./server/turnstile.cjs');
+const auditLog = require('./server/audit-log.cjs');
+const crypto = require('crypto');
 
 var DATA_FILE = process.env.SITE_DATA_FILE
   ? path.resolve(process.env.SITE_DATA_FILE)
@@ -37,7 +40,8 @@ var KEYS = [
   'inscricoes',
   'mensagens_contato',
   'pedidos_doacao',
-  'mensagens_membros'
+  'mensagens_membros',
+  'admin_audit_log'
 ];
 
 /** Pool PostgreSQL quando DATABASE_URL está definida (ex.: Railway Postgres plugin) */
@@ -85,6 +89,7 @@ function csrfOriginGuard(req, res, next) {
   if (req.path === '/api/auth/logout-admin' || req.path === '/api/auth/logout-member') return next();
   if (req.path === '/api/inscricao/publica') return next();
   if (req.path === '/api/form/contato' || req.path === '/api/form/doacao') return next();
+  if (req.path === '/api/auth/member-forgot' || req.path === '/api/auth/member-reset') return next();
   var hasAuthCookie = req.cookies && (req.cookies[COOKIE_ADMIN] || req.cookies[COOKIE_MEMBER]);
   if (!hasAuthCookie) return next();
   var host = req.get('Host');
@@ -228,21 +233,24 @@ var cspAtiva =
   (process.env.NODE_ENV === 'production' || process.env.FORCE_CSP === '1');
 if (cspAtiva) {
   app.use(function (req, res, next) {
-    res.setHeader(
-      'Content-Security-Policy',
-      [
-        "default-src 'self'",
-        "script-src 'self'",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: http: https:",
-        "font-src 'self' data:",
-        "connect-src 'self'",
-        "media-src 'self' blob:",
-        "frame-ancestors 'self'",
-        "base-uri 'self'",
-        "form-action 'self'"
-      ].join('; ')
-    );
+    var csp = [
+      "default-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: http: https:",
+      "font-src 'self' data:",
+      "connect-src 'self'",
+      "media-src 'self' blob:",
+      "frame-ancestors 'self'",
+      "base-uri 'self'",
+      "form-action 'self'"
+    ];
+    if (turnstile.isEnabled()) {
+      csp.push("script-src 'self' https://challenges.cloudflare.com");
+      csp.push("frame-src https://challenges.cloudflare.com");
+    } else {
+      csp.push("script-src 'self'");
+    }
+    res.setHeader('Content-Security-Policy', csp.join('; '));
     next();
   });
 }
@@ -273,15 +281,37 @@ app.get('/api/health', rateLimits.publicGet, function (req, res) {
   res.json({ ok: true, backend: pgPool ? 'postgres' : 'file' });
 });
 
+app.get('/api/config', rateLimits.publicGet, function (req, res) {
+  res.json({
+    turnstileSiteKey: turnstile.siteKey()
+  });
+});
+
 app.get('/api/public', rateLimits.publicGet, async function (req, res) {
   try {
     var state = await loadState();
+    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
     res.json(filterPublic(state));
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: String(e.message) });
   }
 });
+
+async function assertTurnstile(req, res) {
+  if (!turnstile.isEnabled()) return true;
+  var ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip;
+  var ok = await turnstile.verifyToken(req.body && req.body.turnstileToken, ip);
+  if (!ok) {
+    turnstile.failIfInvalid(res);
+    return false;
+  }
+  return true;
+}
+
+function hashMemberResetToken(token) {
+  return crypto.createHash('sha256').update(String(token)).digest('hex');
+}
 
 app.get('/api/full', async function (req, res) {
   var payload = verifyToken(req);
@@ -479,6 +509,20 @@ app.put('/api/state/:key', async function (req, res) {
       body = pwd.mergeAdminUsersSave(await loadState(), body);
     }
     await saveKey(key, body);
+    if (key !== 'admin_audit_log') {
+      try {
+        var stateAfter = await loadState();
+        var audit = auditLog.appendAudit(stateAfter, {
+          usuario: payload.usuario,
+          perfil: payload.perfil || 'editor',
+          acao: 'atualizar',
+          chave: key
+        });
+        await saveKey('admin_audit_log', audit);
+      } catch (auditErr) {
+        console.error('[audit]', auditErr.message || auditErr);
+      }
+    }
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
@@ -550,6 +594,7 @@ app.post('/api/upload/gallery/', handleGalleryUploadPost);
 
 app.post('/api/inscricao/publica', rateLimits.inscricaoPublica, async function (req, res) {
   try {
+    if (!(await assertTurnstile(req, res))) return;
     var b = req.body || {};
     var state = await loadState();
     var valid = inscricaoVal.validateInscricaoPublica(state, b);
@@ -589,6 +634,7 @@ app.post('/api/inscricao/publica', rateLimits.inscricaoPublica, async function (
 
 app.post('/api/form/contato', rateLimits.formPublico, async function (req, res) {
   try {
+    if (!(await assertTurnstile(req, res))) return;
     var b = req.body || {};
     if (b.website) return res.json({ ok: true });
     if (!hasPrivacyConsent(b)) {
@@ -634,6 +680,7 @@ app.post('/api/form/contato', rateLimits.formPublico, async function (req, res) 
 
 app.post('/api/form/doacao', rateLimits.formPublico, async function (req, res) {
   try {
+    if (!(await assertTurnstile(req, res))) return;
     var b = req.body || {};
     if (b.website) return res.json({ ok: true });
     if (!hasPrivacyConsent(b)) {
@@ -829,6 +876,119 @@ app.post('/api/member/mensagem', async function (req, res) {
   }
 });
 
+app.post('/api/member/change-password', async function (req, res) {
+  var payload = verifyToken(req);
+  if (!payload || payload.t !== 'member') return res.status(401).json({ error: 'Não autorizado' });
+  try {
+    var b = req.body || {};
+    var atual = b.senhaAtual != null ? String(b.senhaAtual) : '';
+    var nova = b.senhaNova != null ? String(b.senhaNova) : '';
+    if (!atual || !nova) return res.status(400).json({ error: 'Preencha a senha atual e a nova senha' });
+    if (nova.length < 6) return res.status(400).json({ error: 'A nova senha deve ter pelo menos 6 caracteres' });
+    var state = await loadState();
+    var members = state.members || [];
+    var ix = members.findIndex(function (m) {
+      return m.id === payload.sub;
+    });
+    if (ix < 0) return res.status(404).json({ error: 'Membro não encontrado' });
+    var m = members[ix];
+    if (!pwd.verifyPassword(atual, m.senha)) {
+      return res.status(401).json({ error: 'Senha atual incorreta' });
+    }
+    var updated = members.slice();
+    updated[ix] = Object.assign({}, m, {
+      senha: pwd.hashPassword(nova),
+      resetTokenHash: undefined,
+      resetExpires: undefined
+    });
+    await saveKey('members', updated);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: String(e.message) });
+  }
+});
+
+/** Pedido de recuperação de senha (membro). Resposta genérica por segurança. */
+app.post('/api/auth/member-forgot', rateLimits.formPublico, async function (req, res) {
+  try {
+    var b = req.body || {};
+    var usuario = clampStr(b.usuario, 120);
+    var email = clampStr(b.email, 200).toLowerCase();
+    if (!usuario && !email) {
+      return res.status(400).json({ error: 'Informe o usuário ou o e-mail cadastrado.' });
+    }
+    var state = await loadState();
+    var members = state.members || [];
+    var found = members.find(function (m) {
+      if (m.ativo === false) return false;
+      if (usuario && m.usuario === usuario) return true;
+      if (email && String(m.email || '').toLowerCase() === email) return true;
+      return false;
+    });
+    if (found && smtpMail.sendPasswordResetEmail) {
+      var token = crypto.randomBytes(32).toString('hex');
+      var expires = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      var ix = members.findIndex(function (m) {
+        return m.id === found.id;
+      });
+      if (ix >= 0) {
+        var next = members.slice();
+        next[ix] = Object.assign({}, found, {
+          resetTokenHash: hashMemberResetToken(token),
+          resetExpires: expires
+        });
+        await saveKey('members', next);
+        var base = (process.env.SITE_PUBLIC_URL || '').trim().replace(/\/$/, '');
+        var link = (base || '') + '/area-membros.html?reset=' + encodeURIComponent(token);
+        smtpMail
+          .sendPasswordResetEmail(found.email || email, found.nome || found.usuario, link)
+          .catch(function (err) {
+            console.error('[smtp]', err.message || err);
+          });
+      }
+    }
+    res.json({
+      ok: true,
+      message:
+        'Se o utilizador existir e o e-mail estiver configurado, receberá instruções em breve.'
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: String(e.message) });
+  }
+});
+
+app.post('/api/auth/member-reset', rateLimits.formPublico, async function (req, res) {
+  try {
+    var b = req.body || {};
+    var token = b.token != null ? String(b.token).trim() : '';
+    var nova = b.senhaNova != null ? String(b.senhaNova) : '';
+    if (!token || !nova) return res.status(400).json({ error: 'Token e nova senha obrigatórios' });
+    if (nova.length < 6) return res.status(400).json({ error: 'A nova senha deve ter pelo menos 6 caracteres' });
+    var hash = hashMemberResetToken(token);
+    var state = await loadState();
+    var members = state.members || [];
+    var now = new Date().toISOString();
+    var ix = members.findIndex(function (m) {
+      return m.resetTokenHash === hash && m.resetExpires && String(m.resetExpires) > now;
+    });
+    if (ix < 0) return res.status(400).json({ error: 'Link inválido ou expirado. Solicite um novo.' });
+    var m = members[ix];
+    var updated = members.slice();
+    updated[ix] = Object.assign({}, m, {
+      senha: pwd.hashPassword(nova),
+      resetTokenHash: undefined,
+      resetExpires: undefined
+    });
+    await saveKey('members', updated);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: String(e.message) });
+  }
+});
+
 app.patch('/api/member/perfil', async function (req, res) {
   var payload = verifyToken(req);
   if (!payload || payload.t !== 'member') return res.status(401).json({ error: 'Não autorizado' });
@@ -896,6 +1056,16 @@ app.use(function (req, res, next) {
   }
   next();
 });
+
+/** PDFs em documentos internos: download em vez de abrir inline no browser. */
+app.use('/uploads/documents', function (req, res, next) {
+  if ((req.path || '').toLowerCase().endsWith('.pdf')) {
+    res.setHeader('Content-Disposition', 'attachment');
+  }
+  next();
+});
+app.use('/uploads/documents', express.static(path.join(__dirname, 'uploads', 'documents')));
+app.use('/uploads/gallery', express.static(path.join(__dirname, 'uploads', 'gallery')));
 
 app.use(express.static(path.join(__dirname), {
   index: ['index.html'],

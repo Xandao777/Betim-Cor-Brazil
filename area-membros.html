@@ -61,9 +61,37 @@
               <button type="submit" class="btn btn-primary">Entrar</button>
             </div>
           </form>
-          <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--cinza-600);">
-            Esqueceu a senha? Entre em <a href="contato.html">contato</a> com a associação para recuperar.
-          </p>
+          <details class="membro-esqueci-senha" style="margin-top: 1rem;">
+            <summary style="cursor: pointer; color: var(--verde); font-weight: 600;">Esqueci a senha</summary>
+            <form id="form-esqueci-senha" class="admin-form-card" style="margin-top: 0.75rem;" aria-label="Recuperar senha">
+              <p class="admin-aviso">Informe o usuário ou o e-mail cadastrado. Se o SMTP estiver configurado, receberá um link por e-mail.</p>
+              <div class="form-group">
+                <label for="esqueci-usuario">Usuário</label>
+                <input type="text" id="esqueci-usuario" autocomplete="username">
+              </div>
+              <div class="form-group">
+                <label for="esqueci-email">E-mail</label>
+                <input type="email" id="esqueci-email" autocomplete="email">
+              </div>
+              <button type="submit" class="btn btn-outline">Enviar link de recuperação</button>
+              <p id="esqueci-msg" class="admin-aviso" role="status" style="display: none;"></p>
+            </form>
+          </details>
+          <div id="bloco-reset-senha" class="login-box" style="display: none; margin-top: 1rem;">
+            <h2>Nova senha</h2>
+            <form id="form-reset-senha" aria-label="Definir nova senha">
+              <div class="form-group">
+                <label for="reset-nova-senha">Nova senha *</label>
+                <input type="password" id="reset-nova-senha" minlength="6" required autocomplete="new-password">
+              </div>
+              <div class="form-group">
+                <label for="reset-nova-senha2">Confirmar senha *</label>
+                <input type="password" id="reset-nova-senha2" minlength="6" required autocomplete="new-password">
+              </div>
+              <button type="submit" class="btn btn-primary">Guardar nova senha</button>
+              <p id="reset-msg" class="login-erro" role="alert" style="display: none;"></p>
+            </form>
+          </div>
         </div>
         <section class="section" aria-labelledby="titulo-oque">
           <h2 id="titulo-oque" class="section-title">O que você encontra</h2>
@@ -125,7 +153,7 @@
             <!-- Meu Perfil -->
             <section id="secao-perfil" class="membro-secao">
               <h2 class="section-title">Meu Perfil</h2>
-              <p class="admin-aviso">Visualize e edite suas informações básicas. Para alterar senha, entre em contato com a associação.</p>
+              <p class="admin-aviso">Visualize e edite suas informações básicas.</p>
               <div class="admin-form-card membro-card" style="max-width: 480px;">
                 <form id="form-perfil">
                   <div class="form-group">
@@ -147,6 +175,18 @@
                   <div class="form-actions">
                     <button type="submit" class="btn btn-primary">Salvar alterações</button>
                   </div>
+                </form>
+                <h3 style="margin-top: 1.5rem;">Alterar senha</h3>
+                <form id="form-senha-membro">
+                  <div class="form-group">
+                    <label for="senha-atual-membro">Senha atual *</label>
+                    <input type="password" id="senha-atual-membro" required autocomplete="current-password">
+                  </div>
+                  <div class="form-group">
+                    <label for="senha-nova-membro">Nova senha *</label>
+                    <input type="password" id="senha-nova-membro" minlength="6" required autocomplete="new-password">
+                  </div>
+                  <button type="submit" class="btn btn-outline">Atualizar senha</button>
                 </form>
               </div>
             </section>

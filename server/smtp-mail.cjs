@@ -376,8 +376,30 @@ async function notifyAfterFormSubmit(params) {
   }
 }
 
+async function sendPasswordResetEmail(toEmail, nome, resetLink) {
+  var to = String(toEmail || '').trim();
+  if (!to || !resetLink) return false;
+  var t = getTransporter();
+  if (!t) {
+    logMissingConfigOnce();
+    return false;
+  }
+  var from = (process.env.SMTP_FROM || process.env.SMTP_USER || '').trim();
+  var subject = 'Redefinir senha — Área de membros';
+  var text =
+    'Olá' +
+    (nome ? ' ' + nome : '') +
+    ',\n\nRecebemos um pedido para redefinir a sua senha na área de membros.\n\n' +
+    'Abra o link abaixo (válido por 1 hora):\n' +
+    resetLink +
+    '\n\nSe não solicitou, ignore este e-mail.\n';
+  await t.sendMail({ from: from, to: to, subject: subject, text: text });
+  return true;
+}
+
 module.exports = {
   sendAdminNotification: sendAdminNotification,
   notifyAfterFormSubmit: notifyAfterFormSubmit,
+  sendPasswordResetEmail: sendPasswordResetEmail,
   smtpOptions: smtpOptions
 };

@@ -432,6 +432,125 @@
       });
     }
 
+    var paramsReset = new URLSearchParams(window.location.search);
+    var resetToken = paramsReset.get('reset');
+    if (resetToken) {
+      var blocoReset = document.getElementById('bloco-reset-senha');
+      if (blocoReset) {
+        blocoReset.style.display = 'block';
+        blocoReset.setAttribute('data-token', resetToken);
+      }
+    }
+
+    var formEsqueci = document.getElementById('form-esqueci-senha');
+    if (formEsqueci) {
+      formEsqueci.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var msg = document.getElementById('esqueci-msg');
+        fetch('/api/auth/member-forgot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            usuario: document.getElementById('esqueci-usuario').value.trim(),
+            email: document.getElementById('esqueci-email').value.trim()
+          })
+        })
+          .then(function (r) {
+            return r.json().then(function (data) {
+              if (!r.ok) throw new Error(data.error || 'Falha');
+              return data;
+            });
+          })
+          .then(function (data) {
+            if (msg) {
+              msg.textContent = data.message || 'Pedido enviado.';
+              msg.style.display = 'block';
+            }
+            formEsqueci.reset();
+          })
+          .catch(function (err) {
+            if (msg) {
+              msg.textContent = err.message || 'Não foi possível enviar.';
+              msg.style.display = 'block';
+            }
+          });
+      });
+    }
+
+    var formReset = document.getElementById('form-reset-senha');
+    if (formReset) {
+      formReset.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var blocoR = document.getElementById('bloco-reset-senha');
+        var token = (blocoR && blocoR.getAttribute('data-token')) || resetToken || '';
+        var s1 = document.getElementById('reset-nova-senha').value;
+        var s2 = document.getElementById('reset-nova-senha2').value;
+        var errEl = document.getElementById('reset-msg');
+        if (s1 !== s2) {
+          if (errEl) {
+            errEl.textContent = 'As senhas não coincidem.';
+            errEl.style.display = 'block';
+          }
+          return;
+        }
+        fetch('/api/auth/member-reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ token: token, senhaNova: s1 })
+        })
+          .then(function (r) {
+            return r.json().then(function (data) {
+              if (!r.ok) throw new Error(data.error || 'Falha');
+              return data;
+            });
+          })
+          .then(function () {
+            if (errEl) errEl.style.display = 'none';
+            alert('Senha atualizada. Faça login com a nova senha.');
+            window.location.href = 'area-membros.html';
+          })
+          .catch(function (err) {
+            if (errEl) {
+              errEl.textContent = err.message || 'Link inválido ou expirado.';
+              errEl.style.display = 'block';
+            }
+          });
+      });
+    }
+
+    var formSenha = document.getElementById('form-senha-membro');
+    if (formSenha) {
+      formSenha.addEventListener('submit', function (e) {
+        e.preventDefault();
+        fetch('/api/member/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            senhaAtual: document.getElementById('senha-atual-membro').value,
+            senhaNova: document.getElementById('senha-nova-membro').value
+          })
+        })
+          .then(function (r) {
+            return r.json().then(function (data) {
+              if (!r.ok) throw new Error(data.error || 'Falha');
+              return data;
+            });
+          })
+          .then(function () {
+            formSenha.reset();
+            if (window.SiteToast) window.SiteToast.success('Senha atualizada.');
+            else alert('Senha atualizada.');
+          })
+          .catch(function (err) {
+            if (window.SiteToast) window.SiteToast.error(err.message || 'Não foi possível alterar a senha.');
+            else alert(err.message || 'Não foi possível alterar a senha.');
+          });
+      });
+    }
+
     preencherDashboard();
     preencherDocumentos();
     preencherRelatorios();

@@ -99,6 +99,19 @@ function registerAdminRoutes(app, deps) {
     }
   });
 
+  /** Últimas entradas do log de auditoria (só admin). */
+  app.get('/api/admin/audit-log', requireAdmin, requireAdminRole, async function (req, res) {
+    try {
+      var state = await loadState();
+      var list = state.admin_audit_log || [];
+      var limit = Math.min(parseInt(req.query.limit, 10) || 80, 200);
+      res.json({ entries: list.slice(0, limit) });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: String(e.message) });
+    }
+  });
+
   /** Estado SMTP (sem expor credenciais). */
   app.get('/api/admin/status', requireAdmin, function (req, res) {
     var smtpOk = !!(

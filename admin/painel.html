@@ -19,7 +19,7 @@
           <span class="admin-sidebar-title">Painel admin</span>
         </div>
       </div>
-      <nav class="admin-sidebar-nav" aria-label="Secções">
+      <nav class="admin-sidebar-nav" id="admin-sidebar-nav" aria-label="Secções">
         <a href="#" data-secao="dashboard" class="ativo">Dashboard</a>
         <a href="#" data-secao="formularios">Formulários recebidos</a>
         <a href="#" data-secao="eventos">Eventos</a>
@@ -38,6 +38,7 @@
     </aside>
     <div class="admin-conteudo">
       <header class="admin-topbar">
+        <button type="button" class="admin-menu-toggle" id="admin-menu-toggle" aria-expanded="false" aria-controls="admin-sidebar-nav">Menu</button>
         <div class="admin-topbar-left">
           <label class="admin-search-wrap">
             <span class="sr-only">Pesquisar no painel</span>
@@ -82,6 +83,14 @@
             <li><span class="admin-dashboard-label">Mensagens de membros</span> <strong id="dashboard-membro-msg-count">—</strong> <span id="dashboard-membro-novas" class="admin-badge-inline"></span></li>
             <li><span class="admin-dashboard-label">Inscrições em eventos</span> <strong id="dashboard-inscricoes-count">—</strong></li>
           </ul>
+        </div>
+        <div class="admin-dashboard-chart card" id="dashboard-chart-wrap">
+          <h3>Inscrições por mês (últimos 6 meses)</h3>
+          <div id="dashboard-inscricoes-chart" class="admin-bar-chart" role="img" aria-label="Gráfico de barras de inscrições"></div>
+        </div>
+        <div class="admin-dashboard-audit card" id="dashboard-audit-wrap" style="display: none;">
+          <h3>Auditoria recente</h3>
+          <ul id="dashboard-audit-list" class="admin-audit-list"></ul>
         </div>
       </section>
 
@@ -363,6 +372,10 @@
               <label for="galeria-categoria">Categoria / Evento</label>
               <input type="text" id="galeria-categoria">
             </div>
+            <div class="form-group">
+              <label for="galeria-alt">Texto alternativo (acessibilidade) *</label>
+              <input type="text" id="galeria-alt" required placeholder="Descreva a imagem para leitores de ecrã">
+            </div>
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">Salvar</button>
               <button type="button" id="galeria-cancelar" class="btn btn-outline">Cancelar</button>
@@ -372,7 +385,7 @@
         <p><button type="button" id="btn-nova-midia" class="btn btn-primary">+ Nova mídia</button></p>
         <div class="admin-tabela-wrapper">
           <table class="admin-tabela" id="tabela-galeria">
-            <thead><tr><th>Título</th><th>Tipo</th><th>Categoria</th><th class="acoes">Ações</th></tr></thead>
+            <thead><tr><th>Ordem</th><th>Título</th><th>Tipo</th><th>Categoria</th><th class="acoes">Ações</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>

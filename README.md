@@ -94,7 +94,9 @@ O `server.cjs` usa **Express**: arquivos estáticos + rotas `/api/*` na porta `P
 
 Variáveis recomendadas no Railway: `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV=production`, `SITE_PUBLIC_URL` (URL pública do site, para links em e-mails). Não use `ALLOW_DEMO_SEED=1` em produção após criar contas reais.
 
-**SMTP (opcional):** `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_NOTIFY_TO`. Respostas automáticas: `SMTP_AUTO_REPLY_CONTATO=1`, `SMTP_AUTO_REPLY_DOACAO=1`, `SMTP_AUTO_REPLY_INSCRICAO=1`. Ver `.env.example`.
+**SMTP (opcional):** `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_NOTIFY_TO`. Respostas automáticas: `SMTP_AUTO_REPLY_CONTATO=1`, `SMTP_AUTO_REPLY_DOACAO=1`, `SMTP_AUTO_REPLY_INSCRICAO=1`. Recuperação de senha de membros usa o mesmo SMTP. Ver `.env.example`.
+
+**CAPTCHA Turnstile (opcional):** `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY` (painel Cloudflare, gratuito). Ativa verificação em contato, doação e inscrição em eventos. Sem estas variáveis, os formulários funcionam como antes.
 
 **Uploads persistentes (opcional):** por defeito os ficheiros ficam em `uploads/` no disco do contentor (podem perder-se no redeploy). Para produção com muitas imagens/PDF, configure **S3 ou Cloudflare R2** (`S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_URL_BASE`, etc. — ver `.env.example`).
 
@@ -125,6 +127,8 @@ O projeto **já inclui** o servidor Node (**Express**) e a **API REST** (`/api/.
 **Doação:** regista intenção (sem gateway de cartão). Gateway online: ver `docs/MELHORIAS.md`.
 
 ## SEO e acessibilidade
+
+Páginas `evento.html`, `noticia.html` e `blog-post.html` atualizam título, Open Graph e URL canónica após carregar os dados (`js/seo-meta.js`).
 
 - Meta description e palavras-chave nas páginas.
 - Uso de títulos em ordem (h1, h2, h3).

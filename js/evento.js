@@ -76,19 +76,19 @@
 
     var gratuitoHtml = '<p class="detalhe-evento-preco">Evento gratuito</p>';
 
-    document.title = (ev.titulo || 'Evento') + ' | Associação';
-    var ogImg = document.querySelector('meta[property="og:image"]');
-    if (!ogImg && ev.imagemCapa) {
-      ogImg = document.createElement('meta');
-      ogImg.setAttribute('property', 'og:image');
-      document.head.appendChild(ogImg);
+    var pageUrl = 'evento.html?id=' + encodeURIComponent(ev.id || '');
+    if (window.SiteSeo) {
+      window.SiteSeo.apply({
+        title: (ev.titulo || 'Evento') + ' | Associação',
+        description: (ev.descricao || '').slice(0, 200) || 'Evento da associação.',
+        ogTitle: ev.titulo || 'Evento',
+        image: ev.imagemCapa || '',
+        url: pageUrl,
+        ogType: 'article'
+      });
+    } else {
+      document.title = (ev.titulo || 'Evento') + ' | Associação';
     }
-    if (ogImg) {
-      if (ev.imagemCapa) ogImg.setAttribute('content', ev.imagemCapa);
-      else ogImg.removeAttribute('content');
-    }
-    var ogTitle = document.querySelector('meta[property="og:title"]');
-    if (ogTitle) ogTitle.setAttribute('content', ev.titulo || 'Evento');
 
     sec.innerHTML =
       '<section class="evento-hero">' +
@@ -135,13 +135,22 @@
       var btnLateral = document.querySelector('.btn-lateral-inscricao');
       var secInscricao = document.getElementById('evento-inscricao');
       var boxInscricao = secInscricao && secInscricao.querySelector('.inscricao-box');
+      var focusBeforeModal = null;
       function abrirInscricao() {
         if (secInscricao) {
+          focusBeforeModal = document.activeElement;
           secInscricao.classList.add('aberto');
           secInscricao.setAttribute('aria-hidden', 'false');
         }
-        if (boxInscricao) boxInscricao.style.display = 'block';
+        if (boxInscricao) {
+          boxInscricao.style.display = 'block';
+          var first = boxInscricao.querySelector('input:not([type="hidden"]):not([readonly]), textarea, button');
+          if (first) first.focus();
+        }
       }
+      window._eventoFocusBeforeModal = function () {
+        return focusBeforeModal;
+      };
       if (btnHero) btnHero.addEventListener('click', abrirInscricao);
       if (btnLateral) btnLateral.addEventListener('click', abrirInscricao);
     } else {
@@ -165,6 +174,7 @@
     var dados = document.getElementById('comprovante-dados');
     var btnNova = document.getElementById('btn-nova-inscricao');
     var modal = document.getElementById('evento-inscricao');
+    var boxInscricao = modal && modal.querySelector('.inscricao-box');
     var btnFechar = document.getElementById('btn-fechar-inscricao');
 
     function mostrarComprovante(info) {
@@ -218,8 +228,20 @@
           website: hp ? hp.value : '',
           consentimento: true
         };
-        var p = D.addInscricaoPublica ? D.addInscricaoPublica(payload) : Promise.reject();
-        p.then(function () {
+        var prep =
+          window.TurnstileForms && window.TurnstileForms.ready
+            ? window.TurnstileForms.ready
+            : Promise.resolve();
+        prep
+          .then(function () {
+            if (window.TurnstileForms && window.TurnstileForms.isRequired()) {
+              var tok = window.TurnstileForms.getToken();
+              if (!tok) throw new Error('Confirme a verificação de segurança (CAPTCHA).');
+              payload.turnstileToken = tok;
+            }
+            return D.addInscricaoPublica ? D.addInscricaoPublica(payload) : Promise.reject();
+          })
+          .then(function () {
           mostrarComprovante({
           eventoTitulo: ev.titulo || '',
           eventoData: ev.data || '',
@@ -230,10 +252,12 @@
           telefone: telefone,
           dataInscricao: hoje
         });
-        }).catch(function (err) {
-          if (window.SiteToast) window.SiteToast.error(err.message || 'Não foi possível registrar a inscrição.');
-          else alert(err.message || 'Não foi possível registrar a inscrição.');
-        });
+          if (window.TurnstileForms) window.TurnstileForms.reset();
+        })
+          .catch(function (err) {
+            if (window.SiteToast) window.SiteToast.error(err.message || 'Não foi possível registrar a inscrição.');
+            else alert(err.message || 'Não foi possível registrar a inscrição.');
+          });
       });
     }
 
@@ -254,10 +278,30 @@
         form.style.display = 'block';
         var bp = document.getElementById('btn-imprimir-comprovante');
         if (bp) bp.style.display = 'none';
+        var prev = window._eventoFocusBeforeModal && window._eventoFocusBeforeModal();
+        if (prev && typeof prev.focus === 'function') prev.focus();
       }
       btnFechar.addEventListener('click', fecharModal);
-      document.addEventListener('keydown', function (ev) {
-        if (ev.key === 'Escape' && modal.classList.contains('aberto')) fecharModal();
+      modal.addEventListener('click', function (evClick) {
+        if (evClick.target === modal) fecharModal();
+      });
+      document.addEventListener('keydown', function (evKey) {
+        if (evKey.key === 'Escape' && modal.classList.contains('aberto')) fecharModal();
+        if (evKey.key === 'Tab' && modal.classList.contains('aberto') && boxInscricao) {
+          var focusable = boxInscricao.querySelectorAll(
+            'button:not([disabled]), input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled]), a[href]'
+          );
+          if (focusable.length < 2) return;
+          var first = focusable[0];
+          var last = focusable[focusable.length - 1];
+          if (evKey.shiftKey && document.activeElement === first) {
+            evKey.preventDefault();
+            last.focus();
+          } else if (!evKey.shiftKey && document.activeElement === last) {
+            evKey.preventDefault();
+            first.focus();
+          }
+        }
       });
     }
 

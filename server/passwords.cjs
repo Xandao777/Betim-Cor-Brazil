@@ -43,6 +43,8 @@ function stripPasswordsFromState(state) {
     s.members = s.members.map(function (m) {
       var o = Object.assign({}, m);
       o.senha = '';
+      delete o.resetTokenHash;
+      delete o.resetExpires;
       return o;
     });
   }

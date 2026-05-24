@@ -207,7 +207,7 @@
         var isVid = g.tipo === 'video' || /\.(mp4|webm|ogv|mov|m4v)(\?|$)/i.test(u);
         var thumb = isVid
           ? '<div class="galeria-thumb galeria-thumb-video" aria-hidden="true">▶</div>'
-          : '<img class="galeria-thumb" src="' + escapeAttr(u) + '" alt="' + escapeAttr(g.titulo || '') + '" loading="lazy">';
+          : '<img class="galeria-thumb" src="' + escapeAttr(u) + '" alt="' + escapeAttr(g.altText || g.titulo || '') + '" loading="lazy">';
         return '<a href="galeria.html" class="galeria-mini-item">' + thumb + '</a>';
       })
       .join('');
@@ -292,9 +292,19 @@
       '<header class="blog-post-cabecalho"><p class="tag">' + escapeHtml(b.categoria || '') + '</p><h1>' + escapeHtml(b.titulo || '') + '</h1><p class="meta blog-post-meta">' + meta + '</p></header>' +
       '<div class="blog-post-texto">' + conteudo + '</div>' +
       '<p class="section-cta"><a href="blog.html" class="btn btn-outline">← Voltar ao blog</a></p>';
-    try {
-      document.title = (b.titulo || 'Post') + ' | Blog | Associação';
-    } catch (e) {}
+    if (window.SiteSeo) {
+      window.SiteSeo.apply({
+        title: (b.titulo || 'Post') + ' | Blog | Associação',
+        description: (b.resumo || b.conteudo || '').slice(0, 200),
+        ogTitle: b.titulo || 'Post',
+        url: 'blog-post.html?id=' + encodeURIComponent(String(b.id)),
+        ogType: 'article'
+      });
+    } else {
+      try {
+        document.title = (b.titulo || 'Post') + ' | Blog | Associação';
+      } catch (e) {}
+    }
   })();
 
   // ---- Página notícia individual (noticia.html?id=) ----
@@ -341,9 +351,20 @@
       '<header class="blog-post-cabecalho"><p class="tag">' + escapeHtml(n.categoria || '') + '</p><h1>' + escapeHtml(n.titulo || '') + '</h1><p class="meta blog-post-meta">' + meta + '</p></header>' +
       '<div class="blog-post-texto">' + conteudo + '</div>' +
       '<p class="section-cta"><a href="noticias.html" class="btn btn-outline">← Voltar às notícias</a></p>';
-    try {
-      document.title = (n.titulo || 'Notícia') + ' | Notícias | Associação';
-    } catch (e) {}
+    if (window.SiteSeo) {
+      window.SiteSeo.apply({
+        title: (n.titulo || 'Notícia') + ' | Notícias | Associação',
+        description: (n.resumo || n.conteudo || '').slice(0, 200),
+        ogTitle: n.titulo || 'Notícia',
+        image: (n.imagemCapa || '').trim(),
+        url: 'noticia.html?id=' + encodeURIComponent(String(n.id)),
+        ogType: 'article'
+      });
+    } else {
+      try {
+        document.title = (n.titulo || 'Notícia') + ' | Notícias | Associação';
+      } catch (e) {}
+    }
   })();
 
   // ---- Galeria ----
@@ -367,7 +388,7 @@
       if (g.tipo === 'video' && u) {
         inner = '<video src="' + escapeAttr(u) + '" controls playsinline preload="metadata" title="' + escapeAttr(g.titulo || '') + '"></video>';
       } else if (u) {
-        inner = '<img src="' + escapeAttr(u) + '" alt="' + escapeAttr(g.titulo || '') + '" loading="lazy">';
+        inner = '<img src="' + escapeAttr(u) + '" alt="' + escapeAttr(g.altText || g.titulo || '') + '" loading="lazy">';
       } else {
         inner = '<div class="galeria-placeholder">' + escapeHtml(g.titulo || '') + '</div>';
       }

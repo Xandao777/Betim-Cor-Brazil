@@ -16,7 +16,7 @@ Plano de evolução do admin para nível profissional, **100% compatível com Ra
 | [x] Lista de **próximos eventos** e **doações pendentes** | |
 | [x] Link **Ver site público** e estado da API (`/api/health`) | |
 | [x] **Pesquisa global** (eventos, notícias, membros, inscrições) | |
-| [ ] Gráficos de inscrições por mês (fase 2) | |
+| [x] Gráfico de inscrições por mês (últimos 6 meses) | |
 
 ---
 
@@ -30,7 +30,7 @@ Plano de evolução do admin para nível profissional, **100% compatível com Ra
 | [x] Exportar **CSV** (contato e doação) | |
 | [x] Confirmação antes de **limpar tudo** (com aviso de backup) | |
 | [x] Estado da doação (já existia) | |
-| [ ] Responder por e-mail direto do painel (mailto:) | |
+| [x] **Responder por e-mail** (mailto:) no contato | |
 
 ---
 
@@ -66,8 +66,8 @@ Plano de evolução do admin para nível profissional, **100% compatível com Ra
 |------|--------|
 | [x] Upload de **logo** do patrocinador (ficheiro) | |
 | [x] Pré-visualização de mídia na tabela da galeria | |
-| [ ] Ordenar galeria (subir/descer) | |
-| [ ] Alt text obrigatório (acessibilidade) | |
+| [x] Ordenar galeria (subir / descer) | |
+| [x] **Alt text** obrigatório (acessibilidade) | |
 
 ---
 
@@ -89,7 +89,7 @@ Plano de evolução do admin para nível profissional, **100% compatível com Ra
 | [x] Secção **Utilizadores do painel** (só perfil admin) | |
 | [x] Criar / editar / desativar admin e editor | |
 | [x] **Alterar minha senha** (admin e editor) | |
-| [ ] Recuperação de senha por e-mail (fase 2) | |
+| [x] Recuperação de senha por e-mail (membros, via SMTP) | |
 
 ---
 
@@ -102,8 +102,8 @@ Plano de evolução do admin para nível profissional, **100% compatível com Ra
 | [x] API `POST /api/admin/change-password` | |
 | [x] Toasts e modal de confirmação (sem `alert`) | |
 | [x] Indicador SMTP configurado no dashboard | |
-| [ ] Volume Railway para `uploads/` (config manual) | |
-| [ ] Log de auditoria “quem alterou o quê” | |
+| [ ] Volume Railway para `uploads/` (config manual — ver README) | |
+| [x] Log de auditoria “quem alterou o quê” | |
 
 ---
 
@@ -114,18 +114,17 @@ Plano de evolução do admin para nível profissional, **100% compatível com Ra
 | [x] Topbar com utilizador, pesquisa e atalhos | |
 | [x] Modal de confirmação acessível | |
 | [x] Overlay “A guardar…” em gravações | |
-| [ ] Menu mobile colapsável melhorado | |
+| [x] Menu mobile colapsável (botão Menu + overlay) | |
 | [ ] Tema escuro | |
 
 ---
 
-## Ordem de implementação (esta entrega)
+## CAPTCHA (site público)
 
-1. APIs admin (backup, senha, marcar lida)  
-2. `admin-melhorias.js` + CSS + HTML dashboard/topbar  
-3. Capa notícias + melhorias tabelas (duplicar, ver site, inscritos)  
-4. Patrocinador upload + pesquisa inscrições  
-5. Testes e documentação  
+| Item | Estado |
+|------|--------|
+| [x] Cloudflare Turnstile opcional em contato, doação e inscrição | |
+| [ ] Ativar no Railway: `TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY` | |
 
 ---
 

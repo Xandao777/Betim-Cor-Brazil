@@ -33,6 +33,21 @@
     });
   }
 
+  function turnstileReady() {
+    return window.TurnstileForms && window.TurnstileForms.ready
+      ? window.TurnstileForms.ready
+      : Promise.resolve();
+  }
+
+  function appendTurnstile(body) {
+    if (window.TurnstileForms && window.TurnstileForms.isRequired()) {
+      var tok = window.TurnstileForms.getToken();
+      if (!tok) throw new Error('Confirme a verificação de segurança (CAPTCHA).');
+      body.turnstileToken = tok;
+    }
+    return body;
+  }
+
   // Formulário de contato
   var formContato = document.getElementById('form-contato');
   if (formContato) {
@@ -46,19 +61,25 @@
       var btn = formContato.querySelector('button[type="submit"]');
       if (btn) btn.disabled = true;
       var hp = document.getElementById('website-contato');
-      fetch('/api/form/contato', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          nome: document.getElementById('nome').value,
-          email: document.getElementById('email').value,
-          assunto: document.getElementById('assunto').value,
-          mensagem: document.getElementById('mensagem').value,
-          consentimento: true,
-          website: hp ? hp.value : ''
+      turnstileReady()
+        .then(function () {
+          return appendTurnstile({
+            nome: document.getElementById('nome').value,
+            email: document.getElementById('email').value,
+            assunto: document.getElementById('assunto').value,
+            mensagem: document.getElementById('mensagem').value,
+            consentimento: true,
+            website: hp ? hp.value : ''
+          });
         })
-      })
+        .then(function (payload) {
+          return fetch('/api/form/contato', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload)
+          });
+        })
         .then(function (r) {
           return r.json().then(function (data) {
             if (!r.ok) throw new Error(data.error || 'Falha ao enviar');
@@ -68,6 +89,7 @@
         .then(function () {
           toastOk('Mensagem enviada com sucesso! Entraremos em contato em breve.');
           formContato.reset();
+          if (window.TurnstileForms) window.TurnstileForms.reset();
         })
         .catch(function (err) {
           toastErr(err.message || 'Não foi possível enviar. Tente novamente ou use o e-mail da página.');
@@ -189,19 +211,25 @@
       var btn = formDoacao.querySelector('button[type="submit"]');
       if (btn) btn.disabled = true;
       var hp = document.getElementById('website-doacao');
-      fetch('/api/form/doacao', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          nome: document.getElementById('nome-doacao').value,
-          email: document.getElementById('email-doacao').value,
-          valor: selected.value,
-          valor_outro: valorOutro ? valorOutro.value : '',
-          consentimento: true,
-          website: hp ? hp.value : ''
+      turnstileReady()
+        .then(function () {
+          return appendTurnstile({
+            nome: document.getElementById('nome-doacao').value,
+            email: document.getElementById('email-doacao').value,
+            valor: selected.value,
+            valor_outro: valorOutro ? valorOutro.value : '',
+            consentimento: true,
+            website: hp ? hp.value : ''
+          });
         })
-      })
+        .then(function (payload) {
+          return fetch('/api/form/doacao', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload)
+          });
+        })
         .then(function (r) {
           return r.json().then(function (data) {
             if (!r.ok) throw new Error(data.error || 'Falha ao registar');
@@ -212,6 +240,7 @@
           toastOk('Obrigado! O seu pedido foi registado. Use o PIX acima ou aguarde contacto por e-mail.');
           formDoacao.reset();
           grupoOutro.style.display = 'none';
+          if (window.TurnstileForms) window.TurnstileForms.reset();
         })
         .catch(function (err) {
           toastErr(err.message || 'Não foi possível enviar. Tente novamente.');
