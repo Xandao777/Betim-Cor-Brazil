@@ -388,6 +388,18 @@ app.post('/api/auth/member', rateLimits.login, async function (req, res) {
   }
 });
 
+/** Sempre 200 — evita 401 no console em visitantes anónimos ao detetar sessão. */
+app.get('/api/auth/status', rateLimits.publicGet, function (req, res) {
+  var payload = verifyToken(req);
+  if (payload && payload.t === 'admin') {
+    return res.json({ kind: 'admin' });
+  }
+  if (payload && payload.t === 'member') {
+    return res.json({ kind: 'member' });
+  }
+  res.json({ kind: null });
+});
+
 app.get('/api/auth/admin/session', function (req, res) {
   var payload = verifyToken(req);
   if (!payload || payload.t !== 'admin') {

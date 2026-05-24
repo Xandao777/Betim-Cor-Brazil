@@ -54,23 +54,30 @@
     var pub = await r.json();
     applyPublic(pub);
 
-    var r2 = await fetch('/api/full', { credentials: 'include' });
-    if (r2.ok) {
-      applyFull(await r2.json());
-      sessionKind = 'admin';
+    var rs = await fetch('/api/auth/status', { credentials: 'include' });
+    if (!rs.ok) return;
+    var status = await rs.json();
+    if (status.kind === 'admin') {
+      var r2 = await fetch('/api/full', { credentials: 'include' });
+      if (r2.ok) {
+        applyFull(await r2.json());
+        sessionKind = 'admin';
+      }
       return;
     }
-    var r3 = await fetch('/api/member-bootstrap', { credentials: 'include' });
-    if (r3.ok) {
-      applyFull(await r3.json());
-      sessionKind = 'member';
-      var mems = cache.members || [];
-      if (mems.length) {
-        try {
-          sessionStorage.setItem('membroUsuario', mems[0].usuario || '');
-          sessionStorage.setItem('membroNome', mems[0].nome || '');
-          sessionStorage.setItem('membroLogado', 'true');
-        } catch (e) {}
+    if (status.kind === 'member') {
+      var r3 = await fetch('/api/member-bootstrap', { credentials: 'include' });
+      if (r3.ok) {
+        applyFull(await r3.json());
+        sessionKind = 'member';
+        var mems = cache.members || [];
+        if (mems.length) {
+          try {
+            sessionStorage.setItem('membroUsuario', mems[0].usuario || '');
+            sessionStorage.setItem('membroNome', mems[0].nome || '');
+            sessionStorage.setItem('membroLogado', 'true');
+          } catch (e) {}
+        }
       }
     }
   }
