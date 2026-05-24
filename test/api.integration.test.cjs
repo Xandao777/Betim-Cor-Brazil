@@ -353,4 +353,57 @@ describe('API (integração, ficheiro temporário)', function () {
     var res = await request(app).get('/pagina-que-nao-existe-xyz.html').set('Accept', 'text/html').expect(404);
     expect(res.text).toMatch(/não encontrada/i);
   });
+
+  test('GET /partials/site-header.html', async function () {
+    var res = await request(app).get('/partials/site-header.html').expect(200);
+    expect(res.text).toMatch(/Betim Cor Brazil/);
+  });
+
+  test('PUT /api/state/news sanitiza HTML perigoso', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var payload = [
+      {
+        id: 'news-sanitize-test',
+        titulo: 'Teste sanitize',
+        resumo: 'Resumo',
+        conteudo: '<script>alert(1)</script><p><strong>Ok</strong></p>',
+        categoria: 'Geral',
+        dataPublicacao: '2025-06-01',
+        publicado: true
+      }
+    ];
+    await agent.put('/api/state/news').set(mutatingHeaders()).send(payload).expect(200);
+    var pub = await request(app).get('/api/public').expect(200);
+    var item = (pub.body.news || []).find(function (n) {
+      return n.id === 'news-sanitize-test';
+    });
+    expect(item).toBeDefined();
+    expect(item.conteudo).not.toMatch(/<script/i);
+    expect(item.conteudo).toMatch(/<strong>Ok<\/strong>/);
+  });
+
+  test('GET /api/admin/audit-log com filtros desde/chave', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var full = await agent.get('/api/full').set(mutatingHeaders()).expect(200);
+    await agent
+      .put('/api/state/events')
+      .set(mutatingHeaders())
+      .send(full.body.events || [])
+      .expect(200);
+    var res = await agent
+      .get('/api/admin/audit-log?limit=20&chave=events')
+      .set(mutatingHeaders())
+      .expect(200);
+    expect(Array.isArray(res.body.entries)).toBe(true);
+    expect(res.body.entries.some(function (e) {
+      return e.chave === 'events';
+    })).toBe(true);
+    var vazio = await agent
+      .get('/api/admin/audit-log?desde=2099-01-01&limit=5')
+      .set(mutatingHeaders())
+      .expect(200);
+    expect(vazio.body.entries.length).toBe(0);
+  });
 });

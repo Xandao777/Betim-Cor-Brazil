@@ -18,15 +18,15 @@ Ordem de execução (código que o assistente pode fazer no repositório).
 | A10 | Nota em `docs/MELHORIAS.md` + `PLANO-IMPLEMENTACAO` | [x] |
 | A11 | Testes: ETag 409, mark-read doação, sitemap, 404 (50 testes) | [x] |
 
-## Fase B — Seguinte (código)
+## Fase B — Concluída
 
-| # | Item |
-|---|------|
-| B1 | Header/footer via `public/js/site-chrome.js` (fetch partials) |
-| B2 | Filtro por data na auditoria |
-| B3 | Rich text sanitizado (notícias/blog) |
-| B4 | Playwright E2E mínimo |
-| B5 | ESLint + job CI |
+| # | Item | Estado |
+|---|------|--------|
+| B1 | Header/footer via `public/js/site-chrome.js` + `public/partials/` | [x] |
+| B2 | Filtro por data/utilizador/chave na auditoria (API + dashboard) | [x] |
+| B3 | Rich text sanitizado (`sanitize-html`) + editor admin | [x] |
+| B4 | Playwright E2E mínimo (`e2e/smoke.spec.cjs`) | [x] |
+| B5 | ESLint + job CI (`npm run lint`) | [x] |
 
 ## Fase C — Só configuração / conteúdo (equipa)
 

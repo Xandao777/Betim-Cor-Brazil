@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
 coverage/
+test-results/
+playwright-report/
 
 # Segredos (SMTP, JWT local, etc.)
 .env
@@ -9,6 +11,7 @@ coverage/
 
 # Estado local quando roda sem Supabase
 data/site-data.json
+data/e2e-site-data.json
 
 # Ficheiros enviados pelos administradores
 uploads/documents/*

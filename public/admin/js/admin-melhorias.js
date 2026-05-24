@@ -338,35 +338,51 @@
         var auditWrap = document.getElementById('dashboard-audit-wrap');
         var auditList = document.getElementById('dashboard-audit-list');
         if (auditWrap) auditWrap.style.display = 'block';
-        if (auditList) {
-          fetch('/api/admin/audit-log?limit=12', { credentials: 'include' })
+        function renderAuditEntries(entries) {
+          if (!auditList) return;
+          auditList.innerHTML = entries.length
+            ? entries
+                .map(function (e) {
+                  return (
+                    '<li><time>' +
+                    escHtml(AP.formatarDataHoraIso(e.em)) +
+                    '</time> — <strong>' +
+                    escHtml(e.usuario || '—') +
+                    '</strong> ' +
+                    escHtml(e.acao || '') +
+                    ' <em>' +
+                    escHtml(e.chave || '') +
+                    '</em></li>'
+                  );
+                })
+                .join('')
+            : '<li class="admin-aviso">Nenhuma entrada com estes filtros.</li>';
+        }
+        function loadAuditLog() {
+          if (!auditList) return;
+          var q = new URLSearchParams({ limit: '12' });
+          var desde = document.getElementById('audit-desde');
+          var ate = document.getElementById('audit-ate');
+          var usuario = document.getElementById('audit-usuario');
+          var chave = document.getElementById('audit-chave');
+          if (desde && desde.value) q.set('desde', desde.value);
+          if (ate && ate.value) q.set('ate', ate.value);
+          if (usuario && usuario.value.trim()) q.set('usuario', usuario.value.trim());
+          if (chave && chave.value.trim()) q.set('chave', chave.value.trim());
+          fetch('/api/admin/audit-log?' + q.toString(), { credentials: 'include' })
             .then(function (r) {
               return r.ok ? r.json() : { entries: [] };
             })
             .then(function (data) {
-              var entries = data.entries || [];
-              auditList.innerHTML = entries.length
-                ? entries
-                    .map(function (e) {
-                      return (
-                        '<li><time>' +
-                        escHtml(AP.formatarDataHoraIso(e.em)) +
-                        '</time> — <strong>' +
-                        escHtml(e.usuario || '—') +
-                        '</strong> ' +
-                        escHtml(e.acao || '') +
-                        ' <em>' +
-                        escHtml(e.chave || '') +
-                        '</em></li>'
-                      );
-                    })
-                    .join('')
-                : '<li class="admin-aviso">Nenhuma alteração registada ainda.</li>';
+              renderAuditEntries(data.entries || []);
             })
             .catch(function () {
               auditList.innerHTML = '<li class="admin-aviso">Não foi possível carregar o log.</li>';
             });
         }
+        loadAuditLog();
+        var auditBtn = document.getElementById('audit-filtrar');
+        if (auditBtn) auditBtn.addEventListener('click', loadAuditLog);
       }
     };
     AP.atualizarDashboard();

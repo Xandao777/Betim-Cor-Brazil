@@ -10,20 +10,7 @@
 </head>
 <body>
   <a href="#main" class="skip-link">Ir para o conteúdo principal</a>
-  <header class="header header--cultural" role="banner">
-    <div class="header-poster-top" aria-hidden="true"></div>
-    <div class="header-poster-h-zigzag" aria-hidden="true"></div>
-    <div class="header-poster-main">
-      <div class="container header-inner">
-        <a href="index.html" class="logo" aria-label="Página inicial">
-          <img src="img/logo.jpg" alt="" class="logo-img">
-          <span class="logo-text">Betim Cor Brazil</span>
-        </a>
-      </div>
-    </div>
-    <div class="header-poster-h-diamonds" aria-hidden="true"></div>
-    <div class="header-poster-bottom" aria-hidden="true"></div>
-  </header>
+    <div data-site-chrome="header"></div>
 
   <main id="main" class="pagina-interna">
     <div class="container conteudo-texto">
@@ -57,11 +44,8 @@
     </div>
   </main>
 
-  <footer class="footer">
-    <div class="container">
-      <div class="footer-bottom"><p>&copy; <span id="ano"></span> Associação.</p></div>
-    </div>
-  </footer>
+    <div data-site-chrome="footer"></div>
+  <script src="js/site-chrome.js"></script>
   <script src="js/toast.js"></script>
   <script>
     var a = document.getElementById('ano');

@@ -90,6 +90,13 @@
         </div>
         <div class="admin-dashboard-audit card" id="dashboard-audit-wrap" style="display: none;">
           <h3>Auditoria recente</h3>
+          <div class="admin-audit-filters" id="dashboard-audit-filters">
+            <label>Desde <input type="date" id="audit-desde" aria-label="Auditoria desde"></label>
+            <label>Até <input type="date" id="audit-ate" aria-label="Auditoria até"></label>
+            <label>Utilizador <input type="text" id="audit-usuario" placeholder="admin" autocomplete="off"></label>
+            <label>Chave <input type="text" id="audit-chave" placeholder="news" autocomplete="off"></label>
+            <button type="button" id="audit-filtrar" class="btn btn-outline btn-sm">Filtrar</button>
+          </div>
           <ul id="dashboard-audit-list" class="admin-audit-list"></ul>
         </div>
       </section>
@@ -278,7 +285,7 @@
               <textarea id="noticia-resumo" rows="2"></textarea>
             </div>
             <div class="form-group">
-              <label for="noticia-conteudo">Conteúdo completo</label>
+              <label for="noticia-conteudo">Conteúdo completo (editor com formatação básica)</label>
               <textarea id="noticia-conteudo" rows="5"></textarea>
             </div>
             <div class="form-group">
@@ -325,8 +332,8 @@
               <textarea id="blog-resumo" rows="2"></textarea>
             </div>
             <div class="form-group">
-              <label for="blog-conteudo">Conteúdo (texto do post; parágrafos separados por linha em branco)</label>
-              <textarea id="blog-conteudo" rows="10" placeholder="Escreva o texto completo. Use linha em branco entre parágrafos."></textarea>
+              <label for="blog-conteudo">Conteúdo do post (editor com formatação básica)</label>
+              <textarea id="blog-conteudo" rows="10" placeholder="Texto do post — negrito, listas e links na barra acima."></textarea>
             </div>
             <div class="form-group">
               <label><input type="checkbox" id="blog-publicado" checked> Publicado</label>
@@ -678,6 +685,7 @@
   </div>
   <script src="../js/dados-site.js"></script>
   <script src="../js/toast.js"></script>
+  <script src="js/admin-editor.js"></script>
   <script src="js/admin-painel.js"></script>
   <script src="js/admin-melhorias.js"></script>
 </body>

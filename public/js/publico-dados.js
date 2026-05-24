@@ -21,6 +21,22 @@
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
+  /** HTML já sanitizado no servidor; texto antigo continua como parágrafos escapados. */
+  function renderConteudo(raw, resumo) {
+    raw = (raw || '').trim();
+    if (!raw) return '<p class="intro">' + escapeHtml(resumo || '') + '</p>';
+    if (/<[a-z][\s\S]*>/i.test(raw)) {
+      return '<div class="rich-content">' + raw + '</div>';
+    }
+    return escapeHtml(raw)
+      .replace(/\r\n/g, '\n')
+      .split(/\n\n+/)
+      .map(function (block) {
+        return '<p>' + block.replace(/\n/g, '<br>') + '</p>';
+      })
+      .join('');
+  }
+
   function escapeAttr(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   }
@@ -279,15 +295,7 @@
     }
     var fd = formatarData(b.dataPublicacao);
     var meta = (b.categoria ? escapeHtml(b.categoria) + ' · ' : '') + escapeHtml(String(fd.dia) + ' ' + fd.mes + ' ' + fd.ano);
-    var raw = (b.conteudo || '').trim();
-    var conteudo;
-    if (raw) {
-      conteudo = escapeHtml(raw).replace(/\r\n/g, '\n').split(/\n\n+/).map(function (block) {
-        return '<p>' + block.replace(/\n/g, '<br>') + '</p>';
-      }).join('');
-    } else {
-      conteudo = '<p class="intro">' + escapeHtml(b.resumo || '') + '</p>';
-    }
+    var conteudo = renderConteudo(b.conteudo, b.resumo);
     root.innerHTML =
       '<header class="blog-post-cabecalho"><p class="tag">' + escapeHtml(b.categoria || '') + '</p><h1>' + escapeHtml(b.titulo || '') + '</h1><p class="meta blog-post-meta">' + meta + '</p></header>' +
       '<div class="blog-post-texto">' + conteudo + '</div>' +
@@ -333,15 +341,7 @@
     }
     var fd = formatarData(n.dataPublicacao);
     var meta = (n.categoria ? escapeHtml(n.categoria) + ' · ' : '') + escapeHtml(String(fd.dia) + ' ' + fd.mes + ' ' + fd.ano);
-    var raw = (n.conteudo || '').trim();
-    var conteudo;
-    if (raw) {
-      conteudo = escapeHtml(raw).replace(/\r\n/g, '\n').split(/\n\n+/).map(function (block) {
-        return '<p>' + block.replace(/\n/g, '<br>') + '</p>';
-      }).join('');
-    } else {
-      conteudo = '<p class="intro">' + escapeHtml(n.resumo || '') + '</p>';
-    }
+    var conteudo = renderConteudo(n.conteudo, n.resumo);
     var capaArt = (n.imagemCapa || '').trim();
     var capaHtml = capaArt
       ? '<figure class="noticia-capa-hero"><img src="' + escapeAttr(capaArt) + '" alt="' + escapeAttr(n.titulo || '') + '" loading="eager"></figure>'

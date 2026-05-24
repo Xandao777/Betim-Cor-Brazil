@@ -23,6 +23,7 @@ const { registerAdminRoutes } = require('./server/admin-routes.cjs');
 const turnstile = require('./server/turnstile.cjs');
 const auditLog = require('./server/audit-log.cjs');
 const stateEtag = require('./server/state-etag.cjs');
+const sanitizeContent = require('./server/sanitize-content.cjs');
 const crypto = require('crypto');
 
 /** Incrementa a cada gravação — invalida cache de GET /api/public. */
@@ -534,6 +535,8 @@ app.put('/api/state/:key', async function (req, res) {
       body = pwd.mergeMembersSave(stateBefore, body);
     } else if (key === 'admin_users') {
       body = pwd.mergeAdminUsersSave(stateBefore, body);
+    } else if (key === 'news' || key === 'blog') {
+      body = sanitizeContent.sanitizeContentList(body);
     }
     await saveKey(key, body);
     var newEtag = stateEtag.etagForPayload(body);

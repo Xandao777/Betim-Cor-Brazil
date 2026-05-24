@@ -790,7 +790,8 @@
     document.getElementById('noticia-titulo').value = n.titulo || '';
     document.getElementById('noticia-categoria').value = n.categoria || '';
     document.getElementById('noticia-resumo').value = n.resumo || '';
-    document.getElementById('noticia-conteudo').value = n.conteudo || '';
+    if (window.AdminRichEditor) window.AdminRichEditor.setContent('noticia-conteudo', n.conteudo || '');
+    else document.getElementById('noticia-conteudo').value = n.conteudo || '';
     document.getElementById('noticia-publicado').checked = n.publicado !== false;
     document.getElementById('noticia-destaque').checked = !!n.destaque;
     document.getElementById('noticia-exclusivo').checked = !!n.exclusivoMembros;
@@ -956,7 +957,8 @@
     document.getElementById('blog-titulo').value = b.titulo || '';
     document.getElementById('blog-categoria').value = b.categoria || '';
     document.getElementById('blog-resumo').value = b.resumo || '';
-    document.getElementById('blog-conteudo').value = b.conteudo || '';
+    if (window.AdminRichEditor) window.AdminRichEditor.setContent('blog-conteudo', b.conteudo || '');
+    else document.getElementById('blog-conteudo').value = b.conteudo || '';
     document.getElementById('blog-publicado').checked = b.publicado !== false;
     document.getElementById('form-blog-titulo').textContent = 'Editar postagem';
     formBlogCard.style.display = 'block';

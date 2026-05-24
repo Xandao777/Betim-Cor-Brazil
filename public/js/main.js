@@ -10,29 +10,6 @@
     else alert(msg);
   }
 
-  // Ano no footer
-  var anoEl = document.getElementById('ano');
-  if (anoEl) anoEl.textContent = new Date().getFullYear();
-
-  // Menu mobile: toggle
-  var menuToggle = document.querySelector('.menu-toggle');
-  var nav = document.querySelector('.nav');
-  if (menuToggle && nav) {
-    menuToggle.addEventListener('click', function () {
-      var expanded = menuToggle.getAttribute('aria-expanded') === 'true';
-      menuToggle.setAttribute('aria-expanded', !expanded);
-      nav.classList.toggle('active');
-      menuToggle.setAttribute('aria-label', expanded ? 'Abrir menu' : 'Fechar menu');
-    });
-    nav.querySelectorAll('a').forEach(function (link) {
-      link.addEventListener('click', function () {
-        menuToggle.setAttribute('aria-expanded', 'false');
-        nav.classList.remove('active');
-        menuToggle.setAttribute('aria-label', 'Abrir menu');
-      });
-    });
-  }
-
   function turnstileReady() {
     return window.TurnstileForms && window.TurnstileForms.ready
       ? window.TurnstileForms.ready
