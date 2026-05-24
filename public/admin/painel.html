@@ -20,19 +20,23 @@
         </div>
       </div>
       <nav class="admin-sidebar-nav" id="admin-sidebar-nav" aria-label="Secções">
-        <a href="#" data-secao="dashboard" class="ativo">Dashboard</a>
-        <a href="#" data-secao="formularios">Formulários recebidos</a>
-        <a href="#" data-secao="eventos">Eventos</a>
-        <a href="#" data-secao="inscricoes">Inscrições em eventos</a>
-        <a href="#" data-secao="noticias">Notícias</a>
-        <a href="#" data-secao="blog">Blog</a>
-        <a href="#" data-secao="galeria">Galeria</a>
-        <a href="#" data-secao="membros">Membros</a>
-        <a href="#" data-secao="documentos">Documentos</a>
-        <a href="#" data-secao="patrocinadores">Patrocinadores</a>
-        <a href="#" data-secao="institucional">Conteúdo institucional</a>
-        <a href="#" data-secao="conta" class="admin-nav-conta">Minha conta</a>
-        <a href="#" data-secao="utilizadores" class="admin-nav-utilizadores" style="display: none;">Utilizadores do painel</a>
+        <span class="admin-sidebar-group">Geral</span>
+        <a href="#" data-secao="dashboard" class="ativo"><span class="admin-sidebar-link-text">Dashboard</span></a>
+        <a href="#" data-secao="formularios"><span class="admin-sidebar-link-text">Formulários recebidos</span></a>
+        <span class="admin-sidebar-group">Conteúdo</span>
+        <a href="#" data-secao="eventos"><span class="admin-sidebar-link-text">Eventos</span></a>
+        <a href="#" data-secao="inscricoes"><span class="admin-sidebar-link-text">Inscrições em eventos</span></a>
+        <a href="#" data-secao="noticias"><span class="admin-sidebar-link-text">Notícias</span></a>
+        <a href="#" data-secao="blog"><span class="admin-sidebar-link-text">Blog</span></a>
+        <a href="#" data-secao="galeria"><span class="admin-sidebar-link-text">Galeria</span></a>
+        <span class="admin-sidebar-group">Associação</span>
+        <a href="#" data-secao="membros"><span class="admin-sidebar-link-text">Membros</span></a>
+        <a href="#" data-secao="documentos"><span class="admin-sidebar-link-text">Documentos</span></a>
+        <a href="#" data-secao="patrocinadores"><span class="admin-sidebar-link-text">Patrocinadores</span></a>
+        <a href="#" data-secao="institucional"><span class="admin-sidebar-link-text">Conteúdo institucional</span></a>
+        <span class="admin-sidebar-group">Conta</span>
+        <a href="#" data-secao="conta" class="admin-nav-conta"><span class="admin-sidebar-link-text">Minha conta</span></a>
+        <a href="#" data-secao="utilizadores" class="admin-nav-utilizadores" style="display: none;"><span class="admin-sidebar-link-text">Utilizadores do painel</span></a>
       </nav>
       <div class="sair"><a href="index.html">Sair do painel</a></div>
     </aside>
@@ -40,6 +44,7 @@
       <header class="admin-topbar">
         <button type="button" class="admin-menu-toggle" id="admin-menu-toggle" aria-expanded="false" aria-controls="admin-sidebar-nav">Menu</button>
         <div class="admin-topbar-left">
+          <p id="admin-saudacao" class="admin-saudacao" hidden></p>
           <label class="admin-search-wrap">
             <span class="sr-only">Pesquisar no painel</span>
             <input type="search" id="admin-busca-global" class="admin-busca-input" placeholder="Pesquisar eventos, notícias, membros…" autocomplete="off">

@@ -55,7 +55,18 @@
 
   // Mostrar usuário e esconder itens restritos a admin
   var infoEl = document.getElementById('admin-usuario-info');
-  if (infoEl) infoEl.textContent = 'Logado como ' + sessao.nome + ' (' + perfil + '). ';
+  if (infoEl) infoEl.textContent = sessao.nome + ' · ' + perfil;
+  var saudacaoEl = document.getElementById('admin-saudacao');
+  if (saudacaoEl) {
+    var horaAtual = new Date().getHours();
+    var saudacao = 'Olá';
+    if (horaAtual < 12) saudacao = 'Bom dia';
+    else if (horaAtual < 19) saudacao = 'Boa tarde';
+    else saudacao = 'Boa noite';
+    var primeiroNome = String(sessao.nome || '').split(/\s+/)[0] || sessao.nome || '';
+    saudacaoEl.textContent = saudacao + ', ' + primeiroNome;
+    saudacaoEl.hidden = false;
+  }
   var sidebar = document.querySelector('.admin-sidebar');
   if (sidebar && !isAdmin) {
     [].slice.call(sidebar.querySelectorAll('a[data-secao]')).forEach(function (a) {
