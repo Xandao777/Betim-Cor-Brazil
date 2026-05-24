@@ -25,6 +25,20 @@
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   }
 
+  function capaEventoHtml(url, titulo, className) {
+    var u = (url || '').trim();
+    if (!u) return '';
+    return (
+      '<img class="' +
+      (className || 'evento-capa-thumb') +
+      '" src="' +
+      escapeAttr(u) +
+      '" alt="' +
+      escapeAttr(titulo || '') +
+      '" loading="lazy">'
+    );
+  }
+
   // ---- Página de eventos: listar eventos publicados (com filtro de mês) ----
   (function () {
     var container = document.querySelector('.lista-eventos');
@@ -63,8 +77,10 @@
         art.className = 'item-evento';
         var href = 'evento.html?id=' + encodeURIComponent(e.id || '');
         var metaHtml = meta.length ? '<p class=\"item-evento-meta\">' + meta.map(function (m) { return '<span>' + escapeHtml(m) + '</span>'; }).join('') + '</p>' : '';
+        var capa = capaEventoHtml(e.imagemCapa, e.titulo, 'item-evento-capa');
         art.innerHTML =
           '<a href=\"' + href + '\" class=\"item-evento-link-externo\" aria-label=\"Ver página do evento ' + escapeAttr(e.titulo || '') + '\">' +
+            (capa ? '<div class=\"item-evento-capa-wrap\">' + capa + '</div>' : '') +
             '<div class=\"item-evento-data\"><span class=\"dia\">' + fd.dia + '</span><span class=\"mes\">' + fd.mes + '</span></div>' +
             '<div>' +
               '<h3>' + escapeHtml(e.titulo || '') + '</h3>' +
@@ -109,8 +125,11 @@
       .map(function (e) {
         var fd = formatarData(e.data);
         var href = 'evento.html?id=' + encodeURIComponent(e.id || '');
+        var capaCard = capaEventoHtml(e.imagemCapa, e.titulo, 'card-evento-capa');
         return (
-          '<article class="card card-evento"><div class="card-evento-data"><span class="dia">' +
+          '<article class="card card-evento">' +
+          (capaCard ? '<div class="card-evento-capa-wrap">' + capaCard + '</div>' : '') +
+          '<div class="card-evento-data"><span class="dia">' +
           fd.dia +
           '</span><span class="mes">' +
           fd.mes +

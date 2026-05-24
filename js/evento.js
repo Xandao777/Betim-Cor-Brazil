@@ -21,6 +21,35 @@
     return D.escapeHtml ? D.escapeHtml(s) : String(s == null ? '' : s);
   }
 
+  function escAttr(s) {
+    return esc(s).replace(/"/g, '&quot;');
+  }
+
+  function heroMediaHtml(ev) {
+    var capa = (ev.imagemCapa || '').trim();
+    if (capa) {
+      return (
+        '<div class="evento-hero-media evento-hero-media--foto">' +
+        '<img class="evento-hero-img" src="' +
+        escAttr(capa) +
+        '" alt="' +
+        escAttr(ev.titulo || 'Capa do evento') +
+        '" loading="eager">' +
+        '</div>'
+      );
+    }
+    return (
+      '<div class="evento-hero-media">' +
+      '<div class="evento-hero-banner">' +
+      '<span class="evento-hero-label">Evento da associação</span>' +
+      '<span class="evento-hero-titulo">' +
+      esc(ev.titulo || 'Evento') +
+      '</span>' +
+      '</div>' +
+      '</div>'
+    );
+  }
+
   function renderEvento() {
     var id = getParam('id');
     var sec = document.getElementById('evento-detalhe');
@@ -47,6 +76,20 @@
 
     var gratuitoHtml = '<p class="detalhe-evento-preco">Evento gratuito</p>';
 
+    document.title = (ev.titulo || 'Evento') + ' | Associação';
+    var ogImg = document.querySelector('meta[property="og:image"]');
+    if (!ogImg && ev.imagemCapa) {
+      ogImg = document.createElement('meta');
+      ogImg.setAttribute('property', 'og:image');
+      document.head.appendChild(ogImg);
+    }
+    if (ogImg) {
+      if (ev.imagemCapa) ogImg.setAttribute('content', ev.imagemCapa);
+      else ogImg.removeAttribute('content');
+    }
+    var ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', ev.titulo || 'Evento');
+
     sec.innerHTML =
       '<section class="evento-hero">' +
         '<div class="evento-hero-info">' +
@@ -62,12 +105,7 @@
             ? '<p class="admin-aviso">Inscrições encerradas para este evento.</p>'
             : '<button type="button" class="btn btn-primary btn-hero-inscricao">Inscrever-se</button>') +
         '</div>' +
-        '<div class="evento-hero-media">' +
-          '<div class="evento-hero-banner">' +
-            '<span class="evento-hero-label">Evento da associação</span>' +
-            '<span class="evento-hero-titulo">' + esc(ev.titulo || 'Evento') + '</span>' +
-          '</div>' +
-        '</div>' +
+        heroMediaHtml(ev) +
       '</section>' +
       '<section class="evento-layout">' +
         '<div class="evento-descricao">' +

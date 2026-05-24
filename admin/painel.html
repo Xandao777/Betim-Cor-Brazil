@@ -116,6 +116,16 @@
               <label for="evento-descricao">Descrição</label>
               <textarea id="evento-descricao" rows="3"></textarea>
             </div>
+            <div class="form-group">
+              <label>Imagem de capa</label>
+              <p class="admin-aviso" style="margin: 0 0 0.5rem;">Aparece na página do evento, na lista e nos destaques da homepage.</p>
+              <div id="evento-capa-preview" class="evento-capa-preview" style="display: none;"></div>
+              <label for="evento-capa-file">Enviar foto (JPG, PNG, WebP)</label>
+              <input type="file" id="evento-capa-file" accept="image/jpeg,image/png,image/webp,image/gif">
+              <label for="evento-capa-url" style="margin-top: 0.75rem;">Ou colar URL da imagem</label>
+              <input type="url" id="evento-capa-url" placeholder="https://...">
+              <button type="button" id="evento-capa-remover" class="btn btn-outline btn-sm" style="margin-top: 0.5rem; display: none;">Remover capa</button>
+            </div>
             <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
               <div>
                 <label for="evento-data">Data *</label>

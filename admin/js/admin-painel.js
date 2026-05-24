@@ -322,6 +322,45 @@
   // ---- EVENTOS ----
   var formEventoCard = document.getElementById('form-evento-card');
   var formEvento = document.getElementById('form-evento');
+  var eventoCapaAtual = '';
+  var eventoCapaRemovida = false;
+
+  function uploadImagemGaleria(file) {
+    var fd = new FormData();
+    fd.append('file', file);
+    return fetch('/api/upload/gallery', { method: 'POST', body: fd, credentials: 'include' }).then(function (res) {
+      return res.json().then(function (j) {
+        if (!res.ok) throw new Error(j.error || res.statusText);
+        return j.url;
+      });
+    });
+  }
+
+  function atualizarPreviewCapaEvento(url) {
+    var box = document.getElementById('evento-capa-preview');
+    var btnRem = document.getElementById('evento-capa-remover');
+    if (!box) return;
+    if (!url) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      if (btnRem) btnRem.style.display = 'none';
+      return;
+    }
+    box.style.display = 'block';
+    box.innerHTML =
+      '<img src="' + attrSafe(url) + '" alt="Pré-visualização da capa" style="max-width:100%;max-height:180px;border-radius:12px;object-fit:cover;">';
+    if (btnRem) btnRem.style.display = 'inline-block';
+  }
+
+  function limparCamposCapaEvento(removerDefinitivo) {
+    if (removerDefinitivo) eventoCapaRemovida = true;
+    eventoCapaAtual = '';
+    var fileEl = document.getElementById('evento-capa-file');
+    var urlEl = document.getElementById('evento-capa-url');
+    if (fileEl) fileEl.value = '';
+    if (urlEl) urlEl.value = '';
+    atualizarPreviewCapaEvento('');
+  }
   function renderEventos() {
     var tbody = document.querySelector('#tabela-eventos tbody');
     if (!tbody) return;
@@ -350,6 +389,13 @@
     document.getElementById('evento-inscricoes').checked = !!e.inscricoesAtivas;
     document.getElementById('evento-publicado').checked = e.publicado !== false;
     document.getElementById('evento-destaque').checked = !!e.destaque;
+    eventoCapaRemovida = false;
+    eventoCapaAtual = e.imagemCapa || '';
+    var urlEl = document.getElementById('evento-capa-url');
+    if (urlEl) urlEl.value = eventoCapaAtual;
+    var fileEl = document.getElementById('evento-capa-file');
+    if (fileEl) fileEl.value = '';
+    atualizarPreviewCapaEvento(eventoCapaAtual);
     document.getElementById('form-evento-titulo').textContent = 'Editar evento';
     formEventoCard.style.display = 'block';
   }
@@ -365,16 +411,54 @@
     document.getElementById('form-evento').reset();
     document.getElementById('evento-vagas').value = 0;
     document.getElementById('evento-publicado').checked = true;
+    eventoCapaRemovida = false;
+    limparCamposCapaEvento(false);
     document.getElementById('form-evento-titulo').textContent = 'Novo evento';
     formEventoCard.style.display = 'block';
   });
   document.getElementById('evento-cancelar').addEventListener('click', function () { formEventoCard.style.display = 'none'; });
+  var btnRemoverCapa = document.getElementById('evento-capa-remover');
+  if (btnRemoverCapa) {
+    btnRemoverCapa.addEventListener('click', function () {
+      limparCamposCapaEvento(true);
+    });
+  }
+  var eventoCapaUrlEl = document.getElementById('evento-capa-url');
+  if (eventoCapaUrlEl) {
+    eventoCapaUrlEl.addEventListener('input', function () {
+      var u = this.value.trim();
+      if (u) {
+        eventoCapaRemovida = false;
+        eventoCapaAtual = u;
+        atualizarPreviewCapaEvento(u);
+      }
+    });
+  }
+  var eventoCapaFileEl = document.getElementById('evento-capa-file');
+  if (eventoCapaFileEl) {
+    eventoCapaFileEl.addEventListener('change', function () {
+      var f = this.files && this.files[0];
+      if (!f) return;
+      if (!/^image\//i.test(f.type)) {
+        toastWarn('Use uma imagem (JPG, PNG ou WebP).');
+        this.value = '';
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function () {
+        atualizarPreviewCapaEvento(reader.result);
+      };
+      reader.readAsDataURL(f);
+    });
+  }
   if (formEvento) {
     formEvento.addEventListener('submit', function (e) {
       e.preventDefault();
       var list = D.getEvents() || [];
+      var recId = document.getElementById('evento-id').value || id();
+      var prev = list.find(function (x) { return x.id === recId; });
       var rec = {
-        id: document.getElementById('evento-id').value || id(),
+        id: recId,
         titulo: document.getElementById('evento-titulo').value.trim(),
         descricao: document.getElementById('evento-descricao').value.trim(),
         data: document.getElementById('evento-data').value,
@@ -383,14 +467,40 @@
         vagas: parseInt(document.getElementById('evento-vagas').value, 10) || 0,
         inscricoesAtivas: document.getElementById('evento-inscricoes').checked,
         publicado: document.getElementById('evento-publicado').checked,
-        destaque: document.getElementById('evento-destaque').checked
+        destaque: document.getElementById('evento-destaque').checked,
+        imagemCapa: ''
       };
-      var idx = list.findIndex(function (x) { return x.id === rec.id; });
-      if (idx >= 0) list[idx] = rec; else list.push(rec);
-      D.setEvents(list).then(function () {
-        renderEventos();
-        formEventoCard.style.display = 'none';
-      }).catch(errSave);
+      var capaUrlInput = document.getElementById('evento-capa-url');
+      var capaUrl = capaUrlInput ? capaUrlInput.value.trim() : '';
+      var fileInput = document.getElementById('evento-capa-file');
+      var file = fileInput && fileInput.files && fileInput.files[0];
+
+      function gravarEvento(capaFinal) {
+        rec.imagemCapa = capaFinal || '';
+        var idx = list.findIndex(function (x) { return x.id === rec.id; });
+        if (idx >= 0) list[idx] = rec;
+        else list.push(rec);
+        D.setEvents(list)
+          .then(function () {
+            renderEventos();
+            formEventoCard.style.display = 'none';
+            eventoCapaRemovida = false;
+            limparCamposCapaEvento(false);
+          })
+          .catch(errSave);
+      }
+
+      if (file) {
+        eventoCapaRemovida = false;
+        uploadImagemGaleria(file)
+          .then(function (url) {
+            gravarEvento(url);
+          })
+          .catch(errSave);
+        return;
+      }
+      var capaFinal = eventoCapaRemovida && !capaUrl ? '' : capaUrl || eventoCapaAtual || (prev && prev.imagemCapa) || '';
+      gravarEvento(capaFinal);
     });
   }
   renderEventos();
