@@ -19,6 +19,7 @@ const inscricaoVal = require('./server/inscricao-validacao.cjs');
 const { getSeedDefaults, assertProductionConfig } = require('./server/seed.cjs');
 const publicFilter = require('./server/public-filter.cjs');
 const s3Storage = require('./server/s3-storage.cjs');
+const { registerAdminRoutes } = require('./server/admin-routes.cjs');
 
 var DATA_FILE = process.env.SITE_DATA_FILE
   ? path.resolve(process.env.SITE_DATA_FILE)
@@ -611,7 +612,8 @@ app.post('/api/form/contato', rateLimits.formPublico, async function (req, res) 
       email: email,
       assunto: assunto,
       mensagem: mensagem,
-      criadoEm: new Date().toISOString()
+      criadoEm: new Date().toISOString(),
+      lida: false
     });
     await saveKey('mensagens_contato', list);
     smtpMail
@@ -764,7 +766,8 @@ app.post('/api/member/mensagem', async function (req, res) {
         membroNome: clampStr(membroNome, 200),
         area: area,
         mensagem: msgVol,
-        criadoEm: new Date().toISOString()
+        criadoEm: new Date().toISOString(),
+        lida: false
       });
       await saveKey('mensagens_membros', listV);
       var emailVol = membro && membro.email ? String(membro.email).trim() : '';
@@ -799,7 +802,8 @@ app.post('/api/member/mensagem', async function (req, res) {
       membroNome: clampStr(membroNome, 200),
       assunto: assunto,
       mensagem: msgSup,
-      criadoEm: new Date().toISOString()
+      criadoEm: new Date().toISOString(),
+      lida: false
     });
     await saveKey('mensagens_membros', listS);
     var emailSup = membro && membro.email ? String(membro.email).trim() : '';
@@ -861,6 +865,14 @@ var STATIC_BLOCK_PREFIXES = [
   '/supabase',
   '/.git'
 ];
+registerAdminRoutes(app, {
+  verifyToken: verifyToken,
+  loadState: loadState,
+  saveKey: saveKey,
+  pwd: pwd,
+  clampStr: clampStr
+});
+
 var STATIC_BLOCK_EXACT = {
   '/server.cjs': true,
   '/package.json': true,

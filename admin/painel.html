@@ -31,28 +31,55 @@
         <a href="#" data-secao="documentos">Documentos</a>
         <a href="#" data-secao="patrocinadores">Patrocinadores</a>
         <a href="#" data-secao="institucional">Conteúdo institucional</a>
+        <a href="#" data-secao="conta" class="admin-nav-conta">Minha conta</a>
+        <a href="#" data-secao="utilizadores" class="admin-nav-utilizadores" style="display: none;">Utilizadores do painel</a>
       </nav>
       <div class="sair"><a href="index.html">Sair do painel</a></div>
     </aside>
     <div class="admin-conteudo">
       <header class="admin-topbar">
-        <p id="admin-usuario-info" class="admin-usuario-info"></p>
+        <div class="admin-topbar-left">
+          <label class="admin-search-wrap">
+            <span class="sr-only">Pesquisar no painel</span>
+            <input type="search" id="admin-busca-global" class="admin-busca-input" placeholder="Pesquisar eventos, notícias, membros…" autocomplete="off">
+          </label>
+          <div id="admin-busca-resultados" class="admin-busca-resultados" hidden></div>
+        </div>
+        <div class="admin-topbar-right">
+          <a href="/" target="_blank" rel="noopener" class="btn btn-outline btn-sm" id="admin-link-site">Ver site</a>
+          <p id="admin-usuario-info" class="admin-usuario-info"></p>
+        </div>
       </header>
+      <div id="admin-saving-overlay" class="admin-saving-overlay" aria-hidden="true" hidden>
+        <p>A guardar…</p>
+      </div>
 
       <!-- Dashboard -->
       <section id="secao-dashboard" class="admin-secao ativo">
         <h1>Dashboard</h1>
-        <p class="admin-secao-intro">Use o menu à esquerda para gerir conteúdos do site.</p>
+        <p class="admin-secao-intro">Visão geral do site e atalhos rápidos.</p>
+        <p id="dashboard-status-linha" class="admin-aviso admin-status-linha"></p>
+        <div class="admin-dashboard-grid" id="admin-dashboard-cards"></div>
+        <div class="admin-dashboard-duo">
+          <div class="admin-form-card">
+            <h3>Próximos eventos</h3>
+            <ul id="dashboard-proximos-eventos" class="admin-lista-resumo"></ul>
+          </div>
+          <div class="admin-form-card">
+            <h3>Doações pendentes</h3>
+            <ul id="dashboard-doacoes-pendentes" class="admin-lista-resumo"></ul>
+          </div>
+        </div>
         <div class="admin-dashboard-resumo card">
-          <h3>Resumo rápido</h3>
+          <h3>Números</h3>
           <ul class="admin-dashboard-stats">
             <li><span class="admin-dashboard-label">Eventos</span> <strong id="dashboard-events-count">—</strong></li>
             <li><span class="admin-dashboard-label">Notícias</span> <strong id="dashboard-news-count">—</strong></li>
             <li><span class="admin-dashboard-label">Membros</span> <strong id="dashboard-members-count">—</strong></li>
             <li><span class="admin-dashboard-label">Patrocinadores</span> <strong id="dashboard-sponsors-count">—</strong></li>
-            <li><span class="admin-dashboard-label">Mensagens (contato)</span> <strong id="dashboard-contato-count">—</strong></li>
+            <li><span class="admin-dashboard-label">Mensagens (contato)</span> <strong id="dashboard-contato-count">—</strong> <span id="dashboard-contato-novas" class="admin-badge-inline"></span></li>
             <li><span class="admin-dashboard-label">Pedidos de doação</span> <strong id="dashboard-doacao-count">—</strong></li>
-            <li><span class="admin-dashboard-label">Mensagens de membros</span> <strong id="dashboard-membro-msg-count">—</strong></li>
+            <li><span class="admin-dashboard-label">Mensagens de membros</span> <strong id="dashboard-membro-msg-count">—</strong> <span id="dashboard-membro-novas" class="admin-badge-inline"></span></li>
             <li><span class="admin-dashboard-label">Inscrições em eventos</span> <strong id="dashboard-inscricoes-count">—</strong></li>
           </ul>
         </div>
@@ -62,13 +89,18 @@
       <section id="secao-formularios" class="admin-secao">
         <h1>Formulários recebidos</h1>
         <p class="admin-secao-intro">Contato público, intenções de doação e mensagens da área de membros (voluntariado e suporte).</p>
+        <div class="admin-toolbar">
+          <label>Filtro: <select id="filtro-form-lidas"><option value="todas">Todas</option><option value="nao_lidas">Só não lidas</option></select></label>
+          <button type="button" id="btn-export-contato-csv" class="btn btn-outline btn-sm">Exportar contato (CSV)</button>
+          <button type="button" id="btn-export-doacao-csv" class="btn btn-outline btn-sm">Exportar doações (CSV)</button>
+        </div>
 
         <div class="admin-form-card">
           <h3>Contato (página Contato)</h3>
           <p class="admin-aviso" id="form-contato-vazio" style="display: none;">Nenhuma mensagem.</p>
           <div class="admin-tabela-wrapper">
             <table class="admin-tabela" id="tabela-form-contato">
-              <thead><tr><th>Data</th><th>Nome</th><th>E-mail</th><th>Assunto</th><th>Mensagem</th></tr></thead>
+              <thead><tr><th>Data</th><th>Nome</th><th>E-mail</th><th>Assunto</th><th>Mensagem</th><th class="acoes">Estado</th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
@@ -93,7 +125,7 @@
           <p class="admin-aviso" id="form-membro-vazio" style="display: none;">Nenhuma mensagem.</p>
           <div class="admin-tabela-wrapper">
             <table class="admin-tabela" id="tabela-form-membro">
-              <thead><tr><th>Data</th><th>Tipo</th><th>Membro</th><th>Detalhes</th></tr></thead>
+              <thead><tr><th>Data</th><th>Tipo</th><th>Membro</th><th>Detalhes</th><th class="acoes">Estado</th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
@@ -162,7 +194,7 @@
         <p><button type="button" id="btn-novo-evento" class="btn btn-primary">+ Novo evento</button></p>
         <div class="admin-tabela-wrapper">
           <table class="admin-tabela" id="tabela-eventos">
-            <thead><tr><th>Título</th><th>Data</th><th>Publicado</th><th class="acoes">Ações</th></tr></thead>
+            <thead><tr><th>Título</th><th>Data</th><th>Inscritos</th><th>Publicado</th><th class="acoes">Ações</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -181,7 +213,10 @@
           </div>
         </div>
         <p id="inscricoes-vazio" class="admin-aviso" style="display: none;">Nenhuma inscrição registada.</p>
-        <p class="form-actions"><button type="button" id="btn-export-inscricoes-csv" class="btn btn-outline">Exportar CSV</button></p>
+        <div class="admin-toolbar">
+          <label>Pesquisar: <input type="search" id="busca-inscricoes" placeholder="Nome, e-mail ou evento…"></label>
+          <button type="button" id="btn-export-inscricoes-csv" class="btn btn-outline btn-sm">Exportar CSV</button>
+        </div>
         <div class="admin-tabela-wrapper">
           <table class="admin-tabela" id="tabela-inscricoes">
             <thead>
@@ -213,6 +248,19 @@
             <div class="form-group">
               <label for="noticia-categoria">Categoria</label>
               <input type="text" id="noticia-categoria" placeholder="Ex: Projeto, Comunicado">
+            </div>
+            <div class="form-group">
+              <label for="noticia-data">Data de publicação</label>
+              <input type="date" id="noticia-data">
+            </div>
+            <div class="form-group">
+              <label>Imagem de capa</label>
+              <div id="noticia-capa-preview" class="evento-capa-preview" style="display: none;"></div>
+              <label for="noticia-capa-file">Enviar foto</label>
+              <input type="file" id="noticia-capa-file" accept="image/jpeg,image/png,image/webp,image/gif">
+              <label for="noticia-capa-url" style="margin-top: 0.5rem;">Ou URL da imagem</label>
+              <input type="url" id="noticia-capa-url" placeholder="https://...">
+              <button type="button" id="noticia-capa-remover" class="btn btn-outline btn-sm" style="margin-top: 0.5rem; display: none;">Remover capa</button>
             </div>
             <div class="form-group">
               <label for="noticia-resumo">Resumo</label>
@@ -450,6 +498,11 @@
               <textarea id="patroc-descricao" rows="2"></textarea>
             </div>
             <div class="form-group">
+              <label for="patroc-logo-file">Enviar logo (imagem)</label>
+              <input type="file" id="patroc-logo-file" accept="image/jpeg,image/png,image/webp,image/gif">
+              <div id="patroc-logo-preview" class="evento-capa-preview" style="display: none; margin-top: 0.5rem;"></div>
+            </div>
+            <div class="form-group">
               <label for="patroc-logo">URL do logo (imagem)</label>
               <input type="text" id="patroc-logo" placeholder="https://… ou caminho em /img/…" autocomplete="off">
             </div>
@@ -532,10 +585,85 @@
           </div>
         </form>
       </section>
+
+      <section id="secao-conta" class="admin-secao">
+        <h1>Minha conta</h1>
+        <div class="admin-form-card" style="max-width: 420px;">
+          <h3>Alterar senha</h3>
+          <form id="form-alterar-senha">
+            <div class="form-group">
+              <label for="senha-atual">Senha atual *</label>
+              <input type="password" id="senha-atual" required autocomplete="current-password">
+            </div>
+            <div class="form-group">
+              <label for="senha-nova">Nova senha *</label>
+              <input type="password" id="senha-nova" required minlength="6" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+              <label for="senha-nova2">Confirmar nova senha *</label>
+              <input type="password" id="senha-nova2" required minlength="6" autocomplete="new-password">
+            </div>
+            <button type="submit" class="btn btn-primary">Atualizar senha</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="secao-utilizadores" class="admin-secao">
+        <h1>Utilizadores do painel</h1>
+        <p class="admin-aviso">Apenas administradores gerem quem acede ao painel.</p>
+        <div class="admin-form-card" id="form-admin-user-card" style="display: none;">
+          <h3 id="form-admin-user-titulo">Novo utilizador</h3>
+          <form id="form-admin-user">
+            <input type="hidden" id="admin-user-id">
+            <div class="form-group">
+              <label for="admin-user-usuario">Utilizador (login) *</label>
+              <input type="text" id="admin-user-usuario" required>
+            </div>
+            <div class="form-group">
+              <label for="admin-user-senha">Senha *</label>
+              <input type="password" id="admin-user-senha" placeholder="Obrigatória para novo utilizador">
+            </div>
+            <div class="form-group">
+              <label for="admin-user-nome">Nome *</label>
+              <input type="text" id="admin-user-nome" required>
+            </div>
+            <div class="form-group">
+              <label for="admin-user-perfil">Perfil</label>
+              <select id="admin-user-perfil">
+                <option value="editor">Editor (conteúdo)</option>
+                <option value="admin">Administrador (acesso total)</option>
+              </select>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Salvar</button>
+              <button type="button" id="admin-user-cancelar" class="btn btn-outline">Cancelar</button>
+            </div>
+          </form>
+        </div>
+        <p><button type="button" id="btn-novo-admin-user" class="btn btn-primary">+ Novo utilizador</button>
+        <button type="button" id="btn-backup-json" class="btn btn-outline">Descarregar backup (JSON)</button></p>
+        <div class="admin-tabela-wrapper">
+          <table class="admin-tabela" id="tabela-admin-users">
+            <thead><tr><th>Utilizador</th><th>Nome</th><th>Perfil</th><th class="acoes">Ações</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+  <div id="admin-confirm-modal" class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-confirm-title" hidden>
+    <div class="admin-modal-box">
+      <h3 id="admin-confirm-title">Confirmar</h3>
+      <p id="admin-confirm-text"></p>
+      <div class="form-actions">
+        <button type="button" id="admin-confirm-ok" class="btn btn-primary">Confirmar</button>
+        <button type="button" id="admin-confirm-cancel" class="btn btn-outline">Cancelar</button>
+      </div>
     </div>
   </div>
   <script src="../js/dados-site.js"></script>
   <script src="../js/toast.js"></script>
   <script src="js/admin-painel.js"></script>
+  <script src="js/admin-melhorias.js"></script>
 </body>
 </html>

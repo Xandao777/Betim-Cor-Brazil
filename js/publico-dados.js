@@ -169,8 +169,12 @@
     container.innerHTML = list
       .map(function (n) {
         var hrefN = 'noticia.html?id=' + encodeURIComponent(String(n.id));
+        var capaN = capaEventoHtml(n.imagemCapa, n.titulo, 'card-noticia-capa');
+        var imgBlock = capaN
+          ? '<div class="card-noticia-img card-noticia-img--foto">' + capaN + '</div>'
+          : '<div class="card-noticia-img" style="background: linear-gradient(135deg, var(--vermelho), var(--verde));"></div>';
         return (
-          '<article class="card card-noticia"><div class="card-noticia-img" style="background: linear-gradient(135deg, var(--vermelho), var(--verde));"></div><div class="card-noticia-body"><span class="tag">' +
+          '<article class="card card-noticia">' + imgBlock + '<div class="card-noticia-body"><span class="tag">' +
           escapeHtml(n.categoria || '') +
           '</span><h3>' +
           escapeHtml(n.titulo || '') +
@@ -228,7 +232,9 @@
     }
     container.innerHTML = list.map(function (n) {
       var hrefN = 'noticia.html?id=' + encodeURIComponent(String(n.id));
-      return '<article class="post-card"><div class="post-card-img" aria-hidden="true"></div><div><span class="tag">' + escapeHtml(n.categoria || '') + '</span><h3>' + escapeHtml(n.titulo || '') + '</h3><p class="meta">' + escapeHtml(n.dataPublicacao || '') + '</p><p>' + escapeHtml(n.resumo || '') + '</p><a href="' + hrefN + '" class="link-cta">Ler mais</a></div></article>';
+      var capaL = capaEventoHtml(n.imagemCapa, n.titulo, 'post-card-capa');
+      var imgL = capaL ? '<div class="post-card-img post-card-img--foto">' + capaL + '</div>' : '<div class="post-card-img" aria-hidden="true"></div>';
+      return '<article class="post-card">' + imgL + '<div><span class="tag">' + escapeHtml(n.categoria || '') + '</span><h3>' + escapeHtml(n.titulo || '') + '</h3><p class="meta">' + escapeHtml(n.dataPublicacao || '') + '</p><p>' + escapeHtml(n.resumo || '') + '</p><a href="' + hrefN + '" class="link-cta">Ler mais</a></div></article>';
     }).join('');
   })();
 
@@ -326,7 +332,12 @@
     } else {
       conteudo = '<p class="intro">' + escapeHtml(n.resumo || '') + '</p>';
     }
+    var capaArt = (n.imagemCapa || '').trim();
+    var capaHtml = capaArt
+      ? '<figure class="noticia-capa-hero"><img src="' + escapeAttr(capaArt) + '" alt="' + escapeAttr(n.titulo || '') + '" loading="eager"></figure>'
+      : '';
     root.innerHTML =
+      capaHtml +
       '<header class="blog-post-cabecalho"><p class="tag">' + escapeHtml(n.categoria || '') + '</p><h1>' + escapeHtml(n.titulo || '') + '</h1><p class="meta blog-post-meta">' + meta + '</p></header>' +
       '<div class="blog-post-texto">' + conteudo + '</div>' +
       '<p class="section-cta"><a href="noticias.html" class="btn btn-outline">← Voltar às notícias</a></p>';

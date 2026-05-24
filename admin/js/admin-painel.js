@@ -70,6 +70,23 @@
 
   function id() { return Math.random().toString(36).slice(2, 10); }
 
+  function uploadImagemGaleria(file) {
+    var fd = new FormData();
+    fd.append('file', file);
+    return fetch('/api/upload/gallery', { method: 'POST', body: fd, credentials: 'include' }).then(function (res) {
+      return res.json().then(function (j) {
+        if (!res.ok) throw new Error(j.error || res.statusText);
+        return j.url;
+      });
+    });
+  }
+
+  function countInscritosEvento(eventoId) {
+    return (D.getInscricoes() || []).filter(function (i) {
+      return String(i.eventoId || '') === String(eventoId || '');
+    }).length;
+  }
+
   function escHtml(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
@@ -325,17 +342,6 @@
   var eventoCapaAtual = '';
   var eventoCapaRemovida = false;
 
-  function uploadImagemGaleria(file) {
-    var fd = new FormData();
-    fd.append('file', file);
-    return fetch('/api/upload/gallery', { method: 'POST', body: fd, credentials: 'include' }).then(function (res) {
-      return res.json().then(function (j) {
-        if (!res.ok) throw new Error(j.error || res.statusText);
-        return j.url;
-      });
-    });
-  }
-
   function atualizarPreviewCapaEvento(url) {
     var box = document.getElementById('evento-capa-preview');
     var btnRem = document.getElementById('evento-capa-remover');
@@ -366,7 +372,30 @@
     if (!tbody) return;
     var list = D.getEvents() || [];
     tbody.innerHTML = list.map(function (e) {
-      return '<tr><td>' + (e.titulo || '') + '</td><td>' + (e.data || '') + '</td><td>' + (e.publicado ? 'Sim' : 'Não') + '</td><td class="acoes"><button type="button" class="btn btn-outline btn-edit-evento" data-id="' + e.id + '">Editar</button> <button type="button" class="btn btn-remove btn-remove-evento" data-id="' + e.id + '">Excluir</button></td></tr>';
+      var ins = countInscritosEvento(e.id);
+      var ver =
+        '<a href="../evento.html?id=' +
+        encodeURIComponent(e.id || '') +
+        '" class="btn btn-outline btn-sm" target="_blank" rel="noopener">Ver</a> ';
+      return (
+        '<tr><td>' +
+        escHtml(e.titulo || '') +
+        '</td><td>' +
+        escHtml(e.data || '') +
+        '</td><td>' +
+        ins +
+        '</td><td>' +
+        (e.publicado ? 'Sim' : 'Não') +
+        '</td><td class="acoes">' +
+        ver +
+        '<button type="button" class="btn btn-outline btn-edit-evento" data-id="' +
+        e.id +
+        '">Editar</button> <button type="button" class="btn btn-outline" data-dup-evento="' +
+        e.id +
+        '">Duplicar</button> <button type="button" class="btn btn-remove btn-remove-evento" data-id="' +
+        e.id +
+        '">Excluir</button></td></tr>'
+      );
     }).join('');
     tbody.querySelectorAll('.btn-edit-evento').forEach(function (b) {
       b.addEventListener('click', function () { editarEvento(this.getAttribute('data-id')); });
@@ -505,6 +534,27 @@
   }
   renderEventos();
 
+  function duplicarEvento(eid) {
+    var list = D.getEvents() || [];
+    var e = list.find(function (x) {
+      return x.id === eid;
+    });
+    if (!e) return;
+    var copy = Object.assign({}, e, {
+      id: id(),
+      titulo: (e.titulo || '') + ' (cópia)',
+      publicado: false,
+      destaque: false
+    });
+    list.push(copy);
+    D.setEvents(list)
+      .then(function () {
+        renderEventos();
+        toastOk('Evento duplicado.');
+      })
+      .catch(errSave);
+  }
+
   function attrSafe(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
@@ -546,6 +596,8 @@
     if (!tbody) return;
 
     var filtroVal = sel ? sel.value : '';
+    var buscaEl = document.getElementById('busca-inscricoes');
+    var buscaQ = buscaEl ? buscaEl.value.trim().toLowerCase() : '';
     var events = D.getEvents() || [];
     if (sel) {
       var prev = filtroVal;
@@ -564,6 +616,13 @@
     if (filtroVal) {
       enriched = enriched.filter(function (w) {
         return String(w.rec.eventoId || '') === String(filtroVal);
+      });
+    }
+    if (buscaQ) {
+      enriched = enriched.filter(function (w) {
+        var i = w.rec;
+        var blob = [i.nome, i.email, i.eventoTitulo, i.eventoId, i.membroUsuario].join(' ').toLowerCase();
+        return blob.indexOf(buscaQ) >= 0;
       });
     }
     enriched.sort(function (a, b) {
@@ -633,17 +692,63 @@
       renderInscricoes();
     });
   }
+  var buscaInsc = document.getElementById('busca-inscricoes');
+  if (buscaInsc && !buscaInsc.dataset.wired) {
+    buscaInsc.dataset.wired = '1';
+    buscaInsc.addEventListener('input', function () {
+      renderInscricoes();
+    });
+  }
 
   // ---- NOTÍCIAS ----
   var formNoticiaCard = document.getElementById('form-noticia-card');
   var formNoticia = document.getElementById('form-noticia');
+  var noticiaCapaAtual = '';
+  var noticiaCapaRemovida = false;
+
+  function atualizarPreviewCapaNoticia(url) {
+    var box = document.getElementById('noticia-capa-preview');
+    var btnRem = document.getElementById('noticia-capa-remover');
+    if (!box) return;
+    if (!url) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      if (btnRem) btnRem.style.display = 'none';
+      return;
+    }
+    box.style.display = 'block';
+    box.innerHTML =
+      '<img src="' + attrSafe(url) + '" alt="Pré-visualização" style="max-width:100%;max-height:180px;border-radius:12px;object-fit:cover;">';
+    if (btnRem) btnRem.style.display = 'inline-block';
+  }
+
   function renderNoticias() {
     var tbody = document.querySelector('#tabela-noticias tbody');
     if (!tbody) return;
     var list = D.getNews() || [];
     tbody.innerHTML = list.map(function (n) {
       var status = n.publicado ? '<span class="badge badge-ok">Publicado</span>' : '<span class="badge badge-rascunho">Rascunho</span>';
-      return '<tr><td>' + (n.titulo || '') + '</td><td>' + (n.categoria || '') + '</td><td>' + status + '</td><td class="acoes"><button type="button" class="btn btn-outline btn-edit-noticia" data-id="' + n.id + '">Editar</button> <button type="button" class="btn btn-remove btn-remove-noticia" data-id="' + n.id + '">Excluir</button></td></tr>';
+      var ver =
+        '<a href="../noticia.html?id=' +
+        encodeURIComponent(n.id || '') +
+        '" class="btn btn-outline btn-sm" target="_blank" rel="noopener">Ver</a> ';
+      return (
+        '<tr><td>' +
+        escHtml(n.titulo || '') +
+        '</td><td>' +
+        escHtml(n.categoria || '') +
+        '</td><td>' +
+        status +
+        '</td><td class="acoes">' +
+        ver +
+        '<button type="button" class="btn btn-outline btn-edit-noticia" data-id="' +
+        n.id +
+        '">Editar</button> <button type="button" class="btn btn-outline" data-dup-noticia="' +
+        n.id +
+        '">Duplicar</button> <button type="button" class="btn btn-remove btn-remove-noticia" data-id="' +
+        n.id +
+        '">Excluir</button></td></tr>'
+      );
     }).join('');
     tbody.querySelectorAll('.btn-edit-noticia').forEach(function (b) { b.addEventListener('click', function () { editarNoticia(this.getAttribute('data-id')); }); });
     tbody.querySelectorAll('.btn-remove-noticia').forEach(function (b) { b.addEventListener('click', function () { if (confirm('Excluir?')) removerNoticia(this.getAttribute('data-id')); }); });
@@ -660,6 +765,15 @@
     document.getElementById('noticia-publicado').checked = n.publicado !== false;
     document.getElementById('noticia-destaque').checked = !!n.destaque;
     document.getElementById('noticia-exclusivo').checked = !!n.exclusivoMembros;
+    var nd = document.getElementById('noticia-data');
+    if (nd) nd.value = n.dataPublicacao || '';
+    noticiaCapaRemovida = false;
+    noticiaCapaAtual = n.imagemCapa || '';
+    var ncu = document.getElementById('noticia-capa-url');
+    if (ncu) ncu.value = noticiaCapaAtual;
+    var ncf = document.getElementById('noticia-capa-file');
+    if (ncf) ncf.value = '';
+    atualizarPreviewCapaNoticia(noticiaCapaAtual);
     document.getElementById('form-noticia-titulo').textContent = 'Editar notícia';
     formNoticiaCard.style.display = 'block';
   }
@@ -675,16 +789,41 @@
     document.getElementById('form-noticia').reset();
     document.getElementById('noticia-publicado').checked = true;
     document.getElementById('noticia-exclusivo').checked = false;
+    noticiaCapaRemovida = false;
+    noticiaCapaAtual = '';
+    var ncu2 = document.getElementById('noticia-capa-url');
+    if (ncu2) ncu2.value = '';
+    var ncf2 = document.getElementById('noticia-capa-file');
+    if (ncf2) ncf2.value = '';
+    atualizarPreviewCapaNoticia('');
+    var nd2 = document.getElementById('noticia-data');
+    if (nd2) nd2.value = new Date().toISOString().slice(0, 10);
     document.getElementById('form-noticia-titulo').textContent = 'Nova notícia';
     formNoticiaCard.style.display = 'block';
   });
+  var btnRemNotCapa = document.getElementById('noticia-capa-remover');
+  if (btnRemNotCapa) {
+    btnRemNotCapa.addEventListener('click', function () {
+      noticiaCapaRemovida = true;
+      noticiaCapaAtual = '';
+      var ncu = document.getElementById('noticia-capa-url');
+      if (ncu) ncu.value = '';
+      var ncf = document.getElementById('noticia-capa-file');
+      if (ncf) ncf.value = '';
+      atualizarPreviewCapaNoticia('');
+    });
+  }
   document.getElementById('noticia-cancelar').addEventListener('click', function () { formNoticiaCard.style.display = 'none'; });
   if (formNoticia) {
     formNoticia.addEventListener('submit', function (e) {
       e.preventDefault();
       var list = D.getNews() || [];
+      var recId = document.getElementById('noticia-id').value || id();
+      var prevN = list.find(function (x) {
+        return x.id === recId;
+      });
       var rec = {
-        id: document.getElementById('noticia-id').value || id(),
+        id: recId,
         titulo: document.getElementById('noticia-titulo').value.trim(),
         categoria: document.getElementById('noticia-categoria').value.trim(),
         resumo: document.getElementById('noticia-resumo').value.trim(),
@@ -692,15 +831,54 @@
         publicado: document.getElementById('noticia-publicado').checked,
         destaque: document.getElementById('noticia-destaque').checked,
         exclusivoMembros: document.getElementById('noticia-exclusivo') && document.getElementById('noticia-exclusivo').checked,
-        dataPublicacao: document.getElementById('noticia-id').value ? (list.find(function (x) { return x.id === document.getElementById('noticia-id').value; }) || {}).dataPublicacao : new Date().toISOString().slice(0, 10)
+        dataPublicacao: (document.getElementById('noticia-data') && document.getElementById('noticia-data').value) || (prevN && prevN.dataPublicacao) || new Date().toISOString().slice(0, 10),
+        imagemCapa: ''
       };
-      var idx = list.findIndex(function (x) { return x.id === rec.id; });
-      if (idx >= 0) list[idx] = rec; else list.push(rec);
-      D.setNews(list).then(function () {
-        renderNoticias();
-        formNoticiaCard.style.display = 'none';
-      }).catch(errSave);
+      var capaUrl = document.getElementById('noticia-capa-url') ? document.getElementById('noticia-capa-url').value.trim() : '';
+      var fileN = document.getElementById('noticia-capa-file') && document.getElementById('noticia-capa-file').files[0];
+
+      function gravarNoticia(capaFinal) {
+        rec.imagemCapa = capaFinal || '';
+        var idx = list.findIndex(function (x) {
+          return x.id === rec.id;
+        });
+        if (idx >= 0) list[idx] = rec;
+        else list.push(rec);
+        D.setNews(list)
+          .then(function () {
+            renderNoticias();
+            formNoticiaCard.style.display = 'none';
+          })
+          .catch(errSave);
+      }
+      if (fileN) {
+        uploadImagemGaleria(fileN).then(gravarNoticia).catch(errSave);
+        return;
+      }
+      var capaFinal = noticiaCapaRemovida && !capaUrl ? '' : capaUrl || noticiaCapaAtual || (prevN && prevN.imagemCapa) || '';
+      gravarNoticia(capaFinal);
     });
+  }
+  function duplicarNoticia(nid) {
+    var list = D.getNews() || [];
+    var n = list.find(function (x) {
+      return x.id === nid;
+    });
+    if (!n) return;
+    list.push(
+      Object.assign({}, n, {
+        id: id(),
+        titulo: (n.titulo || '') + ' (cópia)',
+        publicado: false,
+        destaque: false
+      })
+    );
+    D.setNews(list)
+      .then(function () {
+        renderNoticias();
+        toastOk('Notícia duplicada.');
+      })
+      .catch(errSave);
   }
   renderNoticias();
 
@@ -714,7 +892,29 @@
     tbody.innerHTML = list.map(function (b) {
       var status = b.publicado ? '<span class="badge badge-ok">Publicado</span>' : '<span class="badge badge-rascunho">Rascunho</span>';
       var dataPub = b.dataPublicacao || '—';
-      return '<tr><td>' + escHtml(b.titulo || '') + '</td><td>' + escHtml(b.categoria || '—') + '</td><td>' + escHtml(dataPub) + '</td><td>' + status + '</td><td class="acoes"><button type="button" class="btn btn-outline btn-edit-blog" data-id="' + escHtml(b.id) + '">Editar</button> <button type="button" class="btn btn-remove btn-remove-blog" data-id="' + escHtml(b.id) + '">Excluir</button></td></tr>';
+      var ver =
+        '<a href="../blog-post.html?id=' +
+        encodeURIComponent(b.id || '') +
+        '" class="btn btn-outline btn-sm" target="_blank" rel="noopener">Ver</a> ';
+      return (
+        '<tr><td>' +
+        escHtml(b.titulo || '') +
+        '</td><td>' +
+        escHtml(b.categoria || '—') +
+        '</td><td>' +
+        escHtml(dataPub) +
+        '</td><td>' +
+        status +
+        '</td><td class="acoes">' +
+        ver +
+        '<button type="button" class="btn btn-outline btn-edit-blog" data-id="' +
+        escHtml(b.id) +
+        '">Editar</button> <button type="button" class="btn btn-outline" data-dup-blog="' +
+        escHtml(b.id) +
+        '">Duplicar</button> <button type="button" class="btn btn-remove btn-remove-blog" data-id="' +
+        escHtml(b.id) +
+        '">Excluir</button></td></tr>'
+      );
     }).join('');
     tbody.querySelectorAll('.btn-edit-blog').forEach(function (btn) { btn.addEventListener('click', function () { editarBlog(this.getAttribute('data-id')); }); });
     tbody.querySelectorAll('.btn-remove-blog').forEach(function (btn) { btn.addEventListener('click', function () { if (confirm('Excluir?')) removerBlog(this.getAttribute('data-id')); }); });
@@ -769,6 +969,26 @@
         formBlogCard.style.display = 'none';
       }).catch(errSave);
     });
+  }
+  function duplicarBlog(bid) {
+    var list = D.getBlog() || [];
+    var b = list.find(function (x) {
+      return String(x.id) === String(bid);
+    });
+    if (!b) return;
+    list.push(
+      Object.assign({}, b, {
+        id: id(),
+        titulo: (b.titulo || '') + ' (cópia)',
+        publicado: false
+      })
+    );
+    D.setBlog(list)
+      .then(function () {
+        renderBlog();
+        toastOk('Postagem duplicada.');
+      })
+      .catch(errSave);
   }
   renderBlog();
 
@@ -1146,13 +1366,27 @@
         logo: document.getElementById('patroc-logo').value.trim(),
         url: document.getElementById('patroc-url').value.trim()
       };
-      var idx = list.findIndex(function (x) { return x.id === rec.id; });
-      if (idx >= 0) list[idx] = rec; else list.push(rec);
-      D.setSponsors(list).then(function () {
-        renderPatrocinadores();
-        atualizarDashboard();
-        formPatrocCard.style.display = 'none';
-      }).catch(errSave);
+      var fileP = document.getElementById('patroc-logo-file') && document.getElementById('patroc-logo-file').files[0];
+      function salvarPatroc(logoUrl) {
+        if (logoUrl) rec.logo = logoUrl;
+        var idx = list.findIndex(function (x) {
+          return x.id === rec.id;
+        });
+        if (idx >= 0) list[idx] = rec;
+        else list.push(rec);
+        D.setSponsors(list)
+          .then(function () {
+            renderPatrocinadores();
+            atualizarDashboard();
+            formPatrocCard.style.display = 'none';
+          })
+          .catch(errSave);
+      }
+      if (fileP) {
+        uploadImagemGaleria(fileP).then(salvarPatroc).catch(errSave);
+        return;
+      }
+      salvarPatroc(rec.logo);
     });
   }
   renderPatrocinadores();
@@ -1185,6 +1419,25 @@
       });
     }
   }
+
+  window.AdminPainel = {
+    D: D,
+    isAdmin: isAdmin,
+    sessao: sessao,
+    escHtml: escHtml,
+    attrSafe: attrSafe,
+    errSave: errSave,
+    toastOk: toastOk,
+    toastWarn: toastWarn,
+    id: id,
+    uploadImagemGaleria: uploadImagemGaleria,
+    formatarDataHoraIso: formatarDataHoraIso,
+    atualizarDashboard: atualizarDashboard,
+    renderFormularios: renderFormularios,
+    duplicarEvento: duplicarEvento,
+    duplicarNoticia: duplicarNoticia,
+    duplicarBlog: duplicarBlog
+  };
 
   }); // D.ready
 })();

@@ -274,6 +274,21 @@ describe('API (integração, ficheiro temporário)', function () {
     await request(app).get('/docs/').expect(404);
   });
 
+  test('GET /api/admin/backup sem admin → 403', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'editor', senha: 'editor123' }).expect(200);
+    await agent.get('/api/admin/backup').expect(403);
+  });
+
+  test('GET /api/admin/backup com admin', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var res = await agent.get('/api/admin/backup').expect(200);
+    expect(res.headers['content-type']).toMatch(/json/);
+    expect(res.body.events).toBeDefined();
+    expect(res.body.admin_users[0].senha).toBe('');
+  });
+
   test('POST /api/auth/logout-admin limpa sessão', async function () {
     var agent = request.agent(app);
     await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
