@@ -1281,6 +1281,57 @@ a.patrocinador-item.patrocinador-item--link:hover {
   overflow: hidden;
 }
 
+.form-group-consent { margin-top: 1rem; }
+.checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.checkbox-label input { margin-top: 0.2rem; flex-shrink: 0; }
+
+.site-toast-container {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: min(360px, calc(100vw - 2rem));
+}
+.site-toast {
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  box-shadow: var(--sombra);
+  font-size: 0.95rem;
+  animation: toast-in 0.25s ease;
+}
+.site-toast--success { background: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+.site-toast--error { background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+.site-toast--info { background: #cff4fc; color: #055160; border: 1px solid #b6effb; }
+.site-toast--saindo { opacity: 0; transition: opacity 0.3s; }
+@keyframes toast-in {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.pix-card { margin-bottom: 2rem; max-width: 560px; }
+.pix-chave-text { word-break: break-all; font-size: 0.95rem; }
+.pix-qr-img { display: block; margin-top: 1rem; border-radius: 8px; }
+.pix-chave-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+
+.conteudo-texto { max-width: 720px; }
+.conteudo-texto h2 { margin-top: 1.5rem; }
+
+@media print {
+  .header, .footer, .skip-link, .menu-toggle, .btn-hero-inscricao, .btn-lateral-inscricao,
+  .inscricao-fechar, #form-inscricao, .nav { display: none !important; }
+  .comprovante-inscricao { display: block !important; }
+}
+
 /* ===== Area membros: layout com menu lateral ===== */
 .membro-painel { display: flex; min-height: 60vh; margin-top: 1rem; }
 .membro-sidebar {

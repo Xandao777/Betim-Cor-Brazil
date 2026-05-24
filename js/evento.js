@@ -98,7 +98,10 @@
       var secInscricao = document.getElementById('evento-inscricao');
       var boxInscricao = secInscricao && secInscricao.querySelector('.inscricao-box');
       function abrirInscricao() {
-        if (secInscricao) secInscricao.classList.add('aberto');
+        if (secInscricao) {
+          secInscricao.classList.add('aberto');
+          secInscricao.setAttribute('aria-hidden', 'false');
+        }
         if (boxInscricao) boxInscricao.style.display = 'block';
       }
       if (btnHero) btnHero.addEventListener('click', abrirInscricao);
@@ -138,6 +141,8 @@
         '<dt>Data da inscrição</dt><dd>' + esc(formatarData(info.dataInscricao)) + '</dd>';
       form.style.display = 'none';
       comprovante.style.display = 'block';
+      var btnPrint = document.getElementById('btn-imprimir-comprovante');
+      if (btnPrint) btnPrint.style.display = 'inline-block';
     }
 
     if (form) {
@@ -146,7 +151,17 @@
         var nome = document.getElementById('nome-insc').value.trim();
         var email = document.getElementById('email-insc').value.trim();
         var telefone = (document.getElementById('telefone-insc') && document.getElementById('telefone-insc').value.trim()) || '';
-        if (!nome || !email) { alert('Preencha nome e e-mail.'); return; }
+        if (!nome || !email) {
+          if (window.SiteToast) window.SiteToast.error('Preencha nome e e-mail.');
+          else alert('Preencha nome e e-mail.');
+          return;
+        }
+        var consent = document.getElementById('consent-insc');
+        if (consent && !consent.checked) {
+          if (window.SiteToast) window.SiteToast.error('Aceite a política de privacidade.');
+          else alert('Aceite a política de privacidade.');
+          return;
+        }
         var eventoId = document.getElementById('evento-id').value;
         var eventos = D.getEvents ? D.getEvents() : [];
         var ev = eventos.find(function (e2) { return (e2.id || '') === eventoId; }) || {};
@@ -162,7 +177,8 @@
           email: email,
           telefone: telefone,
           dataInscricao: hoje,
-          website: hp ? hp.value : ''
+          website: hp ? hp.value : '',
+          consentimento: true
         };
         var p = D.addInscricaoPublica ? D.addInscricaoPublica(payload) : Promise.reject();
         p.then(function () {
@@ -177,7 +193,8 @@
           dataInscricao: hoje
         });
         }).catch(function (err) {
-          alert(err.message || 'Não foi possível registrar a inscrição.');
+          if (window.SiteToast) window.SiteToast.error(err.message || 'Não foi possível registrar a inscrição.');
+          else alert(err.message || 'Não foi possível registrar a inscrição.');
         });
       });
     }
@@ -192,10 +209,24 @@
     }
 
     if (btnFechar && modal && form) {
-      btnFechar.addEventListener('click', function () {
+      function fecharModal() {
         modal.classList.remove('aberto');
-        comprovante && (comprovante.style.display = 'none');
+        modal.setAttribute('aria-hidden', 'true');
+        if (comprovante) comprovante.style.display = 'none';
         form.style.display = 'block';
+        var bp = document.getElementById('btn-imprimir-comprovante');
+        if (bp) bp.style.display = 'none';
+      }
+      btnFechar.addEventListener('click', fecharModal);
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape' && modal.classList.contains('aberto')) fecharModal();
+      });
+    }
+
+    var btnPrint = document.getElementById('btn-imprimir-comprovante');
+    if (btnPrint) {
+      btnPrint.addEventListener('click', function () {
+        window.print();
       });
     }
   }

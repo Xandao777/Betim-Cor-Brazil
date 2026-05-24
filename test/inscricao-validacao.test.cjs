@@ -17,7 +17,8 @@ describe('inscricao-validacao', function () {
     var r = insc.validateInscricaoPublica(state, {
       eventoId: '999',
       nome: 'A',
-      email: 'a@b.co'
+      email: 'a@b.co',
+      consentimento: true
     });
     expect(r.ok).toBe(false);
     expect(r.status).toBe(404);
@@ -27,7 +28,8 @@ describe('inscricao-validacao', function () {
     var r = insc.validateInscricaoPublica(state, {
       eventoId: '3',
       nome: 'A',
-      email: 'a@b.co'
+      email: 'a@b.co',
+      consentimento: true
     });
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(/encerradas/i);
@@ -43,7 +45,8 @@ describe('inscricao-validacao', function () {
     var r = insc.validateInscricaoPublica(state, {
       eventoId: '2',
       nome: 'B',
-      email: 'b@y.z'
+      email: 'b@y.z',
+      consentimento: true
     });
     expect(r.ok).toBe(false);
     expect(r.status).toBe(409);

@@ -59,9 +59,17 @@ function assertVagasDisponiveis(ev, list, eventoId) {
   return null;
 }
 
+function hasPrivacyConsent(b) {
+  var c = b && b.consentimento;
+  return c === true || c === 'true' || c === '1' || c === 'on';
+}
+
 function validateInscricaoPublica(state, body) {
   if (body && body.website) {
     return { ok: false, status: 400, error: 'Pedido inválido.' };
+  }
+  if (!hasPrivacyConsent(body)) {
+    return { ok: false, status: 400, error: 'Aceite a política de privacidade para se inscrever.' };
   }
   var eventoId = body && body.eventoId;
   var evCheck = validateEventoParaInscricao(state, eventoId);

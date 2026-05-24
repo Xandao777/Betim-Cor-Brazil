@@ -48,7 +48,10 @@ module.exports = {
     telefone: '(00) 0000-0000',
     facebook: '',
     instagram: '',
-    youtube: ''
+    youtube: '',
+    pixChave: '',
+    pixTitular: '',
+    pixQrUrl: ''
   },
   admin_users: [
     { id: '1', usuario: 'admin', senha: 'admin123', nome: 'Administrador', perfil: 'admin' },

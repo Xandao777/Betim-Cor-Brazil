@@ -181,7 +181,7 @@ describe('API (integração, ficheiro temporário)', function () {
   test('POST /api/inscricao/publica com eventoId', async function () {
     await request(app)
       .post('/api/inscricao/publica')
-      .send({ eventoId: 't1', nome: 'Visitante', email: 'v@teste.org' })
+      .send({ eventoId: 't1', nome: 'Visitante', email: 'v@teste.org', consentimento: true })
       .expect(200);
   });
 
@@ -190,7 +190,7 @@ describe('API (integração, ficheiro temporário)', function () {
   });
 
   test('POST /api/inscricao/publica duplicada (mesmo e-mail) → 409', async function () {
-    var body = { eventoId: 't1', nome: 'Ana', email: 'dup@teste.org' };
+    var body = { eventoId: 't1', nome: 'Ana', email: 'dup@teste.org', consentimento: true };
     await request(app).post('/api/inscricao/publica').send(body).expect(200);
     var res = await request(app).post('/api/inscricao/publica').send(body);
     expect(res.status).toBe(409);
@@ -209,7 +209,7 @@ describe('API (integração, ficheiro temporário)', function () {
   test('POST /api/form/contato grava mensagem', async function () {
     await request(app)
       .post('/api/form/contato')
-      .send({ nome: 'Visitante', email: 'v@exemplo.org', assunto: 'duvida', mensagem: 'Olá' })
+      .send({ nome: 'Visitante', email: 'v@exemplo.org', assunto: 'duvida', mensagem: 'Olá', consentimento: true })
       .expect(200);
     var agent = request.agent(app);
     await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
@@ -218,6 +218,13 @@ describe('API (integração, ficheiro temporário)', function () {
     expect(full.body.mensagens_contato.length).toBeGreaterThanOrEqual(1);
     var last = full.body.mensagens_contato[full.body.mensagens_contato.length - 1];
     expect(last.email).toBe('v@exemplo.org');
+  });
+
+  test('POST /api/form/contato sem consentimento → 400', async function () {
+    await request(app)
+      .post('/api/form/contato')
+      .send({ nome: 'A', email: 'a@b.co', assunto: 'x', mensagem: 'ok' })
+      .expect(400);
   });
 
   test('POST /api/form/contato sem mensagem → 400', async function () {
@@ -230,7 +237,7 @@ describe('API (integração, ficheiro temporário)', function () {
   test('POST /api/form/doacao', async function () {
     await request(app)
       .post('/api/form/doacao')
-      .send({ nome: 'Doador', email: 'd@exemplo.org', valor: '50' })
+      .send({ nome: 'Doador', email: 'd@exemplo.org', valor: '50', consentimento: true })
       .expect(200);
   });
 

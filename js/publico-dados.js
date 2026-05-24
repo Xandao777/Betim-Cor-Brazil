@@ -347,5 +347,51 @@
     });
   })();
 
+  // ---- PIX na página Doar ----
+  (function () {
+    var box = document.getElementById('secao-pix');
+    if (!box) return;
+    var inst = D.getInstitutional() || {};
+    var chave = (inst.pixChave || '').trim();
+    if (!chave) {
+      box.hidden = true;
+      return;
+    }
+    box.hidden = false;
+    var titularEl = document.getElementById('pix-titular');
+    var chaveEl = document.getElementById('pix-chave-text');
+    var qrImg = document.getElementById('pix-qr-img');
+    var titular = (inst.pixTitular || '').trim();
+    if (titularEl) {
+      titularEl.textContent = titular ? 'Titular: ' + titular : '';
+      titularEl.style.display = titular ? '' : 'none';
+    }
+    if (chaveEl) chaveEl.textContent = chave;
+    var qrUrl = (inst.pixQrUrl || '').trim();
+    if (qrImg && qrUrl) {
+      qrImg.src = qrUrl;
+      qrImg.alt = 'QR Code PIX';
+      qrImg.hidden = false;
+    } else if (qrImg) {
+      qrImg.hidden = true;
+    }
+    var btnCopiar = document.getElementById('btn-copiar-pix');
+    if (btnCopiar) {
+      btnCopiar.addEventListener('click', function () {
+        var done = function () {
+          if (window.SiteToast) SiteToast.success('Chave PIX copiada.');
+          else alert('Chave PIX copiada.');
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(chave).then(done).catch(function () {
+            alert('Copie manualmente: ' + chave);
+          });
+        } else {
+          alert('Copie manualmente: ' + chave);
+        }
+      });
+    }
+  })();
+
   }); // D.ready
 })();

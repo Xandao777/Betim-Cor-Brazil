@@ -38,7 +38,14 @@
   var isAdmin = perfil === 'admin';
 
   function errSave(e) {
-    alert((e && e.message) ? e.message : String(e));
+    var msg = (e && e.message) ? e.message : String(e);
+    if (window.SiteToast) window.SiteToast.error(msg);
+    else alert(msg);
+  }
+
+  function toastOk(msg) {
+    if (window.SiteToast) window.SiteToast.success(msg);
+    else alert(msg);
   }
 
   // Mostrar usuário e esconder itens restritos a admin
@@ -144,10 +151,52 @@
     var vazioD = document.getElementById('form-doacao-vazio');
     var acoesD = document.getElementById('form-doacao-acoes');
     if (tbD) {
-      tbD.innerHTML = doa.slice().reverse().map(function (p) {
-        var vr = p.valorReais != null ? String(p.valorReais) : '—';
-        return '<tr><td>' + escHtml(formatarDataHoraIso(p.criadoEm)) + '</td><td>' + escHtml(p.nome || '—') + '</td><td>' + escHtml(p.email) + '</td><td>' + escHtml(vr) + '</td></tr>';
-      }).join('');
+      tbD.innerHTML = doa
+        .slice()
+        .reverse()
+        .map(function (p, revIdx) {
+          var vr = p.valorReais != null ? String(p.valorReais) : '—';
+          var est = p.estado || 'pendente';
+          var realIdx = doa.length - 1 - revIdx;
+          var opts = ['pendente', 'contactado', 'concluido']
+            .map(function (s) {
+              return (
+                '<option value="' +
+                s +
+                '"' +
+                (est === s ? ' selected' : '') +
+                '>' +
+                s +
+                '</option>'
+              );
+            })
+            .join('');
+          return (
+            '<tr><td>' +
+            escHtml(formatarDataHoraIso(p.criadoEm)) +
+            '</td><td>' +
+            escHtml(p.nome || '—') +
+            '</td><td>' +
+            escHtml(p.email) +
+            '</td><td>' +
+            escHtml(vr) +
+            '</td><td><select class="select-estado-doacao" data-idx="' +
+            realIdx +
+            '" aria-label="Estado do pedido">' +
+            opts +
+            '</select></td></tr>'
+          );
+        })
+        .join('');
+      tbD.querySelectorAll('.select-estado-doacao').forEach(function (sel) {
+        sel.addEventListener('change', function () {
+          var ix = parseInt(this.getAttribute('data-idx'), 10);
+          var list = (D.getPedidosDoacao && D.getPedidosDoacao()) || [];
+          if (isNaN(ix) || ix < 0 || ix >= list.length) return;
+          list[ix] = Object.assign({}, list[ix], { estado: this.value });
+          D.setPedidosDoacao(list).catch(errSave);
+        });
+      });
       if (vazioD) vazioD.style.display = doa.length ? 'none' : 'block';
       if (acoesD) acoesD.style.display = isAdmin && doa.length ? 'block' : 'none';
     }
@@ -212,6 +261,57 @@
     document.getElementById('inst-facebook').value = inst.facebook || '';
     document.getElementById('inst-instagram').value = inst.instagram || '';
     document.getElementById('inst-youtube').value = inst.youtube || '';
+    var pixChave = document.getElementById('inst-pix-chave');
+    var pixTit = document.getElementById('inst-pix-titular');
+    var pixQr = document.getElementById('inst-pix-qr');
+    if (pixChave) pixChave.value = inst.pixChave || '';
+    if (pixTit) pixTit.value = inst.pixTitular || '';
+    if (pixQr) pixQr.value = inst.pixQrUrl || '';
+  }
+
+  function exportInscricoesCsv() {
+    var list = D.getInscricoes() || [];
+    var filtro = document.getElementById('filtro-inscricao-evento');
+    var filtroVal = filtro ? filtro.value : '';
+    if (filtroVal) {
+      list = list.filter(function (i) {
+        return String(i.eventoId || '') === String(filtroVal);
+      });
+    }
+    var header = ['dataInscricao', 'eventoTitulo', 'eventoData', 'origem', 'nome', 'email', 'telefone', 'membroUsuario'];
+    function csvCell(v) {
+      var s = String(v == null ? '' : v).replace(/"/g, '""');
+      return '"' + s + '"';
+    }
+    var rows = [header.join(';')];
+    list.forEach(function (i) {
+      rows.push(
+        [
+          i.dataInscricao,
+          i.eventoTitulo,
+          i.eventoData,
+          i.membroUsuario ? 'associado' : 'publico',
+          i.nome,
+          i.email,
+          i.telefone,
+          i.membroUsuario
+        ]
+          .map(csvCell)
+          .join(';')
+      );
+    });
+    var blob = new Blob(['\ufeff' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'inscricoes-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toastOk('CSV exportado.');
+  }
+
+  var btnExportCsv = document.getElementById('btn-export-inscricoes-csv');
+  if (btnExportCsv) {
+    btnExportCsv.addEventListener('click', exportInscricoesCsv);
   }
 
   // ---- EVENTOS ----
@@ -959,9 +1059,12 @@
           telefone: document.getElementById('inst-telefone').value.trim(),
           facebook: document.getElementById('inst-facebook').value.trim(),
           instagram: document.getElementById('inst-instagram').value.trim(),
-          youtube: document.getElementById('inst-youtube').value.trim()
+          youtube: document.getElementById('inst-youtube').value.trim(),
+          pixChave: document.getElementById('inst-pix-chave').value.trim(),
+          pixTitular: document.getElementById('inst-pix-titular').value.trim(),
+          pixQrUrl: document.getElementById('inst-pix-qr').value.trim()
         }).then(function () {
-          alert('Conteúdo institucional salvo.');
+          toastOk('Conteúdo institucional salvo.');
           carregarFormInstitucional();
         }).catch(errSave);
       });

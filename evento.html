@@ -48,8 +48,8 @@
         <!-- Conteúdo do evento preenchido via JS -->
       </section>
 
-      <section id="evento-inscricao" class="section inscricao-section" aria-labelledby="titulo-inscricao">
-        <div class="inscricao-box" style="display: none;">
+      <section id="evento-inscricao" class="section inscricao-section" aria-labelledby="titulo-inscricao" aria-hidden="true">
+        <div class="inscricao-box" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="titulo-inscricao">
           <button type="button" id="btn-fechar-inscricao" class="inscricao-fechar" aria-label="Fechar inscrição">×</button>
           <h2 id="titulo-inscricao" class="section-title">Inscrição neste evento</h2>
           <p class="section-intro">Informe seus dados para confirmar a participação. Você receberá um comprovante na tela.</p>
@@ -93,10 +93,17 @@
               <label for="obs-insc">Observações ou necessidades especiais</label>
               <textarea id="obs-insc" name="observacoes" rows="3" placeholder="Opcional: informe algo que a organização deva saber"></textarea>
             </div>
+            <div class="form-group form-group-consent">
+              <label class="checkbox-label">
+                <input type="checkbox" id="consent-insc" name="consentimento" required value="1">
+                Li e aceito a <a href="privacidade.html" target="_blank" rel="noopener">política de privacidade</a> *
+              </label>
+            </div>
             <div class="form-actions form-actions-inscricao">
               <button type="submit" class="btn btn-primary btn-lg" id="btn-submit-inscricao">
                 Confirmar inscrição no evento
               </button>
+              <button type="button" class="btn btn-outline" id="btn-imprimir-comprovante" style="display: none;">Imprimir comprovante</button>
             </div>
           </form>
         </div>
@@ -139,6 +146,7 @@
   </footer>
   <script src="js/dados-site.js"></script>
   <script src="js/publico-dados.js"></script>
+  <script src="js/toast.js"></script>
   <script src="js/main.js"></script>
   <script src="js/evento.js"></script>
 </body>

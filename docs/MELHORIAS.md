@@ -85,10 +85,10 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 3.2 Melhorias recomendadas
 
-- [ ] Exibir **QR Code PIX** e chave no `doar.html` (dados institucionais configuráveis no painel).
+- [x] Exibir chave PIX e QR (URL) no `doar.html` — campos no painel institucional (`pixChave`, `pixTitular`, `pixQrUrl`).
 - [ ] Integrar gateway (Stripe, Mercado Pago, PagSeguro) se doação online for requisito.
 - [ ] E-mail automático ao doador com valor e instruções (além da notificação à equipa).
-- [ ] Estado do pedido no admin: `pendente` | `contactado` | `concluído`.
+- [x] Estado do pedido no admin: `pendente` | `contactado` | `concluido` (select na tabela).
 
 ---
 
@@ -115,8 +115,8 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 5.1 Feedback com `alert()`
 
-- [ ] Vários fluxos usam `alert()` (`main.js`, `evento.js`, `area-membros.js`, `admin-painel.js`) — pouco acessível e antiquado.
-- [ ] **Melhoria:** componentes de toast/banner inline com `aria-live` (já usado em partes do site).
+- [x] Toasts acessíveis (`js/toast.js`) no site público e mensagens principais do admin.
+- [ ] Substituir `alert()` restantes no painel admin (confirms, validações pontuais).
 
 ### 5.2 Estados de carregamento e erro
 
@@ -134,7 +134,7 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 5.5 Impressão do comprovante de inscrição
 
-- [ ] Comprovante só na tela — **P2:** botão “Imprimir / Guardar PDF” com CSS `@media print`.
+- [x] Botão “Imprimir comprovante” + CSS `@media print` em `evento.html`.
 
 ### 5.6 Acessibilidade
 
@@ -150,7 +150,7 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 ### 6.1 XSS em conteúdo dinâmico
 
 - [x] `DadosSite.escapeHtml` partilhado; `evento.js` usa escape no detalhe e comprovante.
-- [ ] `area-membros.js` e outros módulos — pendente.
+- [x] `area-membros.js` usa `escapeHtml` e sessão via cookie/API (sem depender só de `sessionStorage`).
 
 ### 6.2 Sessão de membro em `sessionStorage`
 
@@ -205,7 +205,7 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 8.3 Inscrições
 
-- [ ] Exportar CSV das inscrições por evento (para check-in no dia).
+- [x] Exportar CSV das inscrições (botão no painel, respeita filtro por evento).
 - [ ] Enviar e-mail em massa aos inscritos (lista de distribuição) — **P3**, cuidado com LGPD.
 
 ### 8.4 Blog
@@ -290,7 +290,7 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 11.3 CI/CD
 
-- [ ] **P2:** GitHub Action que corre `npm test` em cada push/PR.
+- [x] GitHub Action `.github/workflows/test.yml` — `npm test` em push/PR na `main`.
 - [ ] **P2:** lint (ESLint) e verificação de segredos no repositório.
 
 ---
@@ -321,8 +321,8 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ## 13. LGPD e privacidade (P1–P2)
 
-- [ ] **Política de privacidade** e base legal para tratamento de dados (inscrições, contacto, membros).
-- [ ] Consentimento explícito nos formulários (checkbox + link para política).
+- [x] Página `privacidade.html` (texto base — rever com assessoria jurídica se necessário).
+- [x] Consentimento obrigatório em contato, doação e inscrição pública (+ validação na API).
 - [ ] Retenção de dados: prazo para apagar mensagens antigas e inscrições.
 - [ ] Direito de acesso/eliminação — processo manual hoje; **P2:** endpoint ou fluxo no admin para exportar/apagar dados de um titular.
 - [ ] Não expor e-mails de inscritos publicamente no admin a perfis que não precisem (editor já não vê membros — OK).

@@ -9,13 +9,22 @@
 
   D.ready.then(function () {
 
-  var CHAVE_USUARIO = 'membroUsuario';
+  function esc(s) {
+    return D.escapeHtml ? D.escapeHtml(s) : String(s == null ? '' : s);
+  }
+  function escAttr(s) {
+    return esc(s).replace(/"/g, '&quot;');
+  }
 
   function getUsuarioLogado() {
-    var user = sessionStorage.getItem(CHAVE_USUARIO);
-    if (!user || !D) return null;
+    if (!D || !D.isMemberSession()) return null;
     var list = D.getMembers() || [];
-    return list.find(function (m) { return m.usuario === user && m.ativo !== false; }) || null;
+    return list.find(function (m) { return m.ativo !== false; }) || list[0] || null;
+  }
+
+  function getMembroUsuario() {
+    var m = getUsuarioLogado();
+    return m ? m.usuario : '';
   }
 
   function formatarData(str) {
@@ -46,27 +55,61 @@
     var el = document.getElementById('lista-dashboard-eventos');
     if (el) {
       if (proximos.length === 0) el.innerHTML = '<p class="admin-aviso">Nenhum evento próximo no momento.</p>';
-      else el.innerHTML = proximos.map(function (e) {
-        var fd = formatarData(e.data);
-        return '<p><strong>' + (e.titulo || '') + '</strong> – ' + fd.dia + ' ' + fd.mes + ' ' + fd.ano + (e.local ? ' · ' + e.local : '') + '</p>';
-      }).join('');
+      else {
+        el.innerHTML = proximos
+          .map(function (e) {
+            var fd = formatarData(e.data);
+            return (
+              '<p><strong>' +
+              esc(e.titulo || '') +
+              '</strong> – ' +
+              fd.dia +
+              ' ' +
+              fd.mes +
+              ' ' +
+              fd.ano +
+              (e.local ? ' · ' + esc(e.local) : '') +
+              '</p>'
+            );
+          })
+          .join('');
+      }
     }
     var inscricoes = (D && D.getInscricoes()) ? D.getInscricoes() : [];
-    var user = sessionStorage.getItem(CHAVE_USUARIO);
+    var user = getMembroUsuario();
     var minhas = inscricoes.filter(function (i) { return i.membroUsuario === user; });
     var elIns = document.getElementById('lista-dashboard-inscricoes');
     if (elIns) {
       if (minhas.length === 0) elIns.innerHTML = '<p class="admin-aviso">Você ainda não se inscreveu em nenhum evento.</p>';
-      else elIns.innerHTML = '<ul class="lista-recursos">' + minhas.map(function (i) { return '<li><span class="doc-icon">📅</span> ' + (i.eventoTitulo || 'Evento') + ' – ' + (i.eventoData || '') + '</li>'; }).join('') + '</ul>';
+      else {
+        elIns.innerHTML =
+          '<ul class="lista-recursos">' +
+          minhas
+            .map(function (i) {
+              return (
+                '<li><span class="doc-icon">📅</span> ' +
+                esc(i.eventoTitulo || 'Evento') +
+                ' – ' +
+                esc(i.eventoData || '') +
+                '</li>'
+              );
+            })
+            .join('') +
+          '</ul>';
+      }
     }
     var docs = (D && D.getDocuments()) ? D.getDocuments() : [];
     var visiveis = docs.filter(function (d) { return d.visivel !== false && d.categoria !== 'relatorio'; }).slice(0, 5);
     var elDocs = document.getElementById('lista-dashboard-docs');
     if (elDocs) {
-      elDocs.innerHTML = visiveis.map(function (d) {
-        var link = d.arquivo ? '<a href="' + d.arquivo + '" target="_blank" rel="noopener">' + (d.titulo || '') + '</a>' : (d.titulo || '');
-        return '<li><span class="doc-icon">📄</span> ' + link + '</li>';
-      }).join('');
+      elDocs.innerHTML = visiveis
+        .map(function (d) {
+          var link = d.arquivo
+            ? '<a href="' + escAttr(d.arquivo) + '" target="_blank" rel="noopener">' + esc(d.titulo || '') + '</a>'
+            : esc(d.titulo || '');
+          return '<li><span class="doc-icon">📄</span> ' + link + '</li>';
+        })
+        .join('');
       if (visiveis.length === 0) elDocs.innerHTML = '<li class="admin-aviso">Nenhum documento recente.</li>';
     }
   }
@@ -96,12 +139,13 @@
     return D.salvarPerfilMembro(nome, email, telefone).then(function () {
       return D.refresh();
     }).then(function () {
-      sessionStorage.setItem('membroNome', nome);
       var nomeHeader = document.getElementById('nome-membro');
       if (nomeHeader) nomeHeader.textContent = nome;
-      alert('Perfil atualizado.');
+      if (window.SiteToast) window.SiteToast.success('Perfil atualizado.');
+      else alert('Perfil atualizado.');
     }).catch(function (e) {
-      alert(e.message || 'Não foi possível salvar o perfil.');
+      if (window.SiteToast) window.SiteToast.error(e.message || 'Não foi possível salvar o perfil.');
+      else alert(e.message || 'Não foi possível salvar o perfil.');
     });
   }
 
@@ -115,10 +159,14 @@
     var ul = document.getElementById('lista-documentos-membro');
     var vazio = document.getElementById('documentos-vazio');
     if (!ul) return;
-    ul.innerHTML = visiveis.map(function (d) {
-      var link = d.arquivo ? '<a href="' + d.arquivo + '" target="_blank" rel="noopener">' + (d.titulo || '') + '</a>' : (d.titulo || '');
-      return '<li><span class="doc-icon">📄</span> ' + link + '</li>';
-    }).join('');
+    ul.innerHTML = visiveis
+      .map(function (d) {
+        var link = d.arquivo
+          ? '<a href="' + escAttr(d.arquivo) + '" target="_blank" rel="noopener">' + esc(d.titulo || '') + '</a>'
+          : esc(d.titulo || '');
+        return '<li><span class="doc-icon">📄</span> ' + link + '</li>';
+      })
+      .join('');
     if (vazio) vazio.style.display = visiveis.length === 0 ? 'block' : 'none';
   }
 
@@ -128,26 +176,40 @@
     var ul = document.getElementById('lista-relatorios-membro');
     var vazio = document.getElementById('relatorios-vazio');
     if (!ul) return;
-    ul.innerHTML = relatorios.map(function (d) {
-      var link = d.arquivo ? '<a href="' + d.arquivo + '" target="_blank" rel="noopener">' + (d.titulo || '') + '</a>' : (d.titulo || '');
-      return '<li><span class="doc-icon">📊</span> ' + link + '</li>';
-    }).join('');
+    ul.innerHTML = relatorios
+      .map(function (d) {
+        var link = d.arquivo
+          ? '<a href="' + escAttr(d.arquivo) + '" target="_blank" rel="noopener">' + esc(d.titulo || '') + '</a>'
+          : esc(d.titulo || '');
+        return '<li><span class="doc-icon">📊</span> ' + link + '</li>';
+      })
+      .join('');
     if (vazio) vazio.style.display = relatorios.length === 0 ? 'block' : 'none';
   }
 
   function preencherEventos() {
     var eventos = (D && D.getEvents()) ? D.getEvents() : [];
     var publicados = eventos.filter(function (e) { return e.publicado !== false; }).sort(function (a, b) { return (a.data || '').localeCompare(b.data); });
-    var user = sessionStorage.getItem(CHAVE_USUARIO);
+    var user = getMembroUsuario();
     var inscricoes = (D && D.getInscricoes()) ? D.getInscricoes() : [];
     var minhas = inscricoes.filter(function (i) { return i.membroUsuario === user; });
 
     var ulIns = document.getElementById('lista-minhas-inscricoes');
     var insVazio = document.getElementById('inscricoes-vazio');
     if (ulIns) {
-      ulIns.innerHTML = minhas.map(function (i) {
-        return '<li><span class="doc-icon">📅</span> ' + (i.eventoTitulo || '') + ' – ' + (i.eventoData || '') + ' <button type="button" class="btn btn-outline btn-cancelar-inscricao" data-evento-id="' + i.eventoId + '">Cancelar</button></li>';
-      }).join('');
+      ulIns.innerHTML = minhas
+        .map(function (i) {
+          return (
+            '<li><span class="doc-icon">📅</span> ' +
+            esc(i.eventoTitulo || '') +
+            ' – ' +
+            esc(i.eventoData || '') +
+            ' <button type="button" class="btn btn-outline btn-cancelar-inscricao" data-evento-id="' +
+            escAttr(i.eventoId) +
+            '">Cancelar</button></li>'
+          );
+        })
+        .join('');
       if (insVazio) insVazio.style.display = minhas.length === 0 ? 'block' : 'none';
     }
     ulIns && ulIns.querySelectorAll('.btn-cancelar-inscricao').forEach(function (btn) {
@@ -167,17 +229,50 @@
 
     var container = document.getElementById('lista-eventos-membro');
     if (!container) return;
-    container.innerHTML = publicados.map(function (e) {
-      var fd = formatarData(e.data);
-      var jaInscrito = minhas.some(function (i) { return i.eventoId === e.id; });
-      var meta = [fd.dia + ' ' + fd.mes + ' ' + fd.ano];
-      if (e.hora) meta.push('às ' + e.hora);
-      if (e.local) meta.push(e.local);
-      var btn = !jaInscrito && e.inscricoesAtivas
-        ? '<button type="button" class="btn btn-primary btn-inscrever" data-evento-id="' + e.id + '" data-evento-titulo="' + (e.titulo || '').replace(/"/g, '&quot;') + '" data-evento-data="' + (e.data || '') + '" data-evento-hora="' + (e.hora || '') + '" data-evento-local="' + (e.local || '').replace(/"/g, '&quot;') + '">Inscrever-se</button>'
-        : (jaInscrito ? '<span class="badge badge-ok">Inscrição confirmada</span>' : '');
-      return '<article class="evento-card-membro"><div class="evento-card-data"><span class="dia">' + fd.dia + '</span><span class="mes">' + fd.mes + '</span></div><div class="evento-card-body"><h4>' + (e.titulo || '') + '</h4><p class="evento-card-meta">' + meta.join(' · ') + '</p><p class="evento-card-desc">' + (e.descricao || '') + '</p>' + (e.vagas ? '<p class="evento-card-vagas">Vagas limitadas: ' + e.vagas + '</p>' : '') + '<div class="evento-card-acoes">' + btn + '</div></div></article>';
-    }).join('');
+    container.innerHTML = publicados
+      .map(function (e) {
+        var fd = formatarData(e.data);
+        var jaInscrito = minhas.some(function (i) {
+          return String(i.eventoId) === String(e.id);
+        });
+        var meta = [fd.dia + ' ' + fd.mes + ' ' + fd.ano];
+        if (e.hora) meta.push('às ' + esc(e.hora));
+        if (e.local) meta.push(esc(e.local));
+        var btn =
+          !jaInscrito && e.inscricoesAtivas !== false
+            ? '<button type="button" class="btn btn-primary btn-inscrever" data-evento-id="' +
+              escAttr(e.id) +
+              '" data-evento-titulo="' +
+              escAttr(e.titulo || '') +
+              '" data-evento-data="' +
+              escAttr(e.data || '') +
+              '" data-evento-hora="' +
+              escAttr(e.hora || '') +
+              '" data-evento-local="' +
+              escAttr(e.local || '') +
+              '">Inscrever-se</button>'
+            : jaInscrito
+              ? '<span class="badge badge-ok">Inscrição confirmada</span>'
+              : '';
+        return (
+          '<article class="evento-card-membro"><div class="evento-card-data"><span class="dia">' +
+          fd.dia +
+          '</span><span class="mes">' +
+          fd.mes +
+          '</span></div><div class="evento-card-body"><h4>' +
+          esc(e.titulo || '') +
+          '</h4><p class="evento-card-meta">' +
+          meta.join(' · ') +
+          '</p><p class="evento-card-desc">' +
+          esc(e.descricao || '') +
+          '</p>' +
+          (e.vagas ? '<p class="evento-card-vagas">Vagas limitadas: ' + esc(String(e.vagas)) + '</p>' : '') +
+          '<div class="evento-card-acoes">' +
+          btn +
+          '</div></div></article>'
+        );
+      })
+      .join('');
 
     container.querySelectorAll('.btn-inscrever').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -218,9 +313,22 @@
       return;
     }
     if (vazio) vazio.style.display = 'none';
-    container.innerHTML = internas.map(function (n) {
-      return '<div class="membro-card"><h4>' + (n.titulo || '') + '</h4><p class="meta">' + (n.dataPublicacao || '') + (n.categoria ? ' · ' + n.categoria : '') + '</p><p>' + (n.resumo || '') + '</p>' + (n.conteudo ? '<p>' + n.conteudo + '</p>' : '') + '</div>';
-    }).join('');
+    container.innerHTML = internas
+      .map(function (n) {
+        return (
+          '<div class="membro-card"><h4>' +
+          esc(n.titulo || '') +
+          '</h4><p class="meta">' +
+          esc(n.dataPublicacao || '') +
+          (n.categoria ? ' · ' + esc(n.categoria) : '') +
+          '</p><p>' +
+          esc(n.resumo || '') +
+          '</p>' +
+          (n.conteudo ? '<p>' + esc(n.conteudo) + '</p>' : '') +
+          '</div>'
+        );
+      })
+      .join('');
   }
 
   /** Só pode registar-se uma vez; não usar display==='none' — antes do login o painel está oculto mas o DOM já existe. */

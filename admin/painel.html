@@ -81,7 +81,7 @@
           <p class="admin-aviso" id="form-doacao-vazio" style="display: none;">Nenhum pedido.</p>
           <div class="admin-tabela-wrapper">
             <table class="admin-tabela" id="tabela-form-doacao">
-              <thead><tr><th>Data</th><th>Nome</th><th>E-mail</th><th>Valor (R$)</th></tr></thead>
+              <thead><tr><th>Data</th><th>Nome</th><th>E-mail</th><th>Valor (R$)</th><th>Estado</th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
@@ -171,6 +171,7 @@
           </div>
         </div>
         <p id="inscricoes-vazio" class="admin-aviso" style="display: none;">Nenhuma inscrição registada.</p>
+        <p class="form-actions"><button type="button" id="btn-export-inscricoes-csv" class="btn btn-outline">Exportar CSV</button></p>
         <div class="admin-tabela-wrapper">
           <table class="admin-tabela" id="tabela-inscricoes">
             <thead>
@@ -502,6 +503,20 @@
             <label for="inst-youtube">YouTube (URL)</label>
             <input type="text" id="inst-youtube" placeholder="https://…" autocomplete="url">
           </div>
+          <h3 class="section-title" style="margin-top:1.5rem;">Doação (PIX)</h3>
+          <p class="admin-aviso">Exibido na página Doar quando a chave estiver preenchida.</p>
+          <div class="form-group">
+            <label for="inst-pix-chave">Chave PIX</label>
+            <input type="text" id="inst-pix-chave" placeholder="E-mail, CPF/CNPJ ou chave aleatória">
+          </div>
+          <div class="form-group">
+            <label for="inst-pix-titular">Titular da conta</label>
+            <input type="text" id="inst-pix-titular" placeholder="Nome da associação ou responsável">
+          </div>
+          <div class="form-group">
+            <label for="inst-pix-qr">URL da imagem do QR Code (opcional)</label>
+            <input type="url" id="inst-pix-qr" placeholder="https://… ou /uploads/gallery/…">
+          </div>
           <div class="form-actions">
             <button type="submit" class="btn btn-primary">Salvar alterações</button>
           </div>
@@ -510,6 +525,7 @@
     </div>
   </div>
   <script src="../js/dados-site.js"></script>
+  <script src="../js/toast.js"></script>
   <script src="js/admin-painel.js"></script>
 </body>
 </html>

@@ -1,6 +1,15 @@
 (function () {
   'use strict';
 
+  function toastOk(msg) {
+    if (window.SiteToast) window.SiteToast.success(msg);
+    else alert(msg);
+  }
+  function toastErr(msg) {
+    if (window.SiteToast) window.SiteToast.error(msg);
+    else alert(msg);
+  }
+
   // Ano no footer
   var anoEl = document.getElementById('ano');
   if (anoEl) anoEl.textContent = new Date().getFullYear();
@@ -15,7 +24,6 @@
       nav.classList.toggle('active');
       menuToggle.setAttribute('aria-label', expanded ? 'Abrir menu' : 'Fechar menu');
     });
-    // Fechar ao clicar em um link (mobile)
     nav.querySelectorAll('a').forEach(function (link) {
       link.addEventListener('click', function () {
         menuToggle.setAttribute('aria-expanded', 'false');
@@ -25,13 +33,19 @@
     });
   }
 
-  // Formulário de contato → API (guardado no servidor para a equipa consultar no painel)
+  // Formulário de contato
   var formContato = document.getElementById('form-contato');
   if (formContato) {
     formContato.addEventListener('submit', function (e) {
       e.preventDefault();
+      var consent = document.getElementById('consent-contato');
+      if (consent && !consent.checked) {
+        toastErr('Aceite a política de privacidade.');
+        return;
+      }
       var btn = formContato.querySelector('button[type="submit"]');
       if (btn) btn.disabled = true;
+      var hp = document.getElementById('website-contato');
       fetch('/api/form/contato', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -40,7 +54,9 @@
           nome: document.getElementById('nome').value,
           email: document.getElementById('email').value,
           assunto: document.getElementById('assunto').value,
-          mensagem: document.getElementById('mensagem').value
+          mensagem: document.getElementById('mensagem').value,
+          consentimento: true,
+          website: hp ? hp.value : ''
         })
       })
         .then(function (r) {
@@ -50,11 +66,11 @@
           });
         })
         .then(function () {
-          alert('Mensagem enviada com sucesso! Entraremos em contato em breve.');
+          toastOk('Mensagem enviada com sucesso! Entraremos em contato em breve.');
           formContato.reset();
         })
         .catch(function (err) {
-          alert(err.message || 'Não foi possível enviar. Tente novamente ou use o e-mail da página.');
+          toastErr(err.message || 'Não foi possível enviar. Tente novamente ou use o e-mail da página.');
         })
         .finally(function () {
           if (btn) btn.disabled = false;
@@ -62,13 +78,9 @@
     });
   }
 
-  // Área de membros: login via API (dados globais no servidor)
+  // Área de membros: login via API
   (function () {
-    var CHAVE_SESSAO = 'membroLogado';
-    var CHAVE_USUARIO = 'membroUsuario';
-    var CHAVE_NOME = 'membroNome';
     var DS = window.DadosSite;
-
     var blocoLogin = document.getElementById('bloco-login');
     var blocoDashboard = document.getElementById('bloco-dashboard');
     var formLogin = document.getElementById('form-login');
@@ -88,11 +100,10 @@
       if (blocoLogin) blocoLogin.style.display = logado ? 'none' : 'block';
       if (blocoDashboard) blocoDashboard.style.display = logado ? 'block' : 'none';
       if (logado && nomeMembro) {
-        var nome = sessionStorage.getItem(CHAVE_NOME);
-        if (!nome && DS.getMembers) {
-          var u = sessionStorage.getItem(CHAVE_USUARIO);
-          var mm = (DS.getMembers() || []).find(function (m) { return m.usuario === u; });
-          nome = mm ? mm.nome : '';
+        var nome = '';
+        if (DS.getMembers) {
+          var mems = DS.getMembers();
+          if (mems.length) nome = mems[0].nome || '';
         }
         nomeMembro.textContent = nome || 'Membro';
       }
@@ -117,10 +128,7 @@
               return data;
             });
           })
-          .then(function (data) {
-            sessionStorage.setItem(CHAVE_SESSAO, 'true');
-            sessionStorage.setItem(CHAVE_USUARIO, data.usuario);
-            sessionStorage.setItem(CHAVE_NOME, data.nome);
+          .then(function () {
             formLogin.reset();
             return DS && DS.refresh ? DS.refresh() : Promise.resolve();
           })
@@ -136,9 +144,8 @@
     if (btnSair) {
       btnSair.addEventListener('click', function () {
         fetch('/api/auth/logout-member', { method: 'POST', credentials: 'include' }).then(function () {
-          sessionStorage.removeItem(CHAVE_SESSAO);
-          sessionStorage.removeItem(CHAVE_USUARIO);
-          sessionStorage.removeItem(CHAVE_NOME);
+          if (DS && DS.refresh) return DS.refresh();
+        }).then(function () {
           atualizarTela();
         });
       });
@@ -151,7 +158,7 @@
     }
   })();
 
-  // Formulário de doação: mostrar campo "Outro" quando selecionado
+  // Formulário de doação
   var formDoacao = document.getElementById('form-doacao');
   var grupoOutro = document.getElementById('grupo-outro');
   var radiosValor = formDoacao && formDoacao.querySelectorAll('input[name="valor"]');
@@ -164,18 +171,24 @@
     });
     formDoacao.addEventListener('submit', function (e) {
       e.preventDefault();
+      var consent = document.getElementById('consent-doacao');
+      if (consent && !consent.checked) {
+        toastErr('Aceite a política de privacidade.');
+        return;
+      }
       var valorOutro = document.getElementById('valor-outro');
       var selected = formDoacao.querySelector('input[name="valor"]:checked');
       if (!selected) {
-        alert('Selecione um valor.');
+        toastErr('Selecione um valor.');
         return;
       }
       if (selected.value === 'outro' && (!valorOutro.value || valorOutro.value <= 0)) {
-        alert('Informe o valor da doação.');
+        toastErr('Informe o valor da doação.');
         return;
       }
       var btn = formDoacao.querySelector('button[type="submit"]');
       if (btn) btn.disabled = true;
+      var hp = document.getElementById('website-doacao');
       fetch('/api/form/doacao', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -184,7 +197,9 @@
           nome: document.getElementById('nome-doacao').value,
           email: document.getElementById('email-doacao').value,
           valor: selected.value,
-          valor_outro: valorOutro ? valorOutro.value : ''
+          valor_outro: valorOutro ? valorOutro.value : '',
+          consentimento: true,
+          website: hp ? hp.value : ''
         })
       })
         .then(function (r) {
@@ -194,12 +209,12 @@
           });
         })
         .then(function () {
-          alert('Obrigado! O seu pedido foi registado. A associação enviará instruções de pagamento (PIX ou link) para o e-mail indicado.');
+          toastOk('Obrigado! O seu pedido foi registado. Use o PIX acima ou aguarde contacto por e-mail.');
           formDoacao.reset();
           grupoOutro.style.display = 'none';
         })
         .catch(function (err) {
-          alert(err.message || 'Não foi possível enviar. Tente novamente.');
+          toastErr(err.message || 'Não foi possível enviar. Tente novamente.');
         })
         .finally(function () {
           if (btn) btn.disabled = false;
@@ -207,7 +222,7 @@
     });
   }
 
-  // Botões anterior/próximo do calendário (eventos) - apenas visual
+  // Calendário de eventos
   var btnAnt = document.getElementById('btn-ant');
   var btnProx = document.getElementById('btn-prox');
   var mesAtual = document.getElementById('mes-atual');
@@ -222,21 +237,33 @@
         window.renderEventosPorMes(indice, ano);
       }
     }
-    var bootMes = function () { atualizarMes(); };
+    var bootMes = function () {
+      atualizarMes();
+    };
     if (window.DadosSite && window.DadosSite.ready) {
       window.DadosSite.ready.then(bootMes);
     } else {
       atualizarMes();
     }
-    if (btnAnt) btnAnt.addEventListener('click', function () {
-      indice--;
-      if (indice < 0) { indice = 11; ano--; }
-      atualizarMes();
-    });
-    if (btnProx) btnProx.addEventListener('click', function () {
-      indice++;
-      if (indice > 11) { indice = 0; ano++; }
-      atualizarMes();
-    });
+    if (btnAnt) {
+      btnAnt.addEventListener('click', function () {
+        indice--;
+        if (indice < 0) {
+          indice = 11;
+          ano--;
+        }
+        atualizarMes();
+      });
+    }
+    if (btnProx) {
+      btnProx.addEventListener('click', function () {
+        indice++;
+        if (indice > 11) {
+          indice = 0;
+          ano++;
+        }
+        atualizarMes();
+      });
+    }
   }
 })();

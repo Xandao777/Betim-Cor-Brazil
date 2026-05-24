@@ -463,6 +463,11 @@ function newFormId() {
   return Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
 }
 
+function hasPrivacyConsent(b) {
+  var c = b && b.consentimento;
+  return c === true || c === 'true' || c === '1' || c === 'on';
+}
+
 app.put('/api/state/:key', async function (req, res) {
   var key = req.params.key;
   if (KEYS.indexOf(key) === -1) return res.status(400).json({ error: 'Chave inválida' });
@@ -577,6 +582,9 @@ app.post('/api/form/contato', rateLimits.formPublico, async function (req, res) 
   try {
     var b = req.body || {};
     if (b.website) return res.json({ ok: true });
+    if (!hasPrivacyConsent(b)) {
+      return res.status(400).json({ error: 'Aceite a política de privacidade para enviar.' });
+    }
     var nome = clampStr(b.nome, 200);
     var email = clampStr(b.email, 200);
     var assunto = clampStr(b.assunto, 80);
@@ -618,6 +626,9 @@ app.post('/api/form/doacao', rateLimits.formPublico, async function (req, res) {
   try {
     var b = req.body || {};
     if (b.website) return res.json({ ok: true });
+    if (!hasPrivacyConsent(b)) {
+      return res.status(400).json({ error: 'Aceite a política de privacidade para enviar.' });
+    }
     var email = clampStr(b.email, 200);
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: 'Informe um e-mail válido.' });
@@ -646,6 +657,7 @@ app.post('/api/form/doacao', rateLimits.formPublico, async function (req, res) {
       nome: nome,
       email: email,
       valorReais: reais,
+      estado: 'pendente',
       criadoEm: new Date().toISOString(),
       nota: 'Intenção registada no site — conclua o pagamento (PIX/gateway) por contacto direto com a associação.'
     });
