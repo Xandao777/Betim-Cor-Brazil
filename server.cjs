@@ -24,6 +24,9 @@ const turnstile = require('./server/turnstile.cjs');
 const auditLog = require('./server/audit-log.cjs');
 const crypto = require('crypto');
 
+/** Site estático (HTML, CSS, JS, imagens, admin) — URLs públicas inalteradas. */
+var PUBLIC_DIR = path.join(__dirname, 'public');
+
 var DATA_FILE = process.env.SITE_DATA_FILE
   ? path.resolve(process.env.SITE_DATA_FILE)
   : path.join(__dirname, 'data', 'site-data.json');
@@ -260,7 +263,7 @@ app.use(express.json({ limit: '5mb' }));
 app.use('/api', rateLimits.apiGlobal);
 app.use(csrfOriginGuard);
 
-var logoPath = path.join(__dirname, 'img', 'logo.jpg');
+var logoPath = path.join(PUBLIC_DIR, 'img', 'logo.jpg');
 app.get('/favicon.ico', function (req, res) {
   if (fs.existsSync(logoPath)) {
     res.setHeader('Content-Type', 'image/jpeg');
@@ -1012,8 +1015,8 @@ app.patch('/api/member/perfil', async function (req, res) {
 });
 
 /**
- * Não servir o diretório inteiro: evita expor node_modules/, data/, server/, testes, etc.
- * (express.static na raiz expõe qualquer ficheiro existente, p.ex. site-data.json.)
+ * Ficheiros estáticos só em public/ — backend, dados e testes ficam fora do static.
+ * Bloqueios extra caso algum caminho sensível seja pedido explicitamente.
  */
 var STATIC_BLOCK_PREFIXES = [
   '/node_modules',
@@ -1067,10 +1070,12 @@ app.use('/uploads/documents', function (req, res, next) {
 app.use('/uploads/documents', express.static(path.join(__dirname, 'uploads', 'documents')));
 app.use('/uploads/gallery', express.static(path.join(__dirname, 'uploads', 'gallery')));
 
-app.use(express.static(path.join(__dirname), {
-  index: ['index.html'],
-  extensions: ['html']
-}));
+app.use(
+  express.static(PUBLIC_DIR, {
+    index: ['index.html'],
+    extensions: ['html']
+  })
+);
 
 app.use(function (req, res) {
   if (req.path.indexOf('/api') === 0) {

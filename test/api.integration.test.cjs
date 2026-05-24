@@ -38,6 +38,11 @@ describe('API (integração, ficheiro temporário)', function () {
     expect(['file', 'postgres']).toContain(res.body.backend);
   });
 
+  test('GET /index.html serve a partir de public/', async function () {
+    var res = await request(app).get('/index.html').expect(200);
+    expect(res.text).toMatch(/Betim Cor Brazil|Associação/i);
+  });
+
   test('GET /api/public devolve chaves públicas', async function () {
     var res = await request(app).get('/api/public').expect(200);
     expect(Array.isArray(res.body.events)).toBe(true);

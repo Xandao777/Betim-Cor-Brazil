@@ -2,6 +2,23 @@
 
 Site institucional da associação, com identidade visual em **vermelho, amarelo e verde**, navegação intuitiva e design responsivo.
 
+## Estrutura do repositório
+
+```
+├── public/              # Site estático (URLs iguais: /index.html, /css/…, /admin/…)
+│   ├── *.html           # Páginas públicas
+│   ├── css/  js/  img/
+│   └── admin/           # Painel administrativo
+├── server/              # Módulos Node (auth, SMTP, uploads, Postgres…)
+├── server.cjs           # Entrada Express (API + static)
+├── data/                # site-data.json (modo ficheiro local)
+├── uploads/             # Ficheiros enviados (galeria, documentos)
+├── test/                # Testes Jest
+└── docs/                # Documentação interna
+```
+
+Ver também `docs/ESTRUTURA.md`.
+
 ## Estrutura do site
 
 | Página        | URL               | Conteúdo |
@@ -46,7 +63,7 @@ Em **`area-membros.html`**, associados entram com usuário e senha cadastrados p
 ## Como usar
 
 1. **Sempre use o servidor Node** para o site funcionar (há API REST). Na pasta do projeto: `npm install` e `npm run serve:local` — abra `http://localhost:3000` (ou a porta indicada no terminal).
-2. Abrir só o `index.html` pelo disco **não** carrega os dados (as chamadas `/api/public` falham).
+2. Abrir só o `public/index.html` pelo disco **não** carrega os dados (as chamadas `/api/public` falham).
 
 ### Testes automatizados
 
@@ -57,17 +74,7 @@ Após `npm install` (inclui dependências de desenvolvimento):
 
 ### Pastas no repositório
 
-| Pasta / ficheiros | Função |
-|-------------------|--------|
-| `css/`, `js/`, `img/` | Assets públicos do site |
-| `admin/` | Painel administrativo |
-| `server/` | Módulos Node (Postgres, senhas, rate limit) |
-| `data/` | `site-data.json` só em desenvolvimento local (gitignored por defeito) |
-| `test/` | Testes Jest |
-| `docs/` | Documentação interna (PDF, Word, notas) — **não** exposta na web pelo servidor |
-| `supabase/migrations/` | SQL opcional |
-
-O servidor **não** expõe `node_modules/`, `data/`, `server/`, `test/`, `docs/`, ficheiros de config na raiz (`server.cjs`, `package.json`, etc.) como ficheiros estáticos — só páginas e assets necessários.
+Resumo completo em **`docs/ESTRUTURA.md`**. O Express serve apenas **`public/`**; `data/`, `server/`, `test/`, `docs/` e ficheiros na raiz (`server.cjs`, `package.json`, etc.) **não** são acessíveis pelo browser.
 
 ## Banco de dados no Railway (recomendado)
 
@@ -108,8 +115,8 @@ Opcional: se no futuro você usar um projeto **Supabase** separado, esse SQL cri
 
 ## Personalização
 
-- **Cores**: edite as variáveis no início do arquivo `css/style.css` (`--vermelho`, `--amarelo`, `--verde`).
-- **Texto e conteúdo**: use o **painel admin** (`/admin/`) para eventos, notícias, galeria, patrocinadores e conteúdo institucional (e-mail, telefone, redes, PIX). Listagens públicas são preenchidas pela API (`js/publico-dados.js`).
+- **Cores**: edite as variáveis no início de `public/css/style.css` (`--vermelho`, `--amarelo`, `--verde`).
+- **Texto e conteúdo**: use o **painel admin** (`/admin/`) para eventos, notícias, galeria, patrocinadores e conteúdo institucional (e-mail, telefone, redes, PIX). Listagens públicas são preenchidas pela API (`public/js/publico-dados.js`).
 - **Redes sociais e contacto**: preencha no painel **Conteúdo institucional** (os links do rodapé usam `data-inst-href`).
 
 ## Formulários e API
