@@ -35,15 +35,16 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 1.4 Uploads em disco local
 
-- [ ] Ficheiros em `uploads/documents/` e `uploads/gallery/` **não sobrevivem** bem a redeploys/escala horizontal no Railway.
-- [ ] **Melhoria:** object storage (S3, Cloudflare R2, Supabase Storage) com URLs públicas ou assinadas.
-- [ ] Validar **MIME type** no servidor (não só extensão) para reduzir upload de executáveis disfarçados.
+- [ ] Ficheiros em `uploads/` **não sobrevivem** bem a redeploys no Railway sem volume ou S3.
+- [x] **Object storage opcional** — S3/R2 via variáveis `S3_*` (`server/s3-storage.cjs`).
+- [x] Validação **MIME type** + extensão nos uploads (`server/mime-check.cjs`).
 - [ ] Servir uploads com `Content-Disposition: attachment` para PDFs sensíveis, se aplicável.
 
 ### 1.5 Proteção contra abuso em formulários públicos
 
 - [ ] Rate limit já existe (`formPublico`, login, inscrição) — rever limites em produção conforme tráfego real.
-- [ ] Adicionar **honeypot** ou **CAPTCHA** (hCaptcha, Turnstile) em contato, doação e inscrição pública para reduzir spam quando o site for divulgado.
+- [x] **Honeypot** `website` em contato, doação e inscrição pública.
+- [ ] **CAPTCHA** (hCaptcha, Turnstile) — opcional quando o site for muito divulgado.
 - [ ] Opcional: confirmação por e-mail na inscrição em eventos (evita inscrições falsas).
 
 ---
@@ -87,7 +88,7 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 - [x] Exibir chave PIX e QR (URL) no `doar.html` — campos no painel institucional (`pixChave`, `pixTitular`, `pixQrUrl`).
 - [ ] Integrar gateway (Stripe, Mercado Pago, PagSeguro) se doação online for requisito.
-- [ ] E-mail automático ao doador com valor e instruções (além da notificação à equipa).
+- [x] E-mail automático ao doador com valor e instruções (`SMTP_AUTO_REPLY_DOACAO=1`).
 - [x] Estado do pedido no admin: `pendente` | `contactado` | `concluido` (select na tabela).
 
 ---
@@ -108,7 +109,7 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 4.3 Inscrição pública
 
-- [ ] Enviar comprovante por e-mail ao inscrito (hoje só na tela).
+- [x] Enviar comprovante por e-mail ao inscrito (`SMTP_AUTO_REPLY_INSCRICAO=1`; comprovante na tela mantém-se).
 
 ---
 
@@ -127,7 +128,7 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 - [x] `index.html`: eventos, notícias e mini-galeria sem cards estáticos; mensagem “A carregar…” até `D.ready`.
 - [x] `publico-dados.js`: home preenche sempre (fallback sem `destaque`, até 3 itens; galeria até 4 fotos).
-- [ ] Revisar outras páginas (`noticias.html`, etc.) se ainda houver exemplos estáticos.
+- [x] `noticias.html` sem cards estáticos (lista só via API).
 
 ### 5.4 Redes sociais e contacto
 
@@ -156,8 +157,7 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 6.2 Sessão de membro em `sessionStorage`
 
-- [ ] Flags `membroLogado` em `sessionStorage` podem **desincronizar** do cookie (ex.: cookie expirado, flag ainda `true`).
-- [ ] **Melhoria:** confiar só em `GET /api/auth/member/session` (como o admin já faz com `/api/auth/admin/session`).
+- [x] Sessão de membro baseada em cookie + `GET /api/auth/status` / `member-bootstrap` (`sessionKind`); flags `membroLogado` em `sessionStorage` removidas.
 
 ### 6.3 Link admin visível
 
@@ -179,7 +179,7 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 7.3 Sitemap e robots
 
-- [ ] **P2:** `sitemap.xml` e `robots.txt` (bloquear `/admin/`).
+- [x] `sitemap.xml` e `robots.txt` (bloquear `/admin/`, referência ao sitemap).
 - [ ] **P2:** `canonical` URLs nas páginas de detalhe.
 
 ### 7.4 Assets
@@ -238,7 +238,7 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 9.3 Notícias exclusivas
 
-- [ ] Campo `exclusivoMembros` nas notícias — garantir que **nunca** apareçam em `/api/public` (hoje filtradas no cliente; validar também no servidor).
+- [x] `exclusivoMembros` filtrado no servidor em `GET /api/public` (`server/public-filter.cjs`).
 
 ### 9.4 Relatórios
 
@@ -260,7 +260,7 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 10.3 README desatualizado
 
-- [ ] Secção **“Formulários e API”** diz que contato e doação são “só demonstração” — **já estão ligados** a `/api/form/contato` e `/api/form/doacao`.
+- [x] README atualizado: formulários, SMTP e S3 documentados.
 - [ ] Atualizar README e este documento quando itens forem concluídos.
 
 ### 10.4 Tipagem e validação de API

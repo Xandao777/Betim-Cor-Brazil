@@ -14,6 +14,7 @@
  *                        (se vazio, usa o e-mail institucional do painel)
  *   SMTP_AUTO_REPLY_CONTATO — "1" envia cópia de confirmação ao visitante no formulário de contato
  *   SMTP_AUTO_REPLY_DOACAO — "1" envia confirmação ao doador (com chave PIX se definida no painel)
+ *   SMTP_AUTO_REPLY_INSCRICAO — "1" envia comprovante ao inscrito após inscrição pública
  *   SMTP_TLS_INSECURE  — "1" desativa verificação do certificado TLS (só para testes / servidores com cert inválido)
  */
 
@@ -179,6 +180,44 @@ async function sendDoacaoAutoReply(toEmail, nome, valorReais, institutional) {
   return { ok: true };
 }
 
+async function sendInscricaoAutoReply(toEmail, nome, data) {
+  if (process.env.SMTP_AUTO_REPLY_INSCRICAO !== '1') return { skipped: true };
+  if (!validEmail(toEmail)) return { skipped: true };
+  var transport = getTransporter();
+  if (!transport) return { skipped: true };
+  var from = getFromAddress();
+  if (!from) return { skipped: true };
+
+  var d = data || {};
+  var nomeLinha = nome ? 'Olá, ' + nome + '.\n\n' : 'Olá.\n\n';
+  var siteBase = (process.env.SITE_PUBLIC_URL || '').trim().replace(/\/$/, '');
+  var eventoUrl = d.eventoId
+    ? (siteBase ? siteBase + '/evento.html?id=' + encodeURIComponent(String(d.eventoId)) : 'evento.html?id=' + encodeURIComponent(String(d.eventoId)))
+    : '';
+
+  var text =
+    nomeLinha +
+    'A sua inscrição no evento foi registada com sucesso.\n\n' +
+    'Evento: ' +
+    (d.eventoTitulo || '') +
+    '\n';
+  if (d.eventoData) text += 'Data: ' + d.eventoData + (d.eventoHora ? ' às ' + d.eventoHora : '') + '\n';
+  if (d.eventoLocal) text += 'Local: ' + d.eventoLocal + '\n';
+  text += '\nNome: ' + (d.nome || nome || '') + '\n';
+  if (d.telefone) text += 'Telefone: ' + d.telefone + '\n';
+  text += 'E-mail: ' + toEmail + '\n';
+  if (eventoUrl) text += '\nPágina do evento: ' + eventoUrl + '\n';
+  text += '\nGuarde este e-mail como comprovante. Até breve!';
+
+  await transport.sendMail({
+    from: from,
+    to: toEmail.trim(),
+    subject: 'Inscrição confirmada — ' + (d.eventoTitulo || 'evento'),
+    text: text
+  });
+  return { ok: true };
+}
+
 async function sendVisitorAutoReply(toEmail, nome) {
   if (process.env.SMTP_AUTO_REPLY_CONTATO !== '1') return { skipped: true };
   if (!validEmail(toEmail)) return { skipped: true };
@@ -309,6 +348,7 @@ async function notifyAfterFormSubmit(params) {
         (d.telefone || '') +
         '\n'
     });
+    await sendInscricaoAutoReply(d.email, d.nome, d);
     return;
   }
 

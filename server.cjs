@@ -17,6 +17,8 @@ const galleryUpload = require('./server/gallery-upload.cjs');
 const smtpMail = require('./server/smtp-mail.cjs');
 const inscricaoVal = require('./server/inscricao-validacao.cjs');
 const { getSeedDefaults, assertProductionConfig } = require('./server/seed.cjs');
+const publicFilter = require('./server/public-filter.cjs');
+const s3Storage = require('./server/s3-storage.cjs');
 
 var DATA_FILE = process.env.SITE_DATA_FILE
   ? path.resolve(process.env.SITE_DATA_FILE)
@@ -170,14 +172,7 @@ async function upgradeLegacyPassword(key, userId, plain) {
 }
 
 function filterPublic(state) {
-  return {
-    events: state.events,
-    news: state.news,
-    blog: state.blog,
-    gallery: state.gallery,
-    sponsors: state.sponsors,
-    institutional: state.institutional
-  };
+  return publicFilter.filterPublic(state);
 }
 
 function signAdmin(user) {
@@ -490,6 +485,19 @@ app.put('/api/state/:key', async function (req, res) {
   }
 });
 
+async function finishUpload(req, res, file, localUrl, s3Folder) {
+  try {
+    if (s3Storage.isConfigured()) {
+      var url = await s3Storage.uploadMulterFile(file, s3Folder);
+      return res.json({ url: url, storage: 's3' });
+    }
+    res.json({ url: localUrl, storage: 'disk' });
+  } catch (e) {
+    console.error('[upload]', e.message || e);
+    res.status(500).json({ error: 'Falha ao guardar o ficheiro.' });
+  }
+}
+
 /** Upload de ficheiro para documentos (somente perfil admin — igual a PUT documents). */
 function handleDocumentUploadPost(req, res) {
   var payload = verifyToken(req);
@@ -507,7 +515,7 @@ function handleDocumentUploadPost(req, res) {
       return res.status(400).json({ error: err.message || 'Upload inválido' });
     }
     if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
-    res.json({ url: docUpload.publicUrlPath + req.file.filename });
+    finishUpload(req, res, req.file, docUpload.publicUrlPath + req.file.filename, 'documents');
   });
 }
 app.get('/api/upload/document', function (req, res) {
@@ -530,7 +538,7 @@ function handleGalleryUploadPost(req, res) {
       return res.status(400).json({ error: err.message || 'Upload inválido' });
     }
     if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
-    res.json({ url: galleryUpload.publicUrlPath + req.file.filename });
+    finishUpload(req, res, req.file, galleryUpload.publicUrlPath + req.file.filename, 'gallery');
   });
 }
 app.get('/api/upload/gallery', function (req, res) {
@@ -566,7 +574,7 @@ app.post('/api/inscricao/publica', rateLimits.inscricaoPublica, async function (
       .notifyAfterFormSubmit({
         type: 'inscricao',
         institutional: state.institutional || {},
-        data: item
+        data: Object.assign({}, item, { eventoId: b.eventoId })
       })
       .catch(function (err) {
         console.error('[smtp]', err.message || err);

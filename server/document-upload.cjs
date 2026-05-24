@@ -6,6 +6,7 @@
 var path = require('path');
 var fs = require('fs');
 var multer = require('multer');
+var mimeCheck = require('./mime-check.cjs');
 
 var UPLOAD_DIR = path.join(__dirname, '..', 'uploads', 'documents');
 
@@ -36,8 +37,12 @@ var storage = multer.diskStorage({
 
 function fileFilter(req, file, cb) {
   var ext = path.extname(file.originalname || '').toLowerCase();
-  if (ALLOWED_EXT.has(ext)) return cb(null, true);
-  cb(new Error('Tipo de arquivo não permitido. Use PDF, Office, imagens ou arquivo compactado.'));
+  if (!ALLOWED_EXT.has(ext)) {
+    return cb(new Error('Tipo de arquivo não permitido. Use PDF, Office, imagens ou arquivo compactado.'));
+  }
+  var mime = mimeCheck.checkDocMime(file.originalname, file.mimetype);
+  if (!mime.ok) return cb(new Error(mime.error));
+  cb(null, true);
 }
 
 var upload = multer({

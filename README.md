@@ -92,7 +92,11 @@ O `server.cjs` usa **Express**: arquivos estáticos + rotas `/api/*` na porta `P
 3. Defina **`NODE_ENV=production`** no serviço web.
 4. **Networking** → **Generate domain**.
 
-Variáveis recomendadas no Railway: `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV=production`. Não use `ALLOW_DEMO_SEED=1` em produção após criar contas reais.
+Variáveis recomendadas no Railway: `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV=production`, `SITE_PUBLIC_URL` (URL pública do site, para links em e-mails). Não use `ALLOW_DEMO_SEED=1` em produção após criar contas reais.
+
+**SMTP (opcional):** `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_NOTIFY_TO`. Respostas automáticas: `SMTP_AUTO_REPLY_CONTATO=1`, `SMTP_AUTO_REPLY_DOACAO=1`, `SMTP_AUTO_REPLY_INSCRICAO=1`. Ver `.env.example`.
+
+**Uploads persistentes (opcional):** por defeito os ficheiros ficam em `uploads/` no disco do contentor (podem perder-se no redeploy). Para produção com muitas imagens/PDF, configure **S3 ou Cloudflare R2** (`S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_URL_BASE`, etc. — ver `.env.example`).
 
 **Só web, sem Postgres:** o app cai no modo **arquivo** (`data/site-data.json`), pouco adequado em produção porque o disco pode ser efêmero — use Postgres no Railway para dados persistentes.
 
@@ -103,22 +107,22 @@ Opcional: se no futuro você usar um projeto **Supabase** separado, esse SQL cri
 ## Personalização
 
 - **Cores**: edite as variáveis no início do arquivo `css/style.css` (`--vermelho`, `--amarelo`, `--verde`).
-- **Texto e conteúdo**: edite os arquivos `.html` e substitua os textos de exemplo pelos reais.
-- **Redes sociais**: troque os `href="#"` dos links de Facebook, Instagram e YouTube pelas URLs reais (no rodapé e na página de contato).
-- **Contato**: altere e-mail e telefone no rodapé do `index.html` e nas outras páginas. O formulário em `contato.html` é apenas demonstração no frontend até ligares envio a e-mail/API (ver secção **Formulários e API**).
-- **Patrocinadores**: substitua "Patrocinador 1", "Patrocinador 2" por nomes ou logos (pode usar `<img>` dentro de `.patrocinador-item`).
-- **Galeria**: substitua os placeholders por imagens reais (use `<img>` ou links para fotos/vídeos).
+- **Texto e conteúdo**: use o **painel admin** (`/admin/`) para eventos, notícias, galeria, patrocinadores e conteúdo institucional (e-mail, telefone, redes, PIX). Listagens públicas são preenchidas pela API (`js/publico-dados.js`).
+- **Redes sociais e contacto**: preencha no painel **Conteúdo institucional** (os links do rodapé usam `data-inst-href`).
 
 ## Formulários e API
 
 O projeto **já inclui** o servidor Node (**Express**) e a **API REST** (`/api/...`) — não falta “ligar um backend” de forma genérica: com `npm run serve:local` (ou deploy no Railway), as rotas estão ativas.
 
-**Já ligados ao servidor (dados gravados / sessão):**
+**Ligados ao servidor (gravam dados e, com SMTP, enviam e-mail):**
 
-- **Login** (admin e área de membros), **painel** e conteúdo dinâmico.
-- **Inscrição em eventos**: inscrição pública (`POST /api/inscricao/publica`) e inscrição de membro autenticado (`/api/inscricao/membro`), conforme as páginas de eventos e área de membros.
+- **Contato** — `POST /api/form/contato` (notificação à equipa; auto-resposta ao visitante com `SMTP_AUTO_REPLY_CONTATO=1`).
+- **Doação** — `POST /api/form/doacao` (PIX no site; auto-resposta com `SMTP_AUTO_REPLY_DOACAO=1`).
+- **Inscrição pública** — `POST /api/inscricao/publica` (validação de vagas/duplicatas; e-mail à equipa e comprovante ao inscrito com `SMTP_AUTO_REPLY_INSCRICAO=1`).
+- **Área de membros** — login por cookie HttpOnly, inscrições de associado, voluntariado e suporte.
+- **Painel admin** — gestão de conteúdo, export CSV de inscrições, uploads (disco local ou S3/R2 se configurado).
 
-**Doação:** regista intenção em `/api/form/doacao` (sem gateway de pagamento). Para PIX ou cartão, ver `docs/MELHORIAS.md`.
+**Doação:** regista intenção (sem gateway de cartão). Gateway online: ver `docs/MELHORIAS.md`.
 
 ## SEO e acessibilidade
 

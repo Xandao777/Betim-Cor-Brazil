@@ -6,6 +6,7 @@
 var path = require('path');
 var fs = require('fs');
 var multer = require('multer');
+var mimeCheck = require('./mime-check.cjs');
 
 var UPLOAD_DIR = path.join(__dirname, '..', 'uploads', 'gallery');
 
@@ -36,8 +37,12 @@ var storage = multer.diskStorage({
 
 function fileFilter(req, file, cb) {
   var ext = path.extname(file.originalname || '').toLowerCase();
-  if (ALLOWED_EXT.has(ext)) return cb(null, true);
-  cb(new Error('Tipo não permitido. Use imagens (JPG, PNG, GIF, WebP) ou vídeo (MP4, WebM, OGV, MOV).'));
+  if (!ALLOWED_EXT.has(ext)) {
+    return cb(new Error('Tipo não permitido. Use imagens (JPG, PNG, GIF, WebP) ou vídeo (MP4, WebM, OGV, MOV).'));
+  }
+  var mime = mimeCheck.checkGalleryMime(file.originalname, file.mimetype);
+  if (!mime.ok) return cb(new Error(mime.error));
+  cb(null, true);
 }
 
 var upload = multer({

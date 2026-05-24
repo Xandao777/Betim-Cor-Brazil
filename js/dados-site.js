@@ -68,6 +68,9 @@
     try {
       sessionStorage.removeItem('site_admin_jwt');
       sessionStorage.removeItem('site_member_jwt');
+      sessionStorage.removeItem('membroLogado');
+      sessionStorage.removeItem('membroUsuario');
+      sessionStorage.removeItem('membroNome');
     } catch (e) {}
     sessionKind = null;
     var r = await fetch('/api/public');
@@ -91,14 +94,6 @@
       if (r3.ok) {
         applyFull(await r3.json());
         sessionKind = 'member';
-        var mems = cache.members || [];
-        if (mems.length) {
-          try {
-            sessionStorage.setItem('membroUsuario', mems[0].usuario || '');
-            sessionStorage.setItem('membroNome', mems[0].nome || '');
-            sessionStorage.setItem('membroLogado', 'true');
-          } catch (e) {}
-        }
       }
     }
   }

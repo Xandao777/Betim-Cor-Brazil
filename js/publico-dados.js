@@ -192,10 +192,21 @@
 
   // ---- Página notícias: lista de notícias ----
   (function () {
+    var path = (window.location.pathname || '').replace(/\\/g, '/');
+    if (!/noticias\.html$/i.test(path)) return;
     var container = document.querySelector('.pagina-interna .lista-posts');
-    if (!container || window.location.href.indexOf('noticias') === -1) return;
-    var list = (D.getNews() || []).filter(function (n) { return n.publicado !== false && !n.exclusivoMembros; });
-    if (list.length === 0) return;
+    if (!container) return;
+    var list = (D.getNews() || [])
+      .filter(function (n) {
+        return n.publicado !== false && !n.exclusivoMembros;
+      })
+      .sort(function (a, b) {
+        return (b.dataPublicacao || '').localeCompare(a.dataPublicacao || '');
+      });
+    if (list.length === 0) {
+      container.innerHTML = '<p class="admin-aviso">Nenhuma notícia publicada no momento.</p>';
+      return;
+    }
     container.innerHTML = list.map(function (n) {
       var hrefN = 'noticia.html?id=' + encodeURIComponent(String(n.id));
       return '<article class="post-card"><div class="post-card-img" aria-hidden="true"></div><div><span class="tag">' + escapeHtml(n.categoria || '') + '</span><h3>' + escapeHtml(n.titulo || '') + '</h3><p class="meta">' + escapeHtml(n.dataPublicacao || '') + '</p><p>' + escapeHtml(n.resumo || '') + '</p><a href="' + hrefN + '" class="link-cta">Ler mais</a></div></article>';

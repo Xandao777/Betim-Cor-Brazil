@@ -45,6 +45,18 @@ describe('API (integração, ficheiro temporário)', function () {
     expect(res.body.institutional).toBeDefined();
   });
 
+  test('GET /api/public não expõe notícias exclusivoMembros', async function () {
+    var res = await request(app).get('/api/public').expect(200);
+    var exclusivas = (res.body.news || []).filter(function (n) {
+      return n.exclusivoMembros;
+    });
+    expect(exclusivas.length).toBe(0);
+    var titulos = (res.body.news || []).map(function (n) {
+      return n.titulo;
+    });
+    expect(titulos).not.toContain('Assembleia geral – convocação');
+  });
+
   test('GET /api/full sem sessão → 401', async function () {
     await request(app).get('/api/full').expect(401);
   });
