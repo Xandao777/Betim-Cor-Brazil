@@ -17,20 +17,21 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 1.1 Credenciais padrão
 
-- [ ] **Remover ou forçar troca** das senhas demo no primeiro deploy: `admin`/`admin123`, `editor`/`editor123`, `membro`/`demo123` (`server/site-defaults.cjs`).
-- [ ] Não documentar senhas reais no README em produção; usar apenas instruções de “definir no painel”.
-- [ ] Considerar **seed condicional**: só criar usuários demo se `ALLOW_DEMO_SEED=1` (desligado em Railway).
+- [x] **Seed condicional** (`server/seed.cjs`): utilizadores demo só com `ALLOW_DEMO_SEED=1` ou ambiente de desenvolvimento (maio/2026).
+- [ ] **Remover ou forçar troca** das senhas demo já existentes no Postgres de produção (ação manual no painel).
+- [x] README atualizado: senhas demo só em dev; produção sem seed demo por defeito.
 
 ### 1.2 Variáveis de ambiente obrigatórias
 
-- [ ] **`JWT_SECRET`** longo e aleatório em produção (o fallback `dev-jwt-secret-altere-em-producao` é inseguro).
-- [ ] **`NODE_ENV=production`** no Railway para ativar cookie `Secure` e CSP.
-- [ ] Validar na subida: se `RAILWAY_ENVIRONMENT` ou `NODE_ENV=production` e faltar `JWT_SECRET` ou `DATABASE_URL`, **falhar com mensagem clara** em vez de arrancar em modo frágil.
+- [x] Validar na subida: produção exige `JWT_SECRET` (mín. 16) e `DATABASE_URL` (`assertProductionConfig`).
+- [ ] **`JWT_SECRET`** e **`NODE_ENV=production`** — confirmar no painel Railway (configuração manual).
+- [x] `.env.example` documenta variáveis recomendadas.
 
 ### 1.3 Link “Administração” no menu público
 
-- [ ] O link `admin/index.html` aparece em **todas** as páginas públicas — facilita ataques de força bruta e enumeração.
-- [ ] **Melhoria:** URL só conhecida pela equipa (`/admin/` sem link no menu) ou `robots.txt` + não indexar; opcionalmente proteção extra (IP allowlist no Railway, Basic Auth na borda).
+- [x] Link removido do menu e rodapé em todas as páginas públicas.
+- [x] `robots.txt` com `Disallow: /admin/`.
+- [ ] Proteção extra na borda (Basic Auth / IP) — opcional.
 
 ### 1.4 Uploads em disco local
 
@@ -51,19 +52,16 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 2.1 Limite de vagas em eventos
 
-- [ ] O campo `vagas` existe nos eventos, mas a API **não valida** lotação em `POST /api/inscricao/publica` nem em `/api/inscricao/membro`.
-- [ ] **Melhoria:** contar inscrições por `eventoId`, recusar quando `count >= vagas` (se `vagas > 0`), mensagem clara no frontend.
+- [x] API valida lotação em `POST /api/inscricao/publica` e `/api/inscricao/membro` (`server/inscricao-validacao.cjs`).
 
 ### 2.2 Inscrições duplicadas
 
-- [ ] Visitante pode inscrever-se **várias vezes** no mesmo evento (mesmo e-mail).
-- [ ] Membro pode ter lógica de duplicata apenas na área logada — alinhar regra (uma inscrição por e-mail ou por membro por evento).
+- [x] Uma inscrição por e-mail por evento (público) e por membro por evento (área logada).
 
 ### 2.3 Validação server-side de inscrições
 
-- [ ] Validar que o `eventoId` existe, está `publicado` e `inscricoesAtivas !== false`.
-- [ ] Validar formato de e-mail e tamanhos máximos de campos (como já feito em `/api/form/contato`).
-- [ ] Rejeitar inscrição em eventos com data passada (opcional).
+- [x] Valida evento existente, publicado, inscrições ativas, e-mail, vagas, data não passada.
+- [x] Honeypot `website` na inscrição pública (e contato/doação no servidor).
 
 ### 2.4 Modelo de persistência (JSON por chave)
 
@@ -103,8 +101,8 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 4.2 Cobertura de notificações
 
-- [ ] Contato, doação e mensagens de membros notificam a equipa — **inscrições em eventos não** disparam e-mail.
-- [ ] **Melhoria:** notificar admin em nova inscrição (com resumo do evento e inscrito).
+- [x] Nova inscrição pública dispara e-mail à equipa (tipo `inscricao` em `smtp-mail.cjs`), se SMTP configurado.
+- [ ] Confirmar SMTP no Railway e testar envio real.
 - [ ] Auto-resposta ao visitante (`SMTP_AUTO_REPLY_CONTATO`) — ativar e testar em produção.
 
 ### 4.3 Inscrição pública
@@ -122,8 +120,7 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 5.2 Estados de carregamento e erro
 
-- [ ] Se `/api/public` falhar, `D.ready` resolve na mesma — páginas podem ficar **vazias sem mensagem** (`dados-site.js`).
-- [ ] **Melhoria:** banner “Não foi possível carregar o conteúdo. Verifique a ligação ou tente mais tarde.”
+- [x] Banner de erro se `/api/public` falhar (`dados-site.js`).
 
 ### 5.3 Conteúdo placeholder no HTML
 
@@ -152,10 +149,8 @@ Documento de referência com tudo que **deve ser melhorado** no sistema, organiz
 
 ### 6.1 XSS em conteúdo dinâmico
 
-- [ ] `publico-dados.js` usa `escapeHtml` na listagem de eventos — **bom**.
-- [ ] `evento.js` monta HTML com `innerHTML` **sem escape** em título, descrição, local (`renderEvento`, comprovante) — risco se admin inserir HTML malicioso ou se conta admin for comprometida.
-- [ ] `area-membros.js` também usa `innerHTML` sem escape em vários pontos.
-- [ ] **Melhoria:** função `escapeHtml` partilhada em todos os módulos; ou `textContent` + `createElement`.
+- [x] `DadosSite.escapeHtml` partilhado; `evento.js` usa escape no detalhe e comprovante.
+- [ ] `area-membros.js` e outros módulos — pendente.
 
 ### 6.2 Sessão de membro em `sessionStorage`
 

@@ -3,9 +3,9 @@
 /** Estado inicial (igual ao defaults de dados-site.js) — usado no seed Supabase / arquivo local */
 module.exports = {
   events: [
-    { id: '1', titulo: 'Encontro Cultural', descricao: 'Um dia de atividades, oficinas e apresentações para toda a família. Local: Sede da Associação.', data: '2026-04-12', hora: '09:00', local: 'Sede da Associação', vagas: 100, inscricoesAtivas: true, publicado: true, destaque: true },
-    { id: '2', titulo: 'Workshop Voluntários', descricao: 'Formação para quem quer contribuir com nossos projetos. Inscrição gratuita.', data: '2026-04-26', hora: '14:00', local: 'Sede', vagas: 50, inscricoesAtivas: true, publicado: true, destaque: true },
-    { id: '3', titulo: 'Feira Comunitária', descricao: 'Feira de artesanato, gastronomia e troca de experiências. Participe!', data: '2026-05-10', hora: '10:00', local: 'Praça Central', vagas: 0, inscricoesAtivas: false, publicado: true, destaque: true }
+    { id: '1', titulo: 'Encontro Cultural', descricao: 'Um dia de atividades, oficinas e apresentações para toda a família. Local: Sede da Associação.', data: '2027-04-12', hora: '09:00', local: 'Sede da Associação', vagas: 100, inscricoesAtivas: true, publicado: true, destaque: true },
+    { id: '2', titulo: 'Workshop Voluntários', descricao: 'Formação para quem quer contribuir com nossos projetos. Inscrição gratuita.', data: '2027-04-26', hora: '14:00', local: 'Sede', vagas: 50, inscricoesAtivas: true, publicado: true, destaque: true },
+    { id: '3', titulo: 'Feira Comunitária', descricao: 'Feira de artesanato, gastronomia e troca de experiências. Participe!', data: '2027-05-10', hora: '10:00', local: 'Praça Central', vagas: 0, inscricoesAtivas: false, publicado: true, destaque: true }
   ],
   news: [
     { id: '1', titulo: 'Novo projeto de inclusão digital', categoria: 'Projeto', resumo: 'Iniciamos as aulas de informática básica para a terceira idade. Saiba como participar.', conteudo: '', publicado: true, destaque: true, dataPublicacao: '2026-03-10', exclusivoMembros: false },

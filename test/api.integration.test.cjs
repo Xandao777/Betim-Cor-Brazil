@@ -85,7 +85,17 @@ describe('API (integração, ficheiro temporário)', function () {
   test('PUT /api/state/events com admin + Origin (CSRF)', async function () {
     var agent = request.agent(app);
     await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
-    var events = [{ id: 't1', titulo: 'Teste API', descricao: '', data: '2026-01-01', publicado: true }];
+    var events = [
+      {
+        id: 't1',
+        titulo: 'Teste API',
+        descricao: '',
+        data: '2028-06-01',
+        inscricoesAtivas: true,
+        publicado: true,
+        vagas: 10
+      }
+    ];
     await agent
       .put('/api/state/events')
       .set(mutatingHeaders())
@@ -171,12 +181,29 @@ describe('API (integração, ficheiro temporário)', function () {
   test('POST /api/inscricao/publica com eventoId', async function () {
     await request(app)
       .post('/api/inscricao/publica')
-      .send({ eventoId: '1', nome: 'Visitante', email: 'v@teste.org' })
+      .send({ eventoId: 't1', nome: 'Visitante', email: 'v@teste.org' })
       .expect(200);
   });
 
   test('POST /api/inscricao/publica sem eventoId → 400', async function () {
     await request(app).post('/api/inscricao/publica').send({ nome: 'x' }).expect(400);
+  });
+
+  test('POST /api/inscricao/publica duplicada (mesmo e-mail) → 409', async function () {
+    var body = { eventoId: 't1', nome: 'Ana', email: 'dup@teste.org' };
+    await request(app).post('/api/inscricao/publica').send(body).expect(200);
+    var res = await request(app).post('/api/inscricao/publica').send(body);
+    expect(res.status).toBe(409);
+  });
+
+  test('GET /api/auth/status sem sessão → 200 kind null', async function () {
+    var res = await request(app).get('/api/auth/status').expect(200);
+    expect(res.body.kind).toBeNull();
+  });
+
+  test('GET /robots.txt bloqueia admin', async function () {
+    var res = await request(app).get('/robots.txt').expect(200);
+    expect(res.text).toMatch(/Disallow: \/admin\//);
   });
 
   test('POST /api/form/contato grava mensagem', async function () {

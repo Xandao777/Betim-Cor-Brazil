@@ -43,6 +43,27 @@
 
   var sessionKind = null;
 
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function showLoadError() {
+    if (document.getElementById('site-dados-erro')) return;
+    var el = document.createElement('div');
+    el.id = 'site-dados-erro';
+    el.className = 'site-dados-erro admin-aviso';
+    el.setAttribute('role', 'alert');
+    el.textContent =
+      'Não foi possível carregar o conteúdo do site. Verifique a ligação e atualize a página.';
+    var main = document.getElementById('main') || document.body;
+    if (main.firstChild) main.insertBefore(el, main.firstChild);
+    else main.appendChild(el);
+  }
+
   async function bootstrap() {
     try {
       sessionStorage.removeItem('site_admin_jwt');
@@ -89,6 +110,7 @@
       })
       .catch(function (e) {
         console.error(e);
+        showLoadError();
         readyResolve();
       });
   }
@@ -109,6 +131,7 @@
 
   window.DadosSite = {
     ready: ready,
+    escapeHtml: escapeHtml,
     refresh: function () {
       return bootstrap();
     },

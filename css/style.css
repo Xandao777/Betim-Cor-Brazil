@@ -1263,6 +1263,24 @@ a.patrocinador-item.patrocinador-item--link:hover {
 .doc-icon { font-size: 1.25rem; }
 .admin-aviso { font-size: 0.85rem; color: var(--cinza-600); margin-top: 0.5rem; }
 
+.site-dados-erro {
+  margin: 1rem auto;
+  max-width: 720px;
+  padding: 1rem 1.25rem;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  color: #664d03;
+}
+
+.hp-field {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
 /* ===== Area membros: layout com menu lateral ===== */
 .membro-painel { display: flex; min-height: 60vh; margin-top: 1rem; }
 .membro-sidebar {

@@ -17,6 +17,10 @@
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
+  function esc(s) {
+    return D.escapeHtml ? D.escapeHtml(s) : String(s == null ? '' : s);
+  }
+
   function renderEvento() {
     var id = getParam('id');
     var sec = document.getElementById('evento-detalhe');
@@ -36,8 +40,10 @@
     if (ev.hora) partes.push('às ' + ev.hora);
     if (ev.local) partes.push(ev.local);
 
-    var metaHtml = partes.length ? '<p class="detalhe-evento-meta">' + partes.join(' · ') + '</p>' : '';
-    var vagasHtml = ev.vagas ? '<p class="detalhe-evento-vagas">Vagas: ' + ev.vagas + (ev.inscricoesAtivas ? ' (inscrições abertas)' : ' (inscrições encerradas)') + '</p>' : '';
+    var metaHtml = partes.length ? '<p class="detalhe-evento-meta">' + esc(partes.join(' · ')) + '</p>' : '';
+    var vagasHtml = ev.vagas
+      ? '<p class="detalhe-evento-vagas">Vagas: ' + esc(String(ev.vagas)) + (ev.inscricoesAtivas ? ' (inscrições abertas)' : ' (inscrições encerradas)') + '</p>'
+      : '';
 
     var gratuitoHtml = '<p class="detalhe-evento-preco">Evento gratuito</p>';
 
@@ -45,11 +51,11 @@
       '<section class="evento-hero">' +
         '<div class="evento-hero-info">' +
           '<p class="evento-hero-voltar"><a href="eventos.html">← Voltar para todos os eventos</a></p>' +
-          '<h1>' + (ev.titulo || 'Evento') + '</h1>' +
+          '<h1>' + esc(ev.titulo || 'Evento') + '</h1>' +
           metaHtml +
           '<ul class="evento-hero-lista">' +
-            (ev.local ? '<li><strong>Local:</strong> ' + ev.local + '</li>' : '') +
-            (ev.vagas ? '<li><strong>Vagas:</strong> ' + ev.vagas + '</li>' : '') +
+            (ev.local ? '<li><strong>Local:</strong> ' + esc(ev.local) + '</li>' : '') +
+            (ev.vagas ? '<li><strong>Vagas:</strong> ' + esc(String(ev.vagas)) + '</li>' : '') +
           '</ul>' +
           gratuitoHtml +
           (ev.inscricoesAtivas === false
@@ -59,14 +65,14 @@
         '<div class="evento-hero-media">' +
           '<div class="evento-hero-banner">' +
             '<span class="evento-hero-label">Evento da associação</span>' +
-            '<span class="evento-hero-titulo">' + (ev.titulo || 'Evento') + '</span>' +
+            '<span class="evento-hero-titulo">' + esc(ev.titulo || 'Evento') + '</span>' +
           '</div>' +
         '</div>' +
       '</section>' +
       '<section class="evento-layout">' +
         '<div class="evento-descricao">' +
           '<h2>Descrição do evento</h2>' +
-          '<p class="detalhe-evento-desc">' + (ev.descricao || '') + '</p>' +
+          '<p class="detalhe-evento-desc">' + esc(ev.descricao || '') + '</p>' +
         '</div>' +
         '<aside class="evento-lateral">' +
           '<div class="evento-lateral-card">' +
@@ -123,13 +129,13 @@
     function mostrarComprovante(info) {
       if (!comprovante || !dados) return;
       dados.innerHTML =
-        '<dt>Evento</dt><dd>' + (info.eventoTitulo || '') + '</dd>' +
-        '<dt>Data</dt><dd>' + formatarData(info.eventoData) + (info.eventoHora ? ' às ' + info.eventoHora : '') + '</dd>' +
-        (info.eventoLocal ? '<dt>Local</dt><dd>' + info.eventoLocal + '</dd>' : '') +
-        '<dt>Inscrito</dt><dd>' + (info.nome || '') + '</dd>' +
-        '<dt>E-mail</dt><dd>' + (info.email || '') + '</dd>' +
-        (info.telefone ? '<dt>Telefone</dt><dd>' + info.telefone + '</dd>' : '') +
-        '<dt>Data da inscrição</dt><dd>' + formatarData(info.dataInscricao) + '</dd>';
+        '<dt>Evento</dt><dd>' + esc(info.eventoTitulo || '') + '</dd>' +
+        '<dt>Data</dt><dd>' + esc(formatarData(info.eventoData) + (info.eventoHora ? ' às ' + info.eventoHora : '')) + '</dd>' +
+        (info.eventoLocal ? '<dt>Local</dt><dd>' + esc(info.eventoLocal) + '</dd>' : '') +
+        '<dt>Inscrito</dt><dd>' + esc(info.nome || '') + '</dd>' +
+        '<dt>E-mail</dt><dd>' + esc(info.email || '') + '</dd>' +
+        (info.telefone ? '<dt>Telefone</dt><dd>' + esc(info.telefone) + '</dd>' : '') +
+        '<dt>Data da inscrição</dt><dd>' + esc(formatarData(info.dataInscricao)) + '</dd>';
       form.style.display = 'none';
       comprovante.style.display = 'block';
     }
@@ -145,6 +151,7 @@
         var eventos = D.getEvents ? D.getEvents() : [];
         var ev = eventos.find(function (e2) { return (e2.id || '') === eventoId; }) || {};
         var hoje = new Date().toISOString().slice(0, 10);
+        var hp = document.getElementById('website-insc');
         var payload = {
           eventoId: eventoId,
           eventoTitulo: ev.titulo || '',
@@ -154,7 +161,8 @@
           nome: nome,
           email: email,
           telefone: telefone,
-          dataInscricao: hoje
+          dataInscricao: hoje,
+          website: hp ? hp.value : ''
         };
         var p = D.addInscricaoPublica ? D.addInscricaoPublica(payload) : Promise.reject();
         p.then(function () {

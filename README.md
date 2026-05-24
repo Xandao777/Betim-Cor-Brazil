@@ -19,12 +19,14 @@ Site institucional da associação, com identidade visual em **vermelho, amarelo
 
 ## Área administrativa
 
-O painel fica em **`admin/index.html`**. Acesso:
+O painel fica em **`/admin/index.html`** (URL direta — **não** há link no menu público). Em desenvolvimento local, com seed demo ativo (`ALLOW_DEMO_SEED=1` ou ambiente não-produção):
 
 | Perfil       | Usuário  | Senha      |
 |-------------|----------|------------|
 | Administrador | `admin`  | `admin123` |
 | Editor      | `editor` | `editor123` |
+
+Em **produção** no Railway, o seed **não** cria contas demo por defeito — crie utilizadores no painel ou use `ALLOW_DEMO_SEED=1` só na primeira configuração e troque as senhas de seguida.
 
 **Administrador** pode: eventos, notícias, blog, galeria, **membros**, **documentos**, patrocinadores e **conteúdo institucional**.  
 **Editor** pode: eventos, notícias, blog, galeria e patrocinadores (sem membros, documentos nem conteúdo institucional).
@@ -87,7 +89,10 @@ O `server.cjs` usa **Express**: arquivos estáticos + rotas `/api/*` na porta `P
 
 1. [Railway](https://railway.app) → **New project** → **Deploy from GitHub repo** → este repositório.
 2. Adicione **PostgreSQL** e garanta **`DATABASE_URL`** + **`JWT_SECRET`** no serviço da aplicação.
-3. **Networking** → **Generate domain**.
+3. Defina **`NODE_ENV=production`** no serviço web.
+4. **Networking** → **Generate domain**.
+
+Variáveis recomendadas no Railway: `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV=production`. Não use `ALLOW_DEMO_SEED=1` em produção após criar contas reais.
 
 **Só web, sem Postgres:** o app cai no modo **arquivo** (`data/site-data.json`), pouco adequado em produção porque o disco pode ser efêmero — use Postgres no Railway para dados persistentes.
 
@@ -113,9 +118,7 @@ O projeto **já inclui** o servidor Node (**Express**) e a **API REST** (`/api/.
 - **Login** (admin e área de membros), **painel** e conteúdo dinâmico.
 - **Inscrição em eventos**: inscrição pública (`POST /api/inscricao/publica`) e inscrição de membro autenticado (`/api/inscricao/membro`), conforme as páginas de eventos e área de membros.
 
-**Ainda só demonstração no navegador (não enviam dados ao servidor neste código):**
-
-- **Contato** (`contato.html`) e **doação** (`doar.html`): o JavaScript usa mensagens de alerta; **não** existe hoje rota tipo `/api/contato` ou gateway de pagamento. Para produção, pode acrescentar-se endpoints no Express, integração com e-mail (SMTP, serviço transacional), **Formspree** / formulário alojado, ou redirecionamento para doação (PIX, gateway).
+**Doação:** regista intenção em `/api/form/doacao` (sem gateway de pagamento). Para PIX ou cartão, ver `docs/MELHORIAS.md`.
 
 ## SEO e acessibilidade
 

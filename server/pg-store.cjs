@@ -9,6 +9,7 @@
 
 var { Pool } = require('pg');
 var pwd = require('./passwords.cjs');
+var { getSeedDefaults } = require('./seed.cjs');
 
 function createPool(databaseUrl) {
   var isLocal = /localhost|127\.0\.0\.1/.test(databaseUrl);
@@ -54,14 +55,15 @@ async function loadAll(pool, KEYS, mergeDefaults, DEFAULTS) {
 }
 
 async function seed(pool, KEYS, DEFAULTS) {
+  var seedData = getSeedDefaults(DEFAULTS);
   var client = await pool.connect();
   try {
     await client.query('BEGIN');
     for (var i = 0; i < KEYS.length; i++) {
       var k = KEYS[i];
-      var payload = DEFAULTS[k];
+      var payload = seedData[k];
       if (k === 'members' || k === 'admin_users') {
-        payload = pwd.hashPasswordsInArray(JSON.parse(JSON.stringify(DEFAULTS[k])));
+        payload = pwd.hashPasswordsInArray(JSON.parse(JSON.stringify(seedData[k])));
       }
       await client.query(
         `INSERT INTO app_state (key, payload, updated_at) VALUES ($1, $2::jsonb, NOW())

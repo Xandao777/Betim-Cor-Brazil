@@ -14,6 +14,7 @@ process.env.JWT_SECRET = 'jest-jwt-secret-fixture-do-not-use-in-production';
 process.env.SITE_DATA_FILE = tmp;
 delete process.env.DATABASE_URL;
 process.env.NODE_ENV = 'test';
+process.env.ALLOW_DEMO_SEED = '1';
 
 process.env.RATE_LIMIT_API_MAX = '999999';
 process.env.RATE_LIMIT_PUBLIC_GET_MAX = '999999';

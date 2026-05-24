@@ -247,6 +247,36 @@ async function notifyAfterFormSubmit(params) {
     return;
   }
 
+  if (type === 'inscricao') {
+    await sendAdminNotification({
+      institutional: inst,
+      replyTo: d.email,
+      subject: '[Site] Nova inscrição em evento — ' + (d.eventoTitulo || ''),
+      text:
+        'Nova inscrição pública em evento.\n\n' +
+        'Evento: ' +
+        (d.eventoTitulo || '') +
+        '\n' +
+        'Data: ' +
+        (d.eventoData || '') +
+        (d.eventoHora ? ' ' + d.eventoHora : '') +
+        '\n' +
+        'Local: ' +
+        (d.eventoLocal || '') +
+        '\n\n' +
+        'Nome: ' +
+        (d.nome || '') +
+        '\n' +
+        'E-mail: ' +
+        (d.email || '') +
+        '\n' +
+        'Telefone: ' +
+        (d.telefone || '') +
+        '\n'
+    });
+    return;
+  }
+
   if (type === 'membro_suporte') {
     await sendAdminNotification({
       institutional: inst,

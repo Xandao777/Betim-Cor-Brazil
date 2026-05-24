@@ -15,6 +15,8 @@ const { createLimiters } = require('./server/rate-limit.cjs');
 const docUpload = require('./server/document-upload.cjs');
 const galleryUpload = require('./server/gallery-upload.cjs');
 const smtpMail = require('./server/smtp-mail.cjs');
+const inscricaoVal = require('./server/inscricao-validacao.cjs');
+const { getSeedDefaults, assertProductionConfig } = require('./server/seed.cjs');
 
 var DATA_FILE = process.env.SITE_DATA_FILE
   ? path.resolve(process.env.SITE_DATA_FILE)
@@ -98,9 +100,10 @@ function csrfOriginGuard(req, res, next) {
 }
 
 function mergeDefaults(state) {
+  var seed = getSeedDefaults(DEFAULTS);
   var out = {};
   KEYS.forEach(function (k) {
-    out[k] = state[k] !== undefined && state[k] !== null ? state[k] : DEFAULTS[k];
+    out[k] = state[k] !== undefined && state[k] !== null ? state[k] : seed[k];
   });
   return out;
 }
@@ -534,22 +537,35 @@ app.post('/api/upload/gallery/', handleGalleryUploadPost);
 app.post('/api/inscricao/publica', rateLimits.inscricaoPublica, async function (req, res) {
   try {
     var b = req.body || {};
-    var eventoId = b.eventoId;
-    if (!eventoId) return res.status(400).json({ error: 'eventoId obrigatório' });
     var state = await loadState();
+    var valid = inscricaoVal.validateInscricaoPublica(state, b);
+    if (!valid.ok) {
+      return res.status(valid.status || 400).json({ error: valid.error });
+    }
+    var ev = valid.evento;
     var list = state.inscricoes || [];
-    list.push({
-      eventoId: eventoId,
-      eventoTitulo: b.eventoTitulo || '',
-      eventoData: b.eventoData || '',
-      eventoHora: b.eventoHora || '',
-      eventoLocal: b.eventoLocal || '',
-      nome: b.nome || '',
-      email: b.email || '',
-      telefone: b.telefone || '',
-      dataInscricao: b.dataInscricao || new Date().toISOString().slice(0, 10)
-    });
+    var item = {
+      eventoId: b.eventoId,
+      eventoTitulo: ev.titulo || b.eventoTitulo || '',
+      eventoData: ev.data || b.eventoData || '',
+      eventoHora: ev.hora || b.eventoHora || '',
+      eventoLocal: ev.local || b.eventoLocal || '',
+      nome: valid.nome,
+      email: valid.email,
+      telefone: valid.telefone || '',
+      dataInscricao: new Date().toISOString().slice(0, 10)
+    };
+    list.push(item);
     await saveKey('inscricoes', list);
+    smtpMail
+      .notifyAfterFormSubmit({
+        type: 'inscricao',
+        institutional: state.institutional || {},
+        data: item
+      })
+      .catch(function (err) {
+        console.error('[smtp]', err.message || err);
+      });
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
@@ -560,6 +576,7 @@ app.post('/api/inscricao/publica', rateLimits.inscricaoPublica, async function (
 app.post('/api/form/contato', rateLimits.formPublico, async function (req, res) {
   try {
     var b = req.body || {};
+    if (b.website) return res.json({ ok: true });
     var nome = clampStr(b.nome, 200);
     var email = clampStr(b.email, 200);
     var assunto = clampStr(b.assunto, 80);
@@ -600,6 +617,7 @@ app.post('/api/form/contato', rateLimits.formPublico, async function (req, res) 
 app.post('/api/form/doacao', rateLimits.formPublico, async function (req, res) {
   try {
     var b = req.body || {};
+    if (b.website) return res.json({ ok: true });
     var email = clampStr(b.email, 200);
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: 'Informe um e-mail válido.' });
@@ -655,13 +673,18 @@ app.post('/api/inscricao/membro', async function (req, res) {
     var b = req.body || {};
     var usuario = payload.usuario;
     var state = await loadState();
+    var valid = inscricaoVal.validateInscricaoMembro(state, b, usuario);
+    if (!valid.ok) {
+      return res.status(valid.status || 400).json({ error: valid.error });
+    }
+    var ev = valid.evento;
     var list = state.inscricoes || [];
     list.push({
       eventoId: b.eventoId,
-      eventoTitulo: b.eventoTitulo || '',
-      eventoData: b.eventoData || '',
-      eventoHora: b.eventoHora || '',
-      eventoLocal: b.eventoLocal || '',
+      eventoTitulo: ev.titulo || b.eventoTitulo || '',
+      eventoData: ev.data || b.eventoData || '',
+      eventoHora: ev.hora || b.eventoHora || '',
+      eventoLocal: ev.local || b.eventoLocal || '',
       membroUsuario: usuario,
       dataInscricao: new Date().toISOString().slice(0, 10)
     });
@@ -880,6 +903,7 @@ function iniciar(porta, tentativas) {
 var maxTentativas = portFixo ? 1 : 15;
 
 function startHttpServer() {
+  assertProductionConfig();
   console.log(
     '[startup] Node ' +
       process.version +
