@@ -2,6 +2,21 @@
 
 var bcrypt = require('bcryptjs');
 var SALT_ROUNDS = 10;
+var MIN_PASSWORD_LENGTH = 8;
+
+function validationError(message) {
+  var err = new Error(message);
+  err.status = 400;
+  return err;
+}
+
+function assertPasswordPolicy(plain) {
+  var p = plain === undefined || plain === null ? '' : String(plain);
+  if (p.length < MIN_PASSWORD_LENGTH) {
+    throw validationError('A senha deve ter pelo menos ' + MIN_PASSWORD_LENGTH + ' caracteres.');
+  }
+  return p;
+}
 
 function isBcryptHash(s) {
   return typeof s === 'string' && /^\$2[aby]\$/.test(s);
@@ -69,6 +84,7 @@ function mergeMembersSave(state, incoming) {
       if (!senhaIn || String(senhaIn).trim() === '') {
         throw new Error('Senha obrigatória para novo membro');
       }
+      assertPasswordPolicy(senhaIn);
       out.senha = isBcryptHash(senhaIn) ? senhaIn : hashPassword(senhaIn);
       return out;
     }
@@ -76,6 +92,7 @@ function mergeMembersSave(state, incoming) {
       out.senha = prev.senha;
       return out;
     }
+    assertPasswordPolicy(senhaIn);
     out.senha = isBcryptHash(senhaIn) ? senhaIn : hashPassword(senhaIn);
     return out;
   });
@@ -83,7 +100,25 @@ function mergeMembersSave(state, incoming) {
 
 function mergeAdminUsersSave(state, incoming) {
   var prevList = state.admin_users || [];
-  if (!Array.isArray(incoming)) throw new Error('Payload inválido');
+  if (!Array.isArray(incoming)) throw validationError('Payload invalido');
+  var seen = {};
+  incoming = incoming.map(function (u) {
+    var out = Object.assign({}, u);
+    out.usuario = String(out.usuario || '').trim();
+    out.nome = String(out.nome || '').trim();
+    out.perfil = out.perfil === 'admin' ? 'admin' : 'editor';
+    if (!out.usuario || !out.nome) {
+      throw validationError('Utilizador e nome sao obrigatorios');
+    }
+    var userKey = out.usuario.toLowerCase();
+    if (seen[userKey]) throw validationError('Ja existe utilizador com este login');
+    seen[userKey] = true;
+    return out;
+  });
+  var adminCount = incoming.filter(function (u) {
+    return (u.perfil || 'editor') === 'admin';
+  }).length;
+  if (adminCount < 1) throw validationError('Mantenha pelo menos um utilizador com perfil admin');
   return incoming.map(function (u) {
     var prev = prevList.find(function (x) { return String(x.id) === String(u.id); });
     var senhaIn = u.senha;
@@ -92,6 +127,7 @@ function mergeAdminUsersSave(state, incoming) {
       if (!senhaIn || String(senhaIn).trim() === '') {
         throw new Error('Senha obrigatória para novo usuário admin');
       }
+      assertPasswordPolicy(senhaIn);
       out.senha = isBcryptHash(senhaIn) ? senhaIn : hashPassword(senhaIn);
       return out;
     }
@@ -99,12 +135,15 @@ function mergeAdminUsersSave(state, incoming) {
       out.senha = prev.senha;
       return out;
     }
+    assertPasswordPolicy(senhaIn);
     out.senha = isBcryptHash(senhaIn) ? senhaIn : hashPassword(senhaIn);
     return out;
   });
 }
 
 module.exports = {
+  MIN_PASSWORD_LENGTH: MIN_PASSWORD_LENGTH,
+  assertPasswordPolicy: assertPasswordPolicy,
   isBcryptHash: isBcryptHash,
   hashPassword: hashPassword,
   verifyPassword: verifyPassword,

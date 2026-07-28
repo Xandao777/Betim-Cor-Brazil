@@ -8,7 +8,6 @@ function registerAdminRoutes(app, deps) {
   var loadState = deps.loadState;
   var saveKey = deps.saveKey;
   var pwd = deps.pwd;
-  var clampStr = deps.clampStr;
 
   function requireAdmin(req, res, next) {
     var payload = verifyToken(req);
@@ -27,8 +26,8 @@ function registerAdminRoutes(app, deps) {
     next();
   }
 
-  /** Marcar mensagem de formulário como lida (admin ou editor). */
-  app.post('/api/admin/mark-read', requireAdmin, async function (req, res) {
+  /** Marcar mensagem de formulário como lida. */
+  app.post('/api/admin/mark-read', requireAdmin, requireAdminRole, async function (req, res) {
     try {
       var b = req.body || {};
       var collection = b.collection;

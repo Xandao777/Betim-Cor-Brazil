@@ -40,5 +40,7 @@ Ordem de execução (código que o assistente pode fazer no repositório).
 | C2b | Avisos utilizadores demo + checklist institucional no dashboard | [x] |
 | C3 | Gateway de pagamento (se necessário) | [ ] opcional — site usa PIX + registo |
 | C3b | Texto claro na página Doar (sem cobrança automática) | [x] |
+| C4 | Hero/voluntariado/contato editáveis no painel institucional | [x] |
+| C5 | Inscrições atómicas, senha 8+, headers segurança, manual associação | [x] |
 
 *Atualizado: maio de 2026*

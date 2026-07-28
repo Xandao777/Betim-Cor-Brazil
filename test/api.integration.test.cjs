@@ -1,7 +1,6 @@
 'use strict';
 
 const fs = require('fs');
-const path = require('path');
 const request = require('supertest');
 
 describe('API (integração, ficheiro temporário)', function () {
@@ -13,7 +12,7 @@ describe('API (integração, ficheiro temporário)', function () {
     expect(dataPath).toBeTruthy();
     try {
       fs.unlinkSync(dataPath);
-    } catch (e) {}
+    } catch (_e) {}
     jest.resetModules();
     delete require.cache[require.resolve('../server.cjs')];
     app = require('../server.cjs').app;
@@ -22,7 +21,7 @@ describe('API (integração, ficheiro temporário)', function () {
   afterAll(function () {
     try {
       fs.unlinkSync(dataPath);
-    } catch (e) {}
+    } catch (_e) {}
   });
 
   function mutatingHeaders() {
@@ -101,6 +100,23 @@ describe('API (integração, ficheiro temporário)', function () {
     });
   });
 
+  test('GET /api/full com editor nao expoe dados restritos', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'editor', senha: 'editor123' }).expect(200);
+    var res = await agent.get('/api/full').expect(200);
+    expect(Array.isArray(res.body.events)).toBe(true);
+    expect(Array.isArray(res.body.news)).toBe(true);
+    expect(Array.isArray(res.body.gallery)).toBe(true);
+    expect(res.body.members).toBeUndefined();
+    expect(res.body.documents).toBeUndefined();
+    expect(res.body.admin_users).toBeUndefined();
+    expect(res.body.inscricoes).toBeUndefined();
+    expect(res.body.mensagens_contato).toBeUndefined();
+    expect(res.body.pedidos_doacao).toBeUndefined();
+    expect(res.body._keyEtags.events).toBeDefined();
+    expect(res.body._keyEtags.members).toBeUndefined();
+  });
+
   test('PUT /api/state/events com admin + Origin (CSRF)', async function () {
     var agent = request.agent(app);
     await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
@@ -138,6 +154,21 @@ describe('API (integração, ficheiro temporário)', function () {
       .expect(403);
   });
 
+  test('editor nao pode PUT inscricoes nem admin_users', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'editor', senha: 'editor123' }).expect(200);
+    await agent
+      .put('/api/state/inscricoes')
+      .set(mutatingHeaders())
+      .send([])
+      .expect(403);
+    await agent
+      .put('/api/state/admin_users')
+      .set(mutatingHeaders())
+      .send([])
+      .expect(403);
+  });
+
   test('POST /api/upload/document sem sessão → 401', async function () {
     await request(app)
       .post('/api/upload/document')
@@ -165,8 +196,22 @@ describe('API (integração, ficheiro temporário)', function () {
       .attach('file', Buffer.from('%PDF-1.4 test'), 'relatorio-teste.pdf')
       .expect(200);
     expect(res.body.url).toMatch(/^\/uploads\/documents\/.+\.pdf$/);
-    var getRes = await request(app).get(res.body.url).expect(200);
+    await request(app).get(res.body.url).expect(401);
+    var getRes = await agent.get(res.body.url).expect(200);
     expect(Buffer.isBuffer(getRes.body) || typeof getRes.body === 'string').toBe(true);
+    var full = await agent.get('/api/full').expect(200);
+    var docs = full.body.documents || [];
+    docs.push({
+      id: 'doc-upload-test',
+      titulo: 'Relatorio teste',
+      arquivo: res.body.url,
+      categoria: 'ata',
+      visivel: true
+    });
+    await agent.put('/api/state/documents').set(mutatingHeaders()).send(docs).expect(200);
+    var memberAgent = request.agent(app);
+    await memberAgent.post('/api/auth/member').send({ usuario: 'membro', senha: 'demo123' }).expect(200);
+    await memberAgent.get(res.body.url).expect(200);
   });
 
   test('POST /api/upload/gallery sem sessão → 401', async function () {
@@ -190,11 +235,48 @@ describe('API (integração, ficheiro temporário)', function () {
   });
 
   test('POST /api/auth/member e GET /api/member-bootstrap', async function () {
+    var adminAgent = request.agent(app);
+    await adminAgent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var full = await adminAgent.get('/api/full').expect(200);
+    var events = (full.body.events || []).filter(function (e) {
+      return e.id !== 'member-draft-event';
+    });
+    events.push({
+      id: 'member-draft-event',
+      titulo: 'Rascunho membro',
+      descricao: '',
+      data: '2028-08-01',
+      publicado: false
+    });
+    await adminAgent.put('/api/state/events').set(mutatingHeaders()).send(events).expect(200);
+    await adminAgent
+      .put('/api/state/news')
+      .set(mutatingHeaders())
+      .send([
+        { id: 'member-news-public', titulo: 'Publica', resumo: '', publicado: true },
+        { id: 'member-news-exclusive', titulo: 'Exclusiva', resumo: '', publicado: true, exclusivoMembros: true },
+        { id: 'member-news-draft', titulo: 'Rascunho', resumo: '', publicado: false }
+      ])
+      .expect(200);
+    await adminAgent
+      .put('/api/state/documents')
+      .set(mutatingHeaders())
+      .send([
+        { id: 'doc-visible', titulo: 'Visivel', arquivo: '', categoria: 'ata', visivel: true },
+        { id: 'doc-hidden', titulo: 'Oculto', arquivo: '', categoria: 'ata', visivel: false },
+        { id: 'doc-admin-only', titulo: 'Admin', arquivo: '', categoria: 'ata', visivel: true, acesso: 'admin' }
+      ])
+      .expect(200);
     var agent = request.agent(app);
     await agent.post('/api/auth/member').send({ usuario: 'membro', senha: 'demo123' }).expect(200);
     var res = await agent.get('/api/member-bootstrap').expect(200);
     expect(res.body.documents).toBeDefined();
     expect(Array.isArray(res.body.members)).toBe(true);
+    expect((res.body.events || []).some(function (e) { return e.id === 'member-draft-event'; })).toBe(false);
+    expect((res.body.news || []).some(function (n) { return n.id === 'member-news-draft'; })).toBe(false);
+    expect((res.body.news || []).some(function (n) { return n.id === 'member-news-exclusive'; })).toBe(true);
+    expect((res.body.documents || []).some(function (d) { return d.id === 'doc-hidden'; })).toBe(false);
+    expect((res.body.documents || []).some(function (d) { return d.id === 'doc-admin-only'; })).toBe(false);
   });
 
   test('POST /api/inscricao/publica com eventoId', async function () {
@@ -427,6 +509,87 @@ describe('API (integração, ficheiro temporário)', function () {
       .post('/api/admin/test-smtp')
       .set(mutatingHeaders())
       .send({ to: 'teste@exemplo.org' })
+      .expect(400);
+  });
+
+  test('inscrições concorrentes na última vaga — apenas uma passa', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var full = await agent.get('/api/full').set(mutatingHeaders()).expect(200);
+    var future = new Date();
+    future.setFullYear(future.getFullYear() + 1);
+    var dataFutura = future.toISOString().slice(0, 10);
+    var ev = {
+      id: 'ev-vagas-concorrencia',
+      titulo: 'Evento Vagas Teste',
+      descricao: 'Teste concorrência',
+      data: dataFutura,
+      hora: '10:00',
+      local: 'Sede',
+      vagas: 1,
+      inscricoesAtivas: true,
+      publicado: true,
+      destaque: false
+    };
+    var events = (full.body.events || []).filter(function (e) {
+      return String(e.id) !== 'ev-vagas-concorrencia';
+    });
+    events.push(ev);
+    await agent.put('/api/state/events').set(mutatingHeaders()).send(events).expect(200);
+    var inscricoes = (full.body.inscricoes || []).filter(function (i) {
+      return String(i.eventoId) !== 'ev-vagas-concorrencia';
+    });
+    await agent.put('/api/state/inscricoes').set(mutatingHeaders()).send(inscricoes).expect(200);
+
+    var payloadA = {
+      eventoId: 'ev-vagas-concorrencia',
+      nome: 'Pessoa A',
+      email: 'a-concorrencia@test.local',
+      consentimento: true
+    };
+    var payloadB = {
+      eventoId: 'ev-vagas-concorrencia',
+      nome: 'Pessoa B',
+      email: 'b-concorrencia@test.local',
+      consentimento: true
+    };
+    var results = await Promise.all([
+      request(app).post('/api/inscricao/publica').send(payloadA),
+      request(app).post('/api/inscricao/publica').send(payloadB)
+    ]);
+    var okCount = results.filter(function (r) {
+      return r.status === 200;
+    }).length;
+    var fullCount = results.filter(function (r) {
+      return r.status === 409;
+    }).length;
+    expect(okCount).toBe(1);
+    expect(fullCount).toBe(1);
+  });
+
+  test('PUT institutional normaliza homepage e bloqueia assunto inválido no contato', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var full = await agent.get('/api/full').set(mutatingHeaders()).expect(200);
+    var inst = Object.assign({}, full.body.institutional || {}, {
+      homepage: { titulo: 'Título Teste', btn1Url: 'javascript:evil()' },
+      contato: {
+        intro: 'Olá',
+        assuntos: [{ value: 'duvida', label: 'Dúvida' }]
+      }
+    });
+    await agent.put('/api/state/institutional').set(mutatingHeaders()).send(inst).expect(200);
+    var pub = await request(app).get('/api/public').expect(200);
+    expect(pub.body.institutional.homepage.btn1Url).toBe('');
+    await request(app)
+      .post('/api/form/contato')
+      .send({
+        nome: 'Teste',
+        email: 'teste@exemplo.org',
+        assunto: 'hack',
+        mensagem: 'msg',
+        consentimento: true
+      })
       .expect(400);
   });
 });

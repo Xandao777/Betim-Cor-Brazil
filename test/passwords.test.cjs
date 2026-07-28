@@ -55,6 +55,33 @@ describe('server/passwords.cjs', function () {
     expect(out[0].senha).toBe(h);
   });
 
+  test('mergeAdminUsersSave exige pelo menos um admin', function () {
+    var h = pwd.hashPassword('adm');
+    var state = { admin_users: [{ id: '1', usuario: 'a', senha: h, nome: 'A', perfil: 'admin' }] };
+    expect(function () {
+      pwd.mergeAdminUsersSave(state, [{ id: '1', usuario: 'a', senha: '', nome: 'A', perfil: 'editor' }]);
+    }).toThrow(/pelo menos um utilizador/);
+  });
+
+  test('mergeAdminUsersSave rejeita utilizador duplicado', function () {
+    expect(function () {
+      pwd.mergeAdminUsersSave(
+        { admin_users: [] },
+        [
+          { id: '1', usuario: 'admin', senha: 'senha1234', nome: 'A', perfil: 'admin' },
+          { id: '2', usuario: 'ADMIN', senha: 'senha5678', nome: 'B', perfil: 'editor' }
+        ]
+      );
+    }).toThrow(/login/);
+  });
+
+  test('assertPasswordPolicy exige mínimo 8 caracteres', function () {
+    expect(function () {
+      pwd.assertPasswordPolicy('abc');
+    }).toThrow(/8/);
+    expect(pwd.assertPasswordPolicy('senha1234')).toBe('senha1234');
+  });
+
   test('hashPasswordsInArray hasheia apenas texto plano', function () {
     var plain = pwd.hashPassword('x');
     var arr = pwd.hashPasswordsInArray([

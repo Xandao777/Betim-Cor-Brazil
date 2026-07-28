@@ -44,6 +44,13 @@ function institutionalChecklist(inst) {
         (inst.instagram || '').trim() ||
         (inst.youtube || '').trim()
       )
+    },
+    {
+      id: 'homepage',
+      label: 'Banner da homepage (título)',
+      ok:
+        !!String((inst.homepage && inst.homepage.titulo) || '').trim() &&
+        !/bem-vindo à nossa associação/i.test(String((inst.homepage && inst.homepage.titulo) || ''))
     }
   ];
   var missing = items.filter(function (i) {

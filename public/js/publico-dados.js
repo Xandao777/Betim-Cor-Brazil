@@ -443,6 +443,170 @@
   (function () {
     var inst = D.getInstitutional() || {};
 
+    var DEFAULT_HOMEPAGE = {
+      titulo: 'Bem-vindo à nossa Associação',
+      subtitulo: 'Unindo pessoas, fortalecendo a comunidade e transformando vidas.',
+      btn1Texto: 'Conheça-nos',
+      btn1Url: 'index.html#nos',
+      btn2Texto: 'Fazer doação',
+      btn2Url: 'doar.html',
+      imagemFundo: ''
+    };
+    var DEFAULT_VOLUNTARIADO = {
+      intro: 'Saiba como participar das atividades e contribuir com os projetos da associação.',
+      cartoes: [
+        { titulo: 'Inscreva-se em eventos', texto: 'Muitos eventos precisam de voluntários.', linkUrl: 'eventos.html', linkLabel: 'Ver eventos' },
+        { titulo: 'Entre em contato', texto: 'Use o formulário de contato para se candidatar como voluntário.', linkUrl: 'contato.html', linkLabel: 'Formulário de contato' },
+        { titulo: 'Workshop de voluntários', texto: 'Participe do nosso workshop de formação para voluntários.', linkUrl: 'eventos.html', linkLabel: 'Ver datas na agenda' }
+      ],
+      contribuir: [
+        'Apoio em eventos (recepção, organização, divulgação)',
+        'Projetos sociais e culturais (oficinas, palestras, acompanhamento)',
+        'Comunicação e redes sociais',
+        'Manutenção e infraestrutura da sede (quando necessário)'
+      ],
+      ctaTexto: 'Quero ser voluntário',
+      ctaUrl: 'contato.html'
+    };
+    var DEFAULT_CONTATO = {
+      intro: 'Envie dúvidas, sugestões ou solicitações pelo formulário abaixo.',
+      assuntos: [
+        { value: 'duvida', label: 'Dúvida' },
+        { value: 'sugestao', label: 'Sugestão' },
+        { value: 'solicitacao', label: 'Solicitação / Inscrição' },
+        { value: 'outro', label: 'Outro' }
+      ]
+    };
+    var VOL_ICON_CLASSES = ['card-icon-green', 'card-icon-yellow', 'card-icon-red'];
+    var VOL_ICON_EMOJI = ['📋', '✉️', '🤝'];
+
+    function mergeSection(defaults, fromInst) {
+      var base = Object.assign({}, defaults, fromInst || {});
+      if (defaults.cartoes && fromInst && fromInst.cartoes) base.cartoes = fromInst.cartoes;
+      if (defaults.contribuir && fromInst && fromInst.contribuir) base.contribuir = fromInst.contribuir;
+      if (defaults.assuntos && fromInst && fromInst.assuntos) base.assuntos = fromInst.assuntos;
+      return base;
+    }
+
+    function renderHero(homepage) {
+      var hero = document.getElementById('site-hero');
+      if (!hero) return;
+      var h1 = document.getElementById('hero-titulo');
+      var sub = document.getElementById('hero-subtitulo');
+      var btn1 = document.getElementById('hero-btn1');
+      var btn2 = document.getElementById('hero-btn2');
+      if (h1 && homepage.titulo) h1.textContent = homepage.titulo;
+      if (sub && homepage.subtitulo) sub.textContent = homepage.subtitulo;
+      if (btn1) {
+        if (homepage.btn1Texto) btn1.textContent = homepage.btn1Texto;
+        if (homepage.btn1Url) btn1.href = homepage.btn1Url;
+      }
+      if (btn2) {
+        if (homepage.btn2Texto) btn2.textContent = homepage.btn2Texto;
+        if (homepage.btn2Url) btn2.href = homepage.btn2Url;
+      }
+      var img = (homepage.imagemFundo || '').trim();
+      if (img) {
+        hero.classList.add('hero--custom-bg');
+        hero.style.backgroundImage =
+          'linear-gradient(135deg, rgba(11, 63, 49, 0.82) 0%, rgba(23, 100, 71, 0.78) 45%, rgba(208, 85, 63, 0.75) 100%), url("' +
+          escapeAttr(img) +
+          '")';
+      } else {
+        hero.classList.remove('hero--custom-bg');
+        hero.style.backgroundImage = '';
+      }
+    }
+
+    function renderVoluntariadoPage(vol) {
+      var path = (window.location.pathname || '').replace(/\\/g, '/');
+      if (!/voluntariado\.html$/i.test(path)) return;
+      var introEl = document.getElementById('voluntariado-intro');
+      if (introEl && vol.intro) introEl.textContent = vol.intro;
+      var grid = document.getElementById('voluntariado-cartoes');
+      if (grid) {
+        var titulo = grid.querySelector('h2');
+        var cartoes = (vol.cartoes || []).slice(0, 3);
+        grid.querySelectorAll('article.card-sobre').forEach(function (el) { el.remove(); });
+        cartoes.forEach(function (c, idx) {
+          var art = document.createElement('article');
+          art.className = 'card card-sobre';
+          var iconClass = VOL_ICON_CLASSES[idx] || 'card-icon-green';
+          var emoji = VOL_ICON_EMOJI[idx] || '✓';
+          var linkHtml = '';
+          if ((c.linkUrl || '').trim()) {
+            linkHtml =
+              ' <a href="' +
+              escapeAttr(c.linkUrl.trim()) +
+              '">' +
+              escapeHtml((c.linkLabel || 'Saiba mais').trim()) +
+              '</a>';
+          }
+          art.innerHTML =
+            '<div class="card-icon ' +
+            iconClass +
+            '"><span aria-hidden="true">' +
+            emoji +
+            '</span></div><h3>' +
+            escapeHtml(c.titulo || '') +
+            '</h3><p>' +
+            escapeHtml(c.texto || '') +
+            linkHtml +
+            '</p>';
+          grid.appendChild(art);
+        });
+        if (titulo && !grid.contains(titulo)) grid.insertBefore(titulo, grid.firstChild);
+      }
+      var ul = document.getElementById('voluntariado-contribuir');
+      if (ul && Array.isArray(vol.contribuir) && vol.contribuir.length) {
+        ul.innerHTML = vol.contribuir
+          .map(function (item) {
+            return '<li style="margin: 0.5rem 0;">' + escapeHtml(item) + '</li>';
+          })
+          .join('');
+      }
+      var cta = document.getElementById('voluntariado-cta');
+      if (cta) {
+        if (vol.ctaTexto) cta.textContent = vol.ctaTexto;
+        if (vol.ctaUrl) cta.href = vol.ctaUrl;
+      }
+    }
+
+    function renderContatoPage(contato) {
+      var path = (window.location.pathname || '').replace(/\\/g, '/');
+      if (!/contato\.html$/i.test(path)) return;
+      var introEl = document.getElementById('contato-intro');
+      if (introEl && contato.intro) introEl.textContent = contato.intro;
+      var sel = document.getElementById('assunto');
+      if (!sel) return;
+      var assuntos = (contato.assuntos || []).filter(function (a) {
+        return a && String(a.value || '').trim();
+      });
+      if (!assuntos.length) return;
+      var current = sel.value;
+      sel.innerHTML =
+        '<option value="">Selecione</option>' +
+        assuntos
+          .map(function (a) {
+            return (
+              '<option value="' +
+              escapeAttr(String(a.value).trim()) +
+              '">' +
+              escapeHtml(String(a.label || a.value).trim()) +
+              '</option>'
+            );
+          })
+          .join('');
+      if (current) sel.value = current;
+    }
+
+    var homepage = mergeSection(DEFAULT_HOMEPAGE, inst.homepage);
+    var voluntariado = mergeSection(DEFAULT_VOLUNTARIADO, inst.voluntariado);
+    var contato = mergeSection(DEFAULT_CONTATO, inst.contato);
+    renderHero(homepage);
+    renderVoluntariadoPage(voluntariado);
+    renderContatoPage(contato);
+
     function normalizeSocialUrl(s) {
       s = (s || '').trim();
       if (!s) return '';

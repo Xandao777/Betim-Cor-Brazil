@@ -71,7 +71,13 @@
   if (sidebar && !isAdmin) {
     [].slice.call(sidebar.querySelectorAll('a[data-secao]')).forEach(function (a) {
       var secao = a.getAttribute('data-secao');
-      if (secao === 'membros' || secao === 'documentos' || secao === 'institucional') {
+      if (
+        secao === 'formularios' ||
+        secao === 'inscricoes' ||
+        secao === 'membros' ||
+        secao === 'documentos' ||
+        secao === 'institucional'
+      ) {
         a.style.display = 'none';
       }
     });
@@ -285,6 +291,25 @@
     var formInst = document.getElementById('form-institucional');
     if (!formInst) return;
     var inst = D.getInstitutional() || {};
+    var hp = inst.homepage || {};
+    var vol = inst.voluntariado || {};
+    var cont = inst.contato || {};
+    var cartoes = Array.isArray(vol.cartoes) && vol.cartoes.length ? vol.cartoes : [
+      { titulo: 'Inscreva-se em eventos', texto: 'Muitos eventos precisam de voluntários.', linkUrl: 'eventos.html', linkLabel: 'Ver eventos' },
+      { titulo: 'Entre em contato', texto: 'Use o formulário de contato para se candidatar como voluntário.', linkUrl: 'contato.html', linkLabel: 'Formulário de contato' },
+      { titulo: 'Workshop de voluntários', texto: 'Participe do nosso workshop de formação para voluntários.', linkUrl: 'eventos.html', linkLabel: 'Ver datas na agenda' }
+    ];
+    function setVal(id, val) {
+      var el = document.getElementById(id);
+      if (el) el.value = val == null ? '' : val;
+    }
+    setVal('inst-hero-titulo', hp.titulo || 'Bem-vindo à nossa Associação');
+    setVal('inst-hero-subtitulo', hp.subtitulo || 'Unindo pessoas, fortalecendo a comunidade e transformando vidas.');
+    setVal('inst-hero-btn1-texto', hp.btn1Texto || 'Conheça-nos');
+    setVal('inst-hero-btn1-url', hp.btn1Url || 'index.html#nos');
+    setVal('inst-hero-btn2-texto', hp.btn2Texto || 'Fazer doação');
+    setVal('inst-hero-btn2-url', hp.btn2Url || 'doar.html');
+    setVal('inst-hero-imagem', hp.imagemFundo || '');
     document.getElementById('inst-historia').value = inst.historia || '';
     document.getElementById('inst-missao').value = inst.missao || '';
     document.getElementById('inst-visao').value = inst.visao || '';
@@ -294,12 +319,130 @@
     document.getElementById('inst-facebook').value = inst.facebook || '';
     document.getElementById('inst-instagram').value = inst.instagram || '';
     document.getElementById('inst-youtube').value = inst.youtube || '';
+    setVal('inst-vol-intro', vol.intro || 'Saiba como participar das atividades e contribuir com os projetos da associação.');
+    [1, 2, 3].forEach(function (n) {
+      var c = cartoes[n - 1] || {};
+      setVal('inst-vol-card' + n + '-titulo', c.titulo);
+      setVal('inst-vol-card' + n + '-texto', c.texto);
+      setVal('inst-vol-card' + n + '-link-label', c.linkLabel);
+      setVal('inst-vol-card' + n + '-link-url', c.linkUrl);
+    });
+    setVal(
+      'inst-vol-contribuir',
+      Array.isArray(vol.contribuir) && vol.contribuir.length
+        ? vol.contribuir.join('\n')
+        : [
+            'Apoio em eventos (recepção, organização, divulgação)',
+            'Projetos sociais e culturais (oficinas, palestras, acompanhamento)',
+            'Comunicação e redes sociais',
+            'Manutenção e infraestrutura da sede (quando necessário)'
+          ].join('\n')
+    );
+    setVal('inst-vol-cta-texto', vol.ctaTexto || 'Quero ser voluntário');
+    setVal('inst-vol-cta-url', vol.ctaUrl || 'contato.html');
+    setVal('inst-contato-intro', cont.intro || 'Envie dúvidas, sugestões ou solicitações pelo formulário abaixo.');
+    setVal(
+      'inst-contato-assuntos',
+      Array.isArray(cont.assuntos) && cont.assuntos.length
+        ? cont.assuntos
+            .map(function (a) {
+              return String(a.value || '').trim() + '|' + String(a.label || a.value || '').trim();
+            })
+            .join('\n')
+        : 'duvida|Dúvida\nsugestao|Sugestão\nsolicitacao|Solicitação / Inscrição\noutro|Outro'
+    );
     var pixChave = document.getElementById('inst-pix-chave');
     var pixTit = document.getElementById('inst-pix-titular');
     var pixQr = document.getElementById('inst-pix-qr');
     if (pixChave) pixChave.value = inst.pixChave || '';
     if (pixTit) pixTit.value = inst.pixTitular || '';
     if (pixQr) pixQr.value = inst.pixQrUrl || '';
+  }
+
+  function parseAssuntosInstitucional(text) {
+    return String(text || '')
+      .split('\n')
+      .map(function (line) {
+        line = line.trim();
+        if (!line) return null;
+        var parts = line.split('|');
+        var value = (parts[0] || '').trim();
+        var label = (parts[1] || parts[0] || '').trim();
+        if (!value) return null;
+        return { value: value, label: label };
+      })
+      .filter(Boolean);
+  }
+
+  function buildInstitutionalFromForm() {
+    var inst = D.getInstitutional() || {};
+    var objetivos = document
+      .getElementById('inst-objetivos')
+      .value.split('\n')
+      .map(function (s) {
+        return s.trim();
+      })
+      .filter(Boolean);
+    function val(id) {
+      var el = document.getElementById(id);
+      return el ? el.value.trim() : '';
+    }
+    function readVolCard(n) {
+      return {
+        titulo: val('inst-vol-card' + n + '-titulo'),
+        texto: val('inst-vol-card' + n + '-texto'),
+        linkLabel: val('inst-vol-card' + n + '-link-label'),
+        linkUrl: val('inst-vol-card' + n + '-link-url')
+      };
+    }
+    var assuntosParsed = parseAssuntosInstitucional(val('inst-contato-assuntos'));
+    if (!assuntosParsed.length) {
+      assuntosParsed = [
+        { value: 'duvida', label: 'Dúvida' },
+        { value: 'sugestao', label: 'Sugestão' },
+        { value: 'solicitacao', label: 'Solicitação / Inscrição' },
+        { value: 'outro', label: 'Outro' }
+      ];
+    }
+    return Object.assign({}, inst, {
+      homepage: {
+        titulo: val('inst-hero-titulo'),
+        subtitulo: val('inst-hero-subtitulo'),
+        btn1Texto: val('inst-hero-btn1-texto'),
+        btn1Url: val('inst-hero-btn1-url'),
+        btn2Texto: val('inst-hero-btn2-texto'),
+        btn2Url: val('inst-hero-btn2-url'),
+        imagemFundo: val('inst-hero-imagem')
+      },
+      historia: val('inst-historia'),
+      missao: val('inst-missao'),
+      visao: val('inst-visao'),
+      objetivos: objetivos,
+      email: val('inst-email'),
+      telefone: val('inst-telefone'),
+      facebook: val('inst-facebook'),
+      instagram: val('inst-instagram'),
+      youtube: val('inst-youtube'),
+      voluntariado: {
+        intro: val('inst-vol-intro'),
+        cartoes: [readVolCard(1), readVolCard(2), readVolCard(3)],
+        contribuir: val('inst-vol-contribuir')
+          .split('\n')
+          .map(function (s) {
+            return s.trim();
+          })
+          .filter(Boolean),
+        ctaTexto: val('inst-vol-cta-texto'),
+        ctaUrl: val('inst-vol-cta-url')
+      },
+      contato: {
+        intro: val('inst-contato-intro'),
+        assuntos: assuntosParsed
+      },
+      pixChave: val('inst-pix-chave'),
+      pixTitular: val('inst-pix-titular'),
+      pixQrUrl: val('inst-pix-qr')
+    });
   }
 
   function exportInscricoesCsv() {
@@ -1513,24 +1656,12 @@
     if (formInst) {
       formInst.addEventListener('submit', function (e) {
         e.preventDefault();
-        var objetivos = document.getElementById('inst-objetivos').value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
-        D.setInstitutional({
-          historia: document.getElementById('inst-historia').value.trim(),
-          missao: document.getElementById('inst-missao').value.trim(),
-          visao: document.getElementById('inst-visao').value.trim(),
-          objetivos: objetivos,
-          email: document.getElementById('inst-email').value.trim(),
-          telefone: document.getElementById('inst-telefone').value.trim(),
-          facebook: document.getElementById('inst-facebook').value.trim(),
-          instagram: document.getElementById('inst-instagram').value.trim(),
-          youtube: document.getElementById('inst-youtube').value.trim(),
-          pixChave: document.getElementById('inst-pix-chave').value.trim(),
-          pixTitular: document.getElementById('inst-pix-titular').value.trim(),
-          pixQrUrl: document.getElementById('inst-pix-qr').value.trim()
-        }).then(function () {
-          toastOk('Conteúdo institucional salvo.');
-          carregarFormInstitucional();
-        }).catch(errSave);
+        D.setInstitutional(buildInstitutionalFromForm())
+          .then(function () {
+            toastOk('Conteúdo institucional salvo.');
+            carregarFormInstitucional();
+          })
+          .catch(errSave);
       });
     }
   }

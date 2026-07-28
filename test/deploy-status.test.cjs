@@ -19,7 +19,8 @@ describe('deploy-status', function () {
       email: 'diretoria@betimcor.org',
       telefone: '(31) 3333-4444',
       pixChave: 'diretoria@betimcor.org',
-      facebook: 'https://facebook.com/x'
+      facebook: 'https://facebook.com/x',
+      homepage: { titulo: 'Betim Cor Brazil — Associação Cultural' }
     });
     expect(r.complete).toBe(true);
   });

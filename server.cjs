@@ -24,6 +24,9 @@ const turnstile = require('./server/turnstile.cjs');
 const auditLog = require('./server/audit-log.cjs');
 const stateEtag = require('./server/state-etag.cjs');
 const sanitizeContent = require('./server/sanitize-content.cjs');
+const institutionalValidate = require('./server/institutional-validate.cjs');
+const inscricaoSave = require('./server/inscricao-save.cjs');
+const stateCleanup = require('./server/state-cleanup.cjs');
 const crypto = require('crypto');
 
 /** Incrementa a cada gravação — invalida cache de GET /api/public. */
@@ -66,6 +69,10 @@ if (!process.env.JWT_SECRET && process.env.RAILWAY_ENVIRONMENT) {
 /** Cookies HttpOnly — o JWT não fica em sessionStorage (mitiga roubo via XSS). */
 var COOKIE_ADMIN = 'site_admin_session';
 var COOKIE_MEMBER = 'site_member_session';
+
+function isProductionRuntime() {
+  return process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_ENVIRONMENT;
+}
 
 function sessionCookieOptions() {
   var o = {
@@ -139,20 +146,26 @@ async function initDatabase() {
 }
 
 async function loadState() {
+  var state;
   if (pgPool) {
-    return pgStore.loadAll(pgPool, KEYS, mergeDefaults, DEFAULTS);
-  }
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      var parsed = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-      return mergeDefaults(parsed);
+    state = await pgStore.loadAll(pgPool, KEYS, mergeDefaults, DEFAULTS);
+  } else {
+    try {
+      if (fs.existsSync(DATA_FILE)) {
+        var parsed = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+        state = mergeDefaults(parsed);
+      } else {
+        state = mergeDefaults({});
+        await saveStateFull(state);
+      }
+    } catch (e) {
+      console.warn('site-data.json inválido, usando defaults.', e.message);
+      state = mergeDefaults({});
+      await saveStateFull(state);
     }
-  } catch (e) {
-    console.warn('site-data.json inválido, usando defaults.', e.message);
   }
-  var d = mergeDefaults({});
-  await saveStateFull(d);
-  return d;
+  state = stateCleanup.cleanupGallery(state, __dirname);
+  return state;
 }
 
 async function saveStateFull(state) {
@@ -193,6 +206,86 @@ function filterPublic(state) {
   return publicFilter.filterPublic(state);
 }
 
+function normalizeDocumentAccess(doc) {
+  doc = doc || {};
+  var raw = String(doc.acesso || doc.permissao || '').trim().toLowerCase();
+  if (raw === 'publico' || raw === 'public') return 'publico';
+  if (raw === 'admin') return 'admin';
+  if (doc.publico === true) return 'publico';
+  return 'membros';
+}
+
+function filterAdminFullStateForPayload(state, payload) {
+  if ((payload.perfil || 'editor') === 'admin') {
+    return pwd.stripPasswordsFromState(state);
+  }
+  var allowed = ['events', 'news', 'blog', 'gallery', 'sponsors'];
+  var out = {};
+  allowed.forEach(function (key) {
+    out[key] = state[key] !== undefined ? state[key] : [];
+  });
+  out._keyEtags = stateEtag.keyEtags(state, allowed);
+  return out;
+}
+
+function filterMemberBootstrapState(state, usuario) {
+  var members = (state.members || []).filter(function (m) {
+    return m.usuario === usuario && m.ativo !== false;
+  });
+  var inscricoes = (state.inscricoes || []).filter(function (i) {
+    return i.membroUsuario === usuario;
+  });
+  var documents = (state.documents || []).filter(function (d) {
+    return d.visivel !== false && normalizeDocumentAccess(d) !== 'admin';
+  });
+  return {
+    events: (state.events || []).filter(function (e) {
+      return e.publicado !== false;
+    }),
+    news: (state.news || []).filter(function (n) {
+      return n.publicado !== false;
+    }),
+    blog: (state.blog || []).filter(function (b) {
+      return b.publicado !== false;
+    }),
+    gallery: state.gallery || [],
+    sponsors: state.sponsors || [],
+    institutional: state.institutional || {},
+    documents: documents,
+    members: members.map(function (m) {
+      var o = Object.assign({}, m);
+      o.senha = '';
+      delete o.resetTokenHash;
+      delete o.resetExpires;
+      return o;
+    }),
+    inscricoes: inscricoes
+  };
+}
+
+function safeUploadFilename(reqPath) {
+  var raw = decodeURIComponent(String(reqPath || '').replace(/^\/+/, ''));
+  if (!raw || raw.indexOf('/') !== -1 || raw.indexOf('\\') !== -1 || raw.indexOf('..') !== -1) {
+    return null;
+  }
+  return raw;
+}
+
+function documentRecordForUrl(state, publicUrl) {
+  return (state.documents || []).find(function (d) {
+    return String(d.arquivo || '') === publicUrl;
+  });
+}
+
+function canAccessDocumentUpload(payload, doc) {
+  if (payload && payload.t === 'admin') return true;
+  if (!doc || doc.visivel === false) return false;
+  var access = normalizeDocumentAccess(doc);
+  if (access === 'publico') return true;
+  if (payload && payload.t === 'member' && access === 'membros') return true;
+  return false;
+}
+
 function signAdmin(user) {
   return jwt.sign(
     { t: 'admin', sub: user.id, perfil: user.perfil || 'editor', usuario: user.usuario, nome: user.nome },
@@ -224,7 +317,7 @@ function verifyToken(req) {
   if (!raw) return null;
   try {
     return jwt.verify(raw, JWT_SECRET);
-  } catch (e) {
+  } catch (_e) {
     return null;
   }
 }
@@ -269,6 +362,12 @@ if (cspAtiva) {
 
 app.use(cookieParser());
 app.use(express.json({ limit: '5mb' }));
+app.use(function (req, res, next) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
 app.use('/api', rateLimits.apiGlobal);
 app.use(csrfOriginGuard);
 
@@ -319,7 +418,7 @@ app.get('/api/public', rateLimits.publicGet, async function (req, res) {
     res.json(filterPublic(state));
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: String(e.message) });
+    res.status(e.status || 500).json({ error: String(e.message) });
   }
 });
 
@@ -345,12 +444,14 @@ app.get('/api/full', async function (req, res) {
   }
   try {
     var state = await loadState();
-    var safe = pwd.stripPasswordsFromState(state);
-    safe._keyEtags = stateEtag.keyEtags(state, KEYS);
+    var safe = filterAdminFullStateForPayload(state, payload);
+    if ((payload.perfil || 'editor') === 'admin') {
+      safe._keyEtags = stateEtag.keyEtags(state, KEYS);
+    }
     res.json(safe);
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: String(e.message) });
+    res.status(e.status || 500).json({ error: String(e.message) });
   }
 });
 
@@ -362,27 +463,7 @@ app.get('/api/member-bootstrap', async function (req, res) {
   try {
     var state = await loadState();
     var usuario = payload.usuario;
-    var members = (state.members || []).filter(function (m) {
-      return m.usuario === usuario && m.ativo !== false;
-    });
-    var inscricoes = (state.inscricoes || []).filter(function (i) {
-      return i.membroUsuario === usuario;
-    });
-    res.json({
-      events: state.events,
-      news: state.news,
-      blog: state.blog,
-      gallery: state.gallery,
-      sponsors: state.sponsors,
-      institutional: state.institutional,
-      documents: state.documents,
-      members: members.map(function (m) {
-        var o = Object.assign({}, m);
-        o.senha = '';
-        return o;
-      }),
-      inscricoes: inscricoes
-    });
+    res.json(filterMemberBootstrapState(state, usuario));
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: String(e.message) });
@@ -491,6 +572,8 @@ app.post('/api/auth/logout-member', function (req, res) {
 
 function assertAdminEditor(payload, key) {
   var perfil = payload.perfil || 'editor';
+  var editorAllowed = ['events', 'news', 'blog', 'gallery', 'sponsors'];
+  if (perfil === 'editor' && editorAllowed.indexOf(key) === -1) return 'Sem permissÃ£o para editar esta seÃ§Ã£o';
   if (
     perfil === 'editor' &&
     (key === 'members' ||
@@ -545,6 +628,8 @@ app.put('/api/state/:key', async function (req, res) {
       body = pwd.mergeAdminUsersSave(stateBefore, body);
     } else if (key === 'news' || key === 'blog') {
       body = sanitizeContent.sanitizeContentList(body);
+    } else if (key === 'institutional') {
+      body = institutionalValidate.normalizeInstitutional(body);
     }
     await saveKey(key, body);
     var newEtag = stateEtag.etagForPayload(body);
@@ -635,31 +720,20 @@ app.post('/api/inscricao/publica', rateLimits.inscricaoPublica, async function (
   try {
     if (!(await assertTurnstile(req, res))) return;
     var b = req.body || {};
-    var state = await loadState();
-    var valid = inscricaoVal.validateInscricaoPublica(state, b);
-    if (!valid.ok) {
-      return res.status(valid.status || 400).json({ error: valid.error });
+    var result = await inscricaoSave.appendInscricao(
+      { pgPool: pgPool, loadState: loadState, saveKey: saveKey, validate: inscricaoVal },
+      b,
+      null
+    );
+    if (!result.ok) {
+      return res.status(result.status || 400).json({ error: result.error });
     }
-    var ev = valid.evento;
-    var list = state.inscricoes || [];
-    var item = {
-      eventoId: b.eventoId,
-      eventoTitulo: ev.titulo || b.eventoTitulo || '',
-      eventoData: ev.data || b.eventoData || '',
-      eventoHora: ev.hora || b.eventoHora || '',
-      eventoLocal: ev.local || b.eventoLocal || '',
-      nome: valid.nome,
-      email: valid.email,
-      telefone: valid.telefone || '',
-      dataInscricao: new Date().toISOString().slice(0, 10)
-    };
-    list.push(item);
-    await saveKey('inscricoes', list);
+    var state = result.state || (await loadState());
     smtpMail
       .notifyAfterFormSubmit({
         type: 'inscricao',
         institutional: state.institutional || {},
-        data: Object.assign({}, item, { eventoId: b.eventoId })
+        data: Object.assign({}, result.item, { eventoId: b.eventoId })
       })
       .catch(function (err) {
         console.error('[smtp]', err.message || err);
@@ -690,6 +764,9 @@ app.post('/api/form/contato', rateLimits.formPublico, async function (req, res) 
       return res.status(400).json({ error: 'E-mail inválido.' });
     }
     var state = await loadState();
+    if (!institutionalValidate.isAssuntoPermitido(state.institutional, assunto)) {
+      return res.status(400).json({ error: 'Assunto inválido.' });
+    }
     var list = state.mensagens_contato || [];
     list.push({
       id: newFormId(),
@@ -781,23 +858,14 @@ app.post('/api/inscricao/membro', async function (req, res) {
   try {
     var b = req.body || {};
     var usuario = payload.usuario;
-    var state = await loadState();
-    var valid = inscricaoVal.validateInscricaoMembro(state, b, usuario);
-    if (!valid.ok) {
-      return res.status(valid.status || 400).json({ error: valid.error });
+    var result = await inscricaoSave.appendInscricao(
+      { pgPool: pgPool, loadState: loadState, saveKey: saveKey, validate: inscricaoVal },
+      b,
+      usuario
+    );
+    if (!result.ok) {
+      return res.status(result.status || 400).json({ error: result.error });
     }
-    var ev = valid.evento;
-    var list = state.inscricoes || [];
-    list.push({
-      eventoId: b.eventoId,
-      eventoTitulo: ev.titulo || b.eventoTitulo || '',
-      eventoData: ev.data || b.eventoData || '',
-      eventoHora: ev.hora || b.eventoHora || '',
-      eventoLocal: ev.local || b.eventoLocal || '',
-      membroUsuario: usuario,
-      dataInscricao: new Date().toISOString().slice(0, 10)
-    });
-    await saveKey('inscricoes', list);
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
@@ -924,7 +992,11 @@ app.post('/api/member/change-password', async function (req, res) {
     var atual = b.senhaAtual != null ? String(b.senhaAtual) : '';
     var nova = b.senhaNova != null ? String(b.senhaNova) : '';
     if (!atual || !nova) return res.status(400).json({ error: 'Preencha a senha atual e a nova senha' });
-    if (nova.length < 6) return res.status(400).json({ error: 'A nova senha deve ter pelo menos 6 caracteres' });
+    try {
+      pwd.assertPasswordPolicy(nova);
+    } catch (pe) {
+      return res.status(pe.status || 400).json({ error: pe.message });
+    }
     var state = await loadState();
     var members = state.members || [];
     var ix = members.findIndex(function (m) {
@@ -1005,7 +1077,11 @@ app.post('/api/auth/member-reset', rateLimits.formPublico, async function (req, 
     var token = b.token != null ? String(b.token).trim() : '';
     var nova = b.senhaNova != null ? String(b.senhaNova) : '';
     if (!token || !nova) return res.status(400).json({ error: 'Token e nova senha obrigatórios' });
-    if (nova.length < 6) return res.status(400).json({ error: 'A nova senha deve ter pelo menos 6 caracteres' });
+    try {
+      pwd.assertPasswordPolicy(nova);
+    } catch (pe) {
+      return res.status(pe.status || 400).json({ error: pe.message });
+    }
     var hash = hashMemberResetToken(token);
     var state = await loadState();
     var members = state.members || [];
@@ -1143,14 +1219,33 @@ app.use(function (req, res, next) {
   next();
 });
 
-/** PDFs em documentos internos: download em vez de abrir inline no browser. */
-app.use('/uploads/documents', function (req, res, next) {
-  if ((req.path || '').toLowerCase().endsWith('.pdf')) {
-    res.setHeader('Content-Disposition', 'attachment');
+/** Documentos internos: exige permissao antes de servir ficheiro do disco. */
+app.use('/uploads/documents', async function (req, res, next) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  try {
+    var filename = safeUploadFilename(req.path);
+    if (!filename) return res.status(400).end();
+    var root = path.resolve(__dirname, 'uploads', 'documents');
+    var filePath = path.resolve(root, filename);
+    if (filePath.indexOf(root + path.sep) !== 0) return res.status(400).end();
+    if (!fs.existsSync(filePath)) return res.status(404).end();
+
+    var state = await loadState();
+    var publicUrl = '/uploads/documents/' + filename;
+    var doc = documentRecordForUrl(state, publicUrl);
+    var payload = verifyToken(req);
+    if (!canAccessDocumentUpload(payload, doc)) {
+      return res.status(payload ? 403 : 401).json({ error: 'NÃ£o autorizado' });
+    }
+    if (filename.toLowerCase().endsWith('.pdf')) {
+      res.setHeader('Content-Disposition', 'attachment');
+    }
+    return res.sendFile(filePath);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: String(e.message) });
   }
-  next();
 });
-app.use('/uploads/documents', express.static(path.join(__dirname, 'uploads', 'documents')));
 app.use('/uploads/gallery', express.static(path.join(__dirname, 'uploads', 'gallery')));
 
 app.use(
@@ -1174,9 +1269,11 @@ app.use(function (req, res) {
 var envPort = process.env.PORT;
 var portFixo = envPort !== undefined && envPort !== '';
 var inicial = parseInt(portFixo ? envPort : envPort || '3000', 10);
+var activeServer = null;
 
 function iniciar(porta, tentativas) {
   var server = http.createServer(app);
+  activeServer = server;
   server.once('error', function (err) {
     if (err.code === 'EADDRINUSE' && !portFixo && tentativas > 1) {
       var prox = porta + 1;
@@ -1191,6 +1288,18 @@ function iniciar(porta, tentativas) {
     var dados = pgPool ? 'PostgreSQL' : 'arquivo local data/site-data.json';
     var cspMsg = cspAtiva ? 'CSP ativa' : 'CSP off (dev — use NODE_ENV=production na hospedagem para ativar)';
     console.log('Servidor em http://127.0.0.1:' + porta + ' | ' + dados + ' | ' + cspMsg);
+  });
+}
+
+function shutdownHttpServer(signal) {
+  console.log('[shutdown] Recebido ' + signal + ', encerrando servidor...');
+  if (!activeServer) process.exit(0);
+  var timeout = setTimeout(function () {
+    process.exit(0);
+  }, 2000);
+  if (timeout.unref) timeout.unref();
+  activeServer.close(function () {
+    process.exit(0);
   });
 }
 
@@ -1214,6 +1323,10 @@ function startHttpServer() {
     .catch(function (err) {
       console.error('[db] Falha ao iniciar:', err && err.message ? err.message : err);
       if (err && err.stack) console.error(err.stack);
+      if (isProductionRuntime()) {
+        console.error('[db] ProduÃ§Ã£o: a aplicaÃ§Ã£o nÃ£o vai iniciar sem PostgreSQL.');
+        process.exit(1);
+      }
       pgPool = null;
       console.warn(
         '[db] A continuar sem PostgreSQL (dados em ficheiro local). Corrija DATABASE_URL no Railway.'
@@ -1232,6 +1345,12 @@ if (require.main === module) {
   process.on('unhandledRejection', function (reason) {
     console.error('[fatal] unhandledRejection:', reason);
     process.exit(1);
+  });
+  process.on('SIGTERM', function () {
+    shutdownHttpServer('SIGTERM');
+  });
+  process.on('SIGINT', function () {
+    shutdownHttpServer('SIGINT');
   });
   startHttpServer();
 }

@@ -14,7 +14,7 @@ var fs = require('fs');
 var sdk;
 try {
   sdk = require('@aws-sdk/client-s3');
-} catch (e) {
+} catch (_e) {
   sdk = null;
 }
 
@@ -85,7 +85,7 @@ async function uploadMulterFile(file, folder) {
   if (file.path) {
     try {
       fs.unlinkSync(file.path);
-    } catch (e) {}
+    } catch (_e) {}
   }
 
   return publicUrlForKey(key);

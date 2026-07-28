@@ -204,6 +204,7 @@
     getDocuments: function () { return cache.documents || []; },
     setDocuments: function (arr) { return putKey('documents', arr); },
     getAdminUsers: function () { return cache.admin_users || []; },
+    setAdminUsers: function (arr) { return putKey('admin_users', arr); },
     getInscricoes: function () { return cache.inscricoes || []; },
     setInscricoes: function (arr) { return putKey('inscricoes', arr); },
     getMensagensContato: function () { return cache.mensagens_contato || []; },

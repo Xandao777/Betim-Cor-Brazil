@@ -455,6 +455,10 @@ main {
   color: var(--branco);
   overflow: hidden;
 }
+.hero.hero--custom-bg {
+  background-size: cover;
+  background-position: center;
+}
 .hero::before,
 .hero::after {
   content: "";

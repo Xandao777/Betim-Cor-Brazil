@@ -51,7 +51,56 @@ module.exports = {
     youtube: '',
     pixChave: '',
     pixTitular: '',
-    pixQrUrl: ''
+    pixQrUrl: '',
+    homepage: {
+      titulo: 'Bem-vindo à nossa Associação',
+      subtitulo: 'Unindo pessoas, fortalecendo a comunidade e transformando vidas.',
+      btn1Texto: 'Conheça-nos',
+      btn1Url: 'index.html#nos',
+      btn2Texto: 'Fazer doação',
+      btn2Url: 'doar.html',
+      imagemFundo: ''
+    },
+    voluntariado: {
+      intro: 'Saiba como participar das atividades e contribuir com os projetos da associação.',
+      cartoes: [
+        {
+          titulo: 'Inscreva-se em eventos',
+          texto: 'Muitos eventos precisam de voluntários.',
+          linkUrl: 'eventos.html',
+          linkLabel: 'Ver eventos'
+        },
+        {
+          titulo: 'Entre em contato',
+          texto: 'Use o formulário de contato e escolha o assunto adequado para se candidatar como voluntário.',
+          linkUrl: 'contato.html',
+          linkLabel: 'Formulário de contato'
+        },
+        {
+          titulo: 'Workshop de voluntários',
+          texto: 'Participe do nosso workshop de formação para voluntários.',
+          linkUrl: 'eventos.html',
+          linkLabel: 'Ver datas na agenda'
+        }
+      ],
+      contribuir: [
+        'Apoio em eventos (recepção, organização, divulgação)',
+        'Projetos sociais e culturais (oficinas, palestras, acompanhamento)',
+        'Comunicação e redes sociais',
+        'Manutenção e infraestrutura da sede (quando necessário)'
+      ],
+      ctaTexto: 'Quero ser voluntário',
+      ctaUrl: 'contato.html'
+    },
+    contato: {
+      intro: 'Envie dúvidas, sugestões ou solicitações pelo formulário abaixo.',
+      assuntos: [
+        { value: 'duvida', label: 'Dúvida' },
+        { value: 'sugestao', label: 'Sugestão' },
+        { value: 'solicitacao', label: 'Solicitação / Inscrição' },
+        { value: 'outro', label: 'Outro' }
+      ]
+    }
   },
   admin_users: [
     { id: '1', usuario: 'admin', senha: 'admin123', nome: 'Administrador', perfil: 'admin' },

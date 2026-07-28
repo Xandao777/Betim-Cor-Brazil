@@ -315,7 +315,7 @@
             e.preventDefault();
             var go = this.getAttribute('data-go');
             var nav = document.querySelector('.admin-sidebar a[data-secao="' + go + '"]');
-            if (nav) nav.click();
+            if (nav && nav.style.display !== 'none') nav.click();
           });
         });
       }
@@ -430,7 +430,7 @@
       var warnEl = document.getElementById('dashboard-deploy-warnings');
       var linkDeploy = document.getElementById('admin-link-site-deploy');
       if (!wrap || !list) return;
-      var isAdminRole = AP.isAdmin && AP.isAdmin();
+      var isAdminRole = !!AP.isAdmin;
       if (!isAdminRole) return;
       wrap.style.display = 'block';
 
@@ -990,17 +990,9 @@
             list.push(rec);
           }
           showSaving(true);
-          fetch('/api/state/admin_users', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify(list)
-          })
-            .then(function (r) {
-              return r.json().then(function (j) {
-                if (!r.ok) throw new Error(j.error || r.statusText);
-                return D.refresh();
-              });
+          D.setAdminUsers(list)
+            .then(function () {
+              return D.refresh();
             })
             .then(function () {
               renderAdminUsers();

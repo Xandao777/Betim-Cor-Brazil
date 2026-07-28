@@ -17,7 +17,7 @@ Site institucional da associação, com identidade visual em **vermelho, amarelo
 └── docs/                # Documentação interna
 ```
 
-Ver também `docs/ESTRUTURA.md`, `docs/PLANO-IMPLEMENTACAO.md` e `docs/RAILWAY-CHECKLIST.md`.
+Ver também `docs/ESTRUTURA.md`, `docs/PLANO-IMPLEMENTACAO.md`, `docs/RAILWAY-CHECKLIST.md` e `docs/RAILWAY-SETUP-RAPIDO.md` (go-live).
 
 ## Estrutura do site
 
@@ -59,6 +59,8 @@ Em **produção** no Railway, o seed **não** cria contas demo por defeito — c
 ## Área de membros
 
 Em **`area-membros.html`**, associados entram com usuário e senha cadastrados pelo admin (ou, por padrão, `membro` / `demo123`). O login usa os mesmos dados que o admin gerencia em **Membros**.
+
+A API entrega para o associado apenas o conteúdo publicado/visível e os dados da própria conta. Documentos em `uploads/documents/` passam por verificação de sessão e permissão antes do download, a menos que estejam explicitamente classificados como públicos.
 
 ## Como usar
 
@@ -106,6 +108,8 @@ Variáveis recomendadas no Railway: `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV=prod
 **CAPTCHA Turnstile (opcional):** `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY` (painel Cloudflare, gratuito). Ativa verificação em contato, doação e inscrição em eventos. Sem estas variáveis, os formulários funcionam como antes.
 
 **Uploads persistentes (opcional):** por defeito os ficheiros ficam em `uploads/` no disco do contentor (podem perder-se no redeploy). Para produção com muitas imagens/PDF, configure **S3 ou Cloudflare R2** (`S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_URL_BASE`, etc. — ver `.env.example`).
+
+Para documentos internos, prefira bucket privado ou URLs assinadas no S3/R2. Links públicos configurados em `S3_PUBLIC_URL_BASE` são adequados para imagens públicas, mas não protegem PDFs sensíveis fora do servidor.
 
 **Só web, sem Postgres:** o app cai no modo **arquivo** (`data/site-data.json`), pouco adequado em produção porque o disco pode ser efêmero — use Postgres no Railway para dados persistentes.
 

@@ -24,6 +24,6 @@ process.env.RATE_LIMIT_INSCRICAO_PUBLICA_MAX = '999999';
 
 try {
   fs.unlinkSync(tmp);
-} catch (e) {
+} catch (_e) {
   /* ficheiro ainda não existia */
 }

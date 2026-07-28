@@ -109,11 +109,51 @@ async function saveStateFull(pool, KEYS, state) {
   }
 }
 
+/**
+ * Inscrição atómica: bloqueia events + inscricoes, revalida vagas e grava.
+ */
+async function appendInscricaoAtomic(pool, body, membroUsuario, validate, buildItem) {
+  var client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    var r = await client.query(
+      "SELECT key, payload FROM app_state WHERE key IN ('events', 'inscricoes') FOR UPDATE"
+    );
+    var state = { events: [], inscricoes: [] };
+    r.rows.forEach(function (row) {
+      state[row.key] = row.payload;
+    });
+    var valid = membroUsuario
+      ? validate.validateInscricaoMembro(state, body, membroUsuario)
+      : validate.validateInscricaoPublica(state, body);
+    if (!valid.ok) {
+      await client.query('ROLLBACK');
+      return valid;
+    }
+    var list = Array.isArray(state.inscricoes) ? state.inscricoes.slice() : [];
+    var item = buildItem(valid, body, membroUsuario);
+    list.push(item);
+    await client.query(
+      `INSERT INTO app_state (key, payload, updated_at) VALUES ('inscricoes', $1::jsonb, NOW())
+       ON CONFLICT (key) DO UPDATE SET payload = EXCLUDED.payload, updated_at = NOW()`,
+      [JSON.stringify(list)]
+    );
+    await client.query('COMMIT');
+    return { ok: true, item: item, state: state };
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   createPool: createPool,
   ensureSchema: ensureSchema,
   loadAll: loadAll,
   seed: seed,
   saveKey: saveKey,
-  saveStateFull: saveStateFull
+  saveStateFull: saveStateFull,
+  appendInscricaoAtomic: appendInscricaoAtomic
 };

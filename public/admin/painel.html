@@ -566,8 +566,44 @@
       <!-- Conteúdo institucional -->
       <section id="secao-institucional" class="admin-secao">
         <h1>Conteúdo institucional</h1>
-        <p class="admin-aviso">Estes textos aparecem na página inicial (Nós) e no rodapé.</p>
+        <p class="admin-aviso">Estes textos aparecem na página inicial (Nós), no banner, voluntariado, contato e no rodapé.</p>
         <form id="form-institucional" class="admin-form-card" novalidate>
+          <h3 class="section-title">Página inicial — banner</h3>
+          <p class="admin-aviso">Título e botões no topo da homepage.</p>
+          <div class="form-group">
+            <label for="inst-hero-titulo">Título principal</label>
+            <input type="text" id="inst-hero-titulo" placeholder="Bem-vindo à nossa Associação">
+          </div>
+          <div class="form-group">
+            <label for="inst-hero-subtitulo">Subtítulo</label>
+            <input type="text" id="inst-hero-subtitulo" placeholder="Frase curta de impacto">
+          </div>
+          <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div class="form-group">
+              <label for="inst-hero-btn1-texto">Botão 1 — texto</label>
+              <input type="text" id="inst-hero-btn1-texto" placeholder="Conheça-nos">
+            </div>
+            <div class="form-group">
+              <label for="inst-hero-btn1-url">Botão 1 — link</label>
+              <input type="text" id="inst-hero-btn1-url" placeholder="index.html#nos">
+            </div>
+          </div>
+          <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div class="form-group">
+              <label for="inst-hero-btn2-texto">Botão 2 — texto</label>
+              <input type="text" id="inst-hero-btn2-texto" placeholder="Fazer doação">
+            </div>
+            <div class="form-group">
+              <label for="inst-hero-btn2-url">Botão 2 — link</label>
+              <input type="text" id="inst-hero-btn2-url" placeholder="doar.html">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="inst-hero-imagem">Imagem de fundo do banner (URL opcional)</label>
+            <input type="url" id="inst-hero-imagem" placeholder="https://… ou /uploads/gallery/…">
+          </div>
+
+          <h3 class="section-title" style="margin-top:1.5rem;">Nós (homepage)</h3>
           <div class="form-group">
             <label for="inst-historia">História</label>
             <textarea id="inst-historia" rows="4"></textarea>
@@ -604,6 +640,92 @@
             <label for="inst-youtube">YouTube (URL)</label>
             <input type="text" id="inst-youtube" placeholder="https://…" autocomplete="url">
           </div>
+
+          <h3 class="section-title" style="margin-top:1.5rem;">Página Voluntariado</h3>
+          <div class="form-group">
+            <label for="inst-vol-intro">Texto de introdução</label>
+            <textarea id="inst-vol-intro" rows="2"></textarea>
+          </div>
+          <p class="admin-aviso">Cartões «Como participar» (até 3).</p>
+          <div class="form-group">
+            <label for="inst-vol-card1-titulo">Cartão 1 — título</label>
+            <input type="text" id="inst-vol-card1-titulo">
+          </div>
+          <div class="form-group">
+            <label for="inst-vol-card1-texto">Cartão 1 — texto</label>
+            <textarea id="inst-vol-card1-texto" rows="2"></textarea>
+          </div>
+          <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div class="form-group">
+              <label for="inst-vol-card1-link-label">Cartão 1 — texto do link (opcional)</label>
+              <input type="text" id="inst-vol-card1-link-label" placeholder="Ver eventos">
+            </div>
+            <div class="form-group">
+              <label for="inst-vol-card1-link-url">Cartão 1 — URL do link</label>
+              <input type="text" id="inst-vol-card1-link-url" placeholder="eventos.html">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="inst-vol-card2-titulo">Cartão 2 — título</label>
+            <input type="text" id="inst-vol-card2-titulo">
+          </div>
+          <div class="form-group">
+            <label for="inst-vol-card2-texto">Cartão 2 — texto</label>
+            <textarea id="inst-vol-card2-texto" rows="2"></textarea>
+          </div>
+          <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div class="form-group">
+              <label for="inst-vol-card2-link-label">Cartão 2 — texto do link (opcional)</label>
+              <input type="text" id="inst-vol-card2-link-label">
+            </div>
+            <div class="form-group">
+              <label for="inst-vol-card2-link-url">Cartão 2 — URL do link</label>
+              <input type="text" id="inst-vol-card2-link-url" placeholder="contato.html">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="inst-vol-card3-titulo">Cartão 3 — título</label>
+            <input type="text" id="inst-vol-card3-titulo">
+          </div>
+          <div class="form-group">
+            <label for="inst-vol-card3-texto">Cartão 3 — texto</label>
+            <textarea id="inst-vol-card3-texto" rows="2"></textarea>
+          </div>
+          <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div class="form-group">
+              <label for="inst-vol-card3-link-label">Cartão 3 — texto do link (opcional)</label>
+              <input type="text" id="inst-vol-card3-link-label">
+            </div>
+            <div class="form-group">
+              <label for="inst-vol-card3-link-url">Cartão 3 — URL do link</label>
+              <input type="text" id="inst-vol-card3-link-url" placeholder="eventos.html">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="inst-vol-contribuir">Lista «Como contribuir» (um item por linha)</label>
+            <textarea id="inst-vol-contribuir" rows="5"></textarea>
+          </div>
+          <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div class="form-group">
+              <label for="inst-vol-cta-texto">Botão final — texto</label>
+              <input type="text" id="inst-vol-cta-texto" placeholder="Quero ser voluntário">
+            </div>
+            <div class="form-group">
+              <label for="inst-vol-cta-url">Botão final — link</label>
+              <input type="text" id="inst-vol-cta-url" placeholder="contato.html">
+            </div>
+          </div>
+
+          <h3 class="section-title" style="margin-top:1.5rem;">Página Contato</h3>
+          <div class="form-group">
+            <label for="inst-contato-intro">Texto de introdução</label>
+            <textarea id="inst-contato-intro" rows="2"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="inst-contato-assuntos">Assuntos do formulário (um por linha: <code>valor|Etiqueta</code>)</label>
+            <textarea id="inst-contato-assuntos" rows="5" placeholder="duvida|Dúvida&#10;sugestao|Sugestão"></textarea>
+          </div>
+
           <h3 class="section-title" style="margin-top:1.5rem;">Doação (PIX)</h3>
           <p class="admin-aviso">Exibido na página Doar quando a chave estiver preenchida.</p>
           <div class="form-group">
@@ -635,11 +757,11 @@
             </div>
             <div class="form-group">
               <label for="senha-nova">Nova senha *</label>
-              <input type="password" id="senha-nova" required minlength="6" autocomplete="new-password">
+              <input type="password" id="senha-nova" required minlength="8" autocomplete="new-password">
             </div>
             <div class="form-group">
               <label for="senha-nova2">Confirmar nova senha *</label>
-              <input type="password" id="senha-nova2" required minlength="6" autocomplete="new-password">
+              <input type="password" id="senha-nova2" required minlength="8" autocomplete="new-password">
             </div>
             <button type="submit" class="btn btn-primary">Atualizar senha</button>
           </form>
