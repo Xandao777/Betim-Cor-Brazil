@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Ficha de filiação: candidate-se a fazer parte da associação e some com a nossa luta.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Filie-se | Associação">
+  <meta property="og:description" content="Formulário de inscrição para novos membros — ficha de filiação.">
+  <meta property="og:locale" content="pt_BR">
+  <title>Filie-se | Associação</title>
+  <link rel="icon" href="img/logo.jpg" type="image/jpeg">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a href="#main" class="skip-link">Ir para o conteúdo principal</a>
+  <div data-site-chrome="header"></div>
+
+  <main id="main" class="pagina-interna">
+    <div class="container">
+      <h1>Ficha de filiação</h1>
+      <p class="intro">Preencha o formulário abaixo para manifestar interesse em fazer parte da associação. Entraremos em contato em breve.</p>
+
+      <form class="form-max" id="form-filiacao" aria-label="Formulário de filiação para novos membros">
+        <fieldset class="form-fieldset">
+          <legend>Dados pessoais</legend>
+          <div class="form-group">
+            <label for="filiacao-nome">Nome completo *</label>
+            <input type="text" id="filiacao-nome" name="nomeCompleto" required autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label for="filiacao-email">E-mail *</label>
+            <input type="email" id="filiacao-email" name="email" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label for="filiacao-whatsapp">WhatsApp (com DDD) *</label>
+            <input type="tel" id="filiacao-whatsapp" name="whatsapp" required autocomplete="tel" placeholder="(31) 99999-9999" inputmode="tel">
+          </div>
+          <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+              <label for="filiacao-nascimento">Data de nascimento *</label>
+              <input type="date" id="filiacao-nascimento" name="dataNascimento" required>
+            </div>
+            <div>
+              <label for="filiacao-cidade">Bairro / Cidade *</label>
+              <input type="text" id="filiacao-cidade" name="bairroCidade" required autocomplete="address-level2">
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-fieldset">
+          <legend>Como você quer somar com a luta? *</legend>
+          <p class="form-hint">Marque uma ou mais opções.</p>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="filiacao-militante" name="interesseMilitante" value="1">
+              Quero ser militante/membro ativo (participar de reuniões e decisões).
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="filiacao-voluntario" name="interesseVoluntario" value="1">
+              Quero ser voluntário na minha área profissional (ex.: design, direito, psicologia, pedagogia, eventos).
+            </label>
+          </div>
+          <div class="form-group" id="grupo-area-profissional" style="display: none;">
+            <label for="filiacao-area">Sua área profissional *</label>
+            <input type="text" id="filiacao-area" name="areaProfissional" placeholder="Ex.: pedagogia, direito, design…">
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="filiacao-apoio" name="interesseApoio" value="1">
+              Quero apenas receber notícias e apoiar as ações/eventos.
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-fieldset">
+          <legend>Breve histórico</legend>
+          <div class="form-group">
+            <label for="filiacao-historico">Conte um pouco sobre você e por que deseja fazer parte da associação *</label>
+            <textarea id="filiacao-historico" name="historico" rows="6" required minlength="20" placeholder="Compartilhe sua trajetória, motivações e como gostaria de contribuir…"></textarea>
+          </div>
+        </fieldset>
+
+        <div class="hp-field" aria-hidden="true">
+          <label for="website-filiacao">Website</label>
+          <input type="text" id="website-filiacao" name="website" tabindex="-1" autocomplete="off">
+        </div>
+        <div class="form-group form-group-consent">
+          <label class="checkbox-label">
+            <input type="checkbox" id="consent-filiacao" name="consentimento" required value="1">
+            Li e aceito a <a href="privacidade.html" target="_blank" rel="noopener">política de privacidade</a> *
+          </label>
+        </div>
+        <div class="form-group" data-turnstile aria-label="Verificação de segurança"></div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Enviar ficha de filiação</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <div data-site-chrome="footer"></div>
+  <script src="js/site-chrome.js"></script>
+  <script src="js/dados-site.js"></script>
+  <script src="js/publico-dados.js"></script>
+  <script src="js/toast.js"></script>
+  <script src="js/turnstile-forms.js"></script>
+  <script src="js/filiacao.js"></script>
+</body>
+</html>

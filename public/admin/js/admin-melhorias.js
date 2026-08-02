@@ -210,11 +210,21 @@
       });
     }
 
+    function formatInteressesFiliacao(p) {
+      var i = p.interesses || {};
+      var parts = [];
+      if (i.militante) parts.push('Militante');
+      if (i.voluntarioProfissional) parts.push('Voluntário' + (p.areaProfissional ? ' (' + p.areaProfissional + ')' : ''));
+      if (i.apoioNoticias) parts.push('Apoio/notícias');
+      return parts.join(' · ') || '—';
+    }
+
     function updateSidebarBadges() {
       var c = countUnread(D.getMensagensContato ? D.getMensagensContato() : []);
+      var f = countUnread(D.getPedidosFiliacao ? D.getPedidosFiliacao() : []);
       var m = countUnread(D.getMensagensMembros ? D.getMensagensMembros() : []);
       var d = countUnread(D.getPedidosDoacao ? D.getPedidosDoacao() : []);
-      var total = c + m + d;
+      var total = c + f + m + d;
       var link = document.querySelector('.admin-sidebar a[data-secao="formularios"]');
       if (link) {
         var old = link.querySelector('.admin-nav-badge');
@@ -227,8 +237,10 @@
         }
       }
       var elCn = document.getElementById('dashboard-contato-novas');
+      var elFn = document.getElementById('dashboard-filiacao-novas');
       var elMn = document.getElementById('dashboard-membro-novas');
       if (elCn) elCn.textContent = c ? '(' + c + ' novas)' : '';
+      if (elFn) elFn.textContent = f ? '(' + f + ' novas)' : '';
       if (elMn) elMn.textContent = m ? '(' + m + ' novas)' : '';
     }
 
@@ -292,6 +304,7 @@
       if (cards) {
         var unreadTotal =
           countUnread(D.getMensagensContato()) +
+          countUnread(D.getPedidosFiliacao ? D.getPedidosFiliacao() : []) +
           countUnread(D.getMensagensMembros()) +
           countUnread(D.getPedidosDoacao() || []);
         var doaPend = (D.getPedidosDoacao() || []).filter(function (p) {
@@ -556,10 +569,12 @@
     var origForm = AP.renderFormularios;
     AP.renderFormularios = function () {
       var cont = filtrarPorData((D.getMensagensContato() || []).slice());
+      var filAll = filtrarPorData((D.getPedidosFiliacao && D.getPedidosFiliacao()) || []);
       var mem = filtrarPorData((D.getMensagensMembros() || []).slice());
       var doaAll = filtrarPorData((D.getPedidosDoacao && D.getPedidosDoacao()) || []);
       if (formFiltroLidas === 'nao_lidas') {
         cont = cont.filter(isUnread);
+        filAll = filAll.filter(isUnread);
         mem = mem.filter(isUnread);
         doaAll = doaAll.filter(isUnread);
       }
@@ -605,6 +620,66 @@
         wireMarkRead(tbC);
       }
 
+      var tbF = document.querySelector('#tabela-form-filiacao tbody');
+      if (tbF) {
+        tbF.innerHTML = filAll
+          .slice()
+          .reverse()
+          .map(function (p) {
+            var wa = p.whatsappLink
+              ? '<a href="' +
+                escHtml(p.whatsappLink) +
+                '" target="_blank" rel="noopener">' +
+                escHtml(p.whatsapp || 'WhatsApp') +
+                '</a>'
+              : escHtml(p.whatsapp || '—');
+            var clsF = isUnread(p) ? ' admin-row-unread' : '';
+            return (
+              '<tr class="' +
+              clsF +
+              '"><td>' +
+              escHtml(AP.formatarDataHoraIso(p.criadoEm)) +
+              '</td><td>' +
+              escHtml(p.nomeCompleto || '—') +
+              '</td><td>' +
+              (p.email
+                ? '<a href="mailto:' +
+                  encodeURIComponent(p.email) +
+                  '">' +
+                  escHtml(p.email) +
+                  '</a>'
+                : '—') +
+              '</td><td>' +
+              wa +
+              '</td><td>' +
+              escHtml(formatInteressesFiliacao(p)) +
+              '<br><small>' +
+              escHtml(p.bairroCidade || '') +
+              ' · ' +
+              escHtml(p.dataNascimento || '') +
+              '</small></td><td class="admin-celula-texto">' +
+              escHtml(p.historico || '') +
+              '</td><td class="acoes">' +
+              (p.email
+                ? '<a class="btn btn-outline btn-sm" href="mailto:' +
+                  encodeURIComponent(p.email) +
+                  '?subject=' +
+                  encodeURIComponent('Ficha de filiação — ' + (p.nomeCompleto || '')) +
+                  '">Responder</a> '
+                : '') +
+              '<button type="button" class="btn btn-outline btn-sm btn-mark-read" data-col="pedidos_filiacao" data-id="' +
+              attrSafe(p.id) +
+              '" data-lida="' +
+              (isUnread(p) ? '1' : '0') +
+              '">' +
+              (isUnread(p) ? 'Marcar lida' : 'Não lida') +
+              '</button></td></tr>'
+            );
+          })
+          .join('');
+        wireMarkRead(tbF);
+      }
+
       var tbM = document.querySelector('#tabela-form-membro tbody');
       if (tbM) {
         tbM.innerHTML = mem
@@ -643,12 +718,16 @@
       }
 
       var vazioC = document.getElementById('form-contato-vazio');
+      var vazioF = document.getElementById('form-filiacao-vazio');
       var vazioM = document.getElementById('form-membro-vazio');
       var acoesC = document.getElementById('form-contato-acoes');
+      var acoesF = document.getElementById('form-filiacao-acoes');
       var acoesM = document.getElementById('form-membro-acoes');
       if (vazioC) vazioC.style.display = cont.length ? 'none' : 'block';
+      if (vazioF) vazioF.style.display = filAll.length ? 'none' : 'block';
       if (vazioM) vazioM.style.display = mem.length ? 'none' : 'block';
       if (acoesC) acoesC.style.display = isAdmin && (D.getMensagensContato() || []).length ? 'block' : 'none';
+      if (acoesF) acoesF.style.display = isAdmin && (D.getPedidosFiliacao() || []).length ? 'block' : 'none';
       if (acoesM) acoesM.style.display = isAdmin && (D.getMensagensMembros() || []).length ? 'block' : 'none';
 
       var doa = doaAll;
@@ -765,6 +844,46 @@
         );
       });
     }
+    var btnCsvFil = document.getElementById('btn-export-filiacao-csv');
+    if (btnCsvFil) {
+      btnCsvFil.addEventListener('click', function () {
+        var list = D.getPedidosFiliacao() || [];
+        exportCsv(
+          'filiacao-' + new Date().toISOString().slice(0, 10) + '.csv',
+          [
+            'data',
+            'nome',
+            'email',
+            'whatsapp',
+            'data_nascimento',
+            'bairro_cidade',
+            'militante',
+            'voluntario',
+            'area_profissional',
+            'apoio_noticias',
+            'historico',
+            'lida'
+          ],
+          list.map(function (p) {
+            var i = p.interesses || {};
+            return [
+              p.criadoEm,
+              p.nomeCompleto,
+              p.email,
+              p.whatsapp,
+              p.dataNascimento,
+              p.bairroCidade,
+              i.militante ? 'sim' : 'nao',
+              i.voluntarioProfissional ? 'sim' : 'nao',
+              p.areaProfissional,
+              i.apoioNoticias ? 'sim' : 'nao',
+              p.historico,
+              p.lida ? 'sim' : 'nao'
+            ];
+          })
+        );
+      });
+    }
     var btnCsvDoa = document.getElementById('btn-export-doacao-csv');
     if (btnCsvDoa) {
       btnCsvDoa.addEventListener('click', function () {
@@ -780,7 +899,7 @@
     }
 
     // Limpar com confirmação reforçada
-    ['btn-limpar-contato', 'btn-limpar-doacao', 'btn-limpar-membro-msg'].forEach(function (id) {
+    ['btn-limpar-contato', 'btn-limpar-filiacao', 'btn-limpar-doacao', 'btn-limpar-membro-msg'].forEach(function (id) {
       var btn = document.getElementById(id);
       if (!btn || btn.dataset.melhoriasWired) return;
       btn.dataset.melhoriasWired = '1';
@@ -795,6 +914,13 @@
           if (!ok) return;
           if (id === 'btn-limpar-contato') {
             D.setMensagensContato([])
+              .then(function () {
+                return D.refresh();
+              })
+              .then(AP.renderFormularios)
+              .catch(AP.errSave);
+          } else if (id === 'btn-limpar-filiacao') {
+            D.setPedidosFiliacao([])
               .then(function () {
                 return D.refresh();
               })
@@ -844,6 +970,14 @@
         (D.getInscricoes() || []).forEach(function (i) {
           if ((i.nome || '').toLowerCase().indexOf(q) >= 0 || (i.email || '').toLowerCase().indexOf(q) >= 0) {
             hits.push({ tipo: 'Inscrição', label: (i.nome || i.email) + ' — ' + (i.eventoTitulo || ''), go: 'inscricoes' });
+          }
+        });
+        (D.getPedidosFiliacao() || []).forEach(function (p) {
+          if (
+            (p.nomeCompleto || '').toLowerCase().indexOf(q) >= 0 ||
+            (p.email || '').toLowerCase().indexOf(q) >= 0
+          ) {
+            hits.push({ tipo: 'Filiação', label: p.nomeCompleto || p.email, go: 'formularios' });
           }
         });
         if (!hits.length) {

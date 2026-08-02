@@ -95,6 +95,7 @@
             <li><span class="admin-dashboard-label">Membros</span> <strong id="dashboard-members-count">—</strong></li>
             <li><span class="admin-dashboard-label">Patrocinadores</span> <strong id="dashboard-sponsors-count">—</strong></li>
             <li><span class="admin-dashboard-label">Mensagens (contato)</span> <strong id="dashboard-contato-count">—</strong> <span id="dashboard-contato-novas" class="admin-badge-inline"></span></li>
+            <li><span class="admin-dashboard-label">Fichas de filiação</span> <strong id="dashboard-filiacao-count">—</strong> <span id="dashboard-filiacao-novas" class="admin-badge-inline"></span></li>
             <li><span class="admin-dashboard-label">Pedidos de doação</span> <strong id="dashboard-doacao-count">—</strong></li>
             <li><span class="admin-dashboard-label">Mensagens de membros</span> <strong id="dashboard-membro-msg-count">—</strong> <span id="dashboard-membro-novas" class="admin-badge-inline"></span></li>
             <li><span class="admin-dashboard-label">Inscrições em eventos</span> <strong id="dashboard-inscricoes-count">—</strong></li>
@@ -120,12 +121,13 @@
       <!-- Formulários do site -->
       <section id="secao-formularios" class="admin-secao">
         <h1>Formulários recebidos</h1>
-        <p class="admin-secao-intro">Contato público, intenções de doação e mensagens da área de membros (voluntariado e suporte).</p>
+        <p class="admin-secao-intro">Contato público, fichas de filiação, intenções de doação e mensagens da área de membros (voluntariado e suporte).</p>
         <div class="admin-toolbar">
           <label>Filtro: <select id="filtro-form-lidas"><option value="todas">Todas</option><option value="nao_lidas">Só não lidas</option></select></label>
           <label>Desde: <input type="date" id="filtro-form-desde" class="admin-input-date"></label>
           <button type="button" id="filtro-form-desde-limpar" class="btn btn-outline btn-sm">Limpar data</button>
           <button type="button" id="btn-export-contato-csv" class="btn btn-outline btn-sm">Exportar contato (CSV)</button>
+          <button type="button" id="btn-export-filiacao-csv" class="btn btn-outline btn-sm">Exportar filiação (CSV)</button>
           <button type="button" id="btn-export-doacao-csv" class="btn btn-outline btn-sm">Exportar doações (CSV)</button>
         </div>
 
@@ -139,6 +141,19 @@
             </table>
           </div>
           <p class="form-actions" id="form-contato-acoes" style="display: none;"><button type="button" id="btn-limpar-contato" class="btn btn-outline">Limpar todas (contato)</button></p>
+        </div>
+
+        <div class="admin-form-card">
+          <h3>Filiação (página Filie-se)</h3>
+          <p class="admin-aviso">Candidaturas de novos membros enviadas pelo formulário público.</p>
+          <p class="admin-aviso" id="form-filiacao-vazio" style="display: none;">Nenhuma ficha recebida.</p>
+          <div class="admin-tabela-wrapper">
+            <table class="admin-tabela" id="tabela-form-filiacao">
+              <thead><tr><th>Data</th><th>Nome</th><th>E-mail</th><th>WhatsApp</th><th>Participação</th><th>Histórico</th><th class="acoes">Estado</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="form-actions" id="form-filiacao-acoes" style="display: none;"><button type="button" id="btn-limpar-filiacao" class="btn btn-outline">Limpar todas (filiação)</button></p>
         </div>
 
         <div class="admin-form-card">

@@ -18,6 +18,7 @@
     'inscricoes',
     'mensagens_contato',
     'pedidos_doacao',
+    'pedidos_filiacao',
     'mensagens_membros'
   ];
   var cache = {};
@@ -211,6 +212,8 @@
     setMensagensContato: function (arr) { return putKey('mensagens_contato', arr); },
     getPedidosDoacao: function () { return cache.pedidos_doacao || []; },
     setPedidosDoacao: function (arr) { return putKey('pedidos_doacao', arr); },
+    getPedidosFiliacao: function () { return cache.pedidos_filiacao || []; },
+    setPedidosFiliacao: function (arr) { return putKey('pedidos_filiacao', arr); },
     getMensagensMembros: function () { return cache.mensagens_membros || []; },
     setMensagensMembros: function (arr) { return putKey('mensagens_membros', arr); },
 

@@ -1,5 +1,7 @@
 'use strict';
 
+var filiacaoVal = require('./filiacao-validacao.cjs');
+
 /**
  * Notificações por e-mail (Nodemailer).
  *
@@ -244,7 +246,7 @@ async function sendVisitorAutoReply(toEmail, nome) {
 /**
  * Dispara e-mails após gravar formulários (falhas só em log).
  * @param {object} params
- * @param {'contato'|'doacao'|'membro_voluntariado'|'membro_suporte'} params.type
+ * @param {'contato'|'doacao'|'filiacao'|'membro_voluntariado'|'membro_suporte'} params.type
  * @param {object} params.institutional
  * @param {object} params.data
  */
@@ -294,6 +296,38 @@ async function notifyAfterFormSubmit(params) {
         '\n'
     });
     await sendDoacaoAutoReply(d.email, d.nome, d.valorReais, inst);
+    return;
+  }
+
+  if (type === 'filiacao') {
+    await sendAdminNotification({
+      institutional: inst,
+      replyTo: d.email,
+      subject: '[Site] Nova ficha de filiação — ' + (d.nomeCompleto || ''),
+      text:
+        'Nova ficha de filiação enviada pelo site.\n\n' +
+        'Nome: ' +
+        (d.nomeCompleto || '') +
+        '\n' +
+        'E-mail: ' +
+        (d.email || '') +
+        '\n' +
+        'WhatsApp: ' +
+        (d.whatsapp || '') +
+        (d.whatsappLink ? ' (' + d.whatsappLink + ')' : '') +
+        '\n' +
+        'Data de nascimento: ' +
+        (d.dataNascimento || '') +
+        '\n' +
+        'Bairro/Cidade: ' +
+        (d.bairroCidade || '') +
+        '\n' +
+        'Como quer somar: ' +
+        filiacaoVal.formatInteressesLabels(d) +
+        '\n\n' +
+        'Histórico:\n' +
+        (d.historico || '')
+    });
     return;
   }
 

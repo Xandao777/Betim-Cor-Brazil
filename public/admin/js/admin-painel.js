@@ -146,12 +146,15 @@
     if (elM) elM.textContent = String(members.length);
     if (elS) elS.textContent = String(sponsors.length);
     var cCont = D.getMensagensContato ? D.getMensagensContato() : [];
+    var cFil = D.getPedidosFiliacao ? D.getPedidosFiliacao() : [];
     var cDoa = D.getPedidosDoacao ? D.getPedidosDoacao() : [];
     var cMem = D.getMensagensMembros ? D.getMensagensMembros() : [];
     var elC = document.getElementById('dashboard-contato-count');
+    var elF = document.getElementById('dashboard-filiacao-count');
     var elD = document.getElementById('dashboard-doacao-count');
     var elMm = document.getElementById('dashboard-membro-msg-count');
     if (elC) elC.textContent = String((cCont || []).length);
+    if (elF) elF.textContent = String((cFil || []).length);
     if (elD) elD.textContent = String((cDoa || []).length);
     if (elMm) elMm.textContent = String((cMem || []).length);
     var ins = D.getInscricoes ? D.getInscricoes() : [];
@@ -169,8 +172,18 @@
     }
   }
 
+  function formatInteressesFiliacao(p) {
+    var i = p.interesses || {};
+    var parts = [];
+    if (i.militante) parts.push('Militante');
+    if (i.voluntarioProfissional) parts.push('Voluntário' + (p.areaProfissional ? ' (' + p.areaProfissional + ')' : ''));
+    if (i.apoioNoticias) parts.push('Apoio/notícias');
+    return parts.join(' · ') || '—';
+  }
+
   function renderFormularios() {
     var cont = (D.getMensagensContato && D.getMensagensContato()) || [];
+    var fil = (D.getPedidosFiliacao && D.getPedidosFiliacao()) || [];
     var doa = (D.getPedidosDoacao && D.getPedidosDoacao()) || [];
     var mem = (D.getMensagensMembros && D.getMensagensMembros()) || [];
 
@@ -184,6 +197,20 @@
       tbC.innerHTML = rowsC || '';
       if (vazioC) vazioC.style.display = cont.length ? 'none' : 'block';
       if (acoesC) acoesC.style.display = isAdmin && cont.length ? 'block' : 'none';
+    }
+
+    var tbF = document.querySelector('#tabela-form-filiacao tbody');
+    var vazioF = document.getElementById('form-filiacao-vazio');
+    var acoesF = document.getElementById('form-filiacao-acoes');
+    if (tbF) {
+      tbF.innerHTML = fil.slice().reverse().map(function (p) {
+        var wa = p.whatsappLink
+          ? '<a href="' + escHtml(p.whatsappLink) + '" target="_blank" rel="noopener">' + escHtml(p.whatsapp || 'WhatsApp') + '</a>'
+          : escHtml(p.whatsapp || '—');
+        return '<tr><td>' + escHtml(formatarDataHoraIso(p.criadoEm)) + '</td><td>' + escHtml(p.nomeCompleto || '—') + '</td><td>' + escHtml(p.email) + '</td><td>' + wa + '</td><td>' + escHtml(formatInteressesFiliacao(p)) + '<br><small>' + escHtml(p.bairroCidade || '') + ' · ' + escHtml(p.dataNascimento || '') + '</small></td><td class="admin-celula-texto">' + escHtml(p.historico || '') + '</td><td></td></tr>';
+      }).join('');
+      if (vazioF) vazioF.style.display = fil.length ? 'none' : 'block';
+      if (acoesF) acoesF.style.display = isAdmin && fil.length ? 'block' : 'none';
     }
 
     var tbD = document.querySelector('#tabela-form-doacao tbody');
@@ -267,6 +294,14 @@
       if (!isAdmin) return;
       if (!confirm('Apagar todas as mensagens de contato?')) return;
       D.setMensagensContato([]).then(function () { return D.refresh(); }).then(renderFormularios).catch(errSave);
+    });
+  }
+  var btnLimparFil = document.getElementById('btn-limpar-filiacao');
+  if (btnLimparFil) {
+    btnLimparFil.addEventListener('click', function () {
+      if (!isAdmin) return;
+      if (!confirm('Apagar todas as fichas de filiação?')) return;
+      D.setPedidosFiliacao([]).then(function () { return D.refresh(); }).then(renderFormularios).catch(errSave);
     });
   }
   var btnLimparDoa = document.getElementById('btn-limpar-doacao');

@@ -36,7 +36,8 @@ function registerAdminRoutes(app, deps) {
       if (
         collection !== 'mensagens_contato' &&
         collection !== 'mensagens_membros' &&
-        collection !== 'pedidos_doacao'
+        collection !== 'pedidos_doacao' &&
+        collection !== 'pedidos_filiacao'
       ) {
         return res.status(400).json({ error: 'Coleção inválida' });
       }

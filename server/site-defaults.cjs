@@ -111,6 +111,8 @@ module.exports = {
   mensagens_contato: [],
   /** Intenções de doação (site/doar.html) — não é pagamento; só registo para contacto. */
   pedidos_doacao: [],
+  /** Fichas de filiação (site/filiacao.html) — candidaturas de novos membros. */
+  pedidos_filiacao: [],
   /** Voluntariado e suporte enviados pela área de membros. */
   mensagens_membros: []
 };

@@ -27,6 +27,7 @@ const sanitizeContent = require('./server/sanitize-content.cjs');
 const institutionalValidate = require('./server/institutional-validate.cjs');
 const inscricaoSave = require('./server/inscricao-save.cjs');
 const stateCleanup = require('./server/state-cleanup.cjs');
+const filiacaoVal = require('./server/filiacao-validacao.cjs');
 const crypto = require('crypto');
 
 /** Incrementa a cada gravação — invalida cache de GET /api/public. */
@@ -54,6 +55,7 @@ var KEYS = [
   'inscricoes',
   'mensagens_contato',
   'pedidos_doacao',
+  'pedidos_filiacao',
   'mensagens_membros',
   'admin_audit_log'
 ];
@@ -106,7 +108,7 @@ function csrfOriginGuard(req, res, next) {
   if (req.path === '/api/auth/admin' || req.path === '/api/auth/member') return next();
   if (req.path === '/api/auth/logout-admin' || req.path === '/api/auth/logout-member') return next();
   if (req.path === '/api/inscricao/publica') return next();
-  if (req.path === '/api/form/contato' || req.path === '/api/form/doacao') return next();
+  if (req.path === '/api/form/contato' || req.path === '/api/form/doacao' || req.path === '/api/form/filiacao') return next();
   if (req.path === '/api/auth/member-forgot' || req.path === '/api/auth/member-reset') return next();
   var hasAuthCookie = req.cookies && (req.cookies[COOKIE_ADMIN] || req.cookies[COOKIE_MEMBER]);
   if (!hasAuthCookie) return next();
@@ -581,6 +583,7 @@ function assertAdminEditor(payload, key) {
       key === 'institutional' ||
       key === 'mensagens_contato' ||
       key === 'pedidos_doacao' ||
+      key === 'pedidos_filiacao' ||
       key === 'mensagens_membros')
   ) {
     return 'Sem permissão para editar esta seção';
@@ -783,6 +786,44 @@ app.post('/api/form/contato', rateLimits.formPublico, async function (req, res) 
         type: 'contato',
         institutional: state.institutional || {},
         data: { nome: nome, email: email, assunto: assunto, mensagem: mensagem }
+      })
+      .catch(function (err) {
+        console.error('[smtp]', err.message || err);
+      });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: String(e.message) });
+  }
+});
+
+app.post('/api/form/filiacao', rateLimits.formPublico, async function (req, res) {
+  try {
+    if (!(await assertTurnstile(req, res))) return;
+    var b = req.body || {};
+    if (b.website) return res.json({ ok: true });
+    if (!hasPrivacyConsent(b)) {
+      return res.status(400).json({ error: 'Aceite a política de privacidade para enviar.' });
+    }
+    var parsed = filiacaoVal.parseFiliacaoBody(b, clampStr);
+    if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+    var item = parsed.item;
+    var state = await loadState();
+    var list = state.pedidos_filiacao || [];
+    list.push(
+      Object.assign({}, item, {
+        id: newFormId(),
+        criadoEm: new Date().toISOString(),
+        lida: false,
+        estado: 'pendente'
+      })
+    );
+    await saveKey('pedidos_filiacao', list);
+    smtpMail
+      .notifyAfterFormSubmit({
+        type: 'filiacao',
+        institutional: state.institutional || {},
+        data: item
       })
       .catch(function (err) {
         console.error('[smtp]', err.message || err);
@@ -1155,6 +1196,7 @@ app.get('/sitemap.xml', rateLimits.publicGet, async function (req, res) {
       '/galeria.html',
       '/contato.html',
       '/voluntariado.html',
+      '/filiacao.html',
       '/doar.html',
       '/privacidade.html'
     ];

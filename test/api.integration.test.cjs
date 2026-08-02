@@ -342,6 +342,45 @@ describe('API (integração, ficheiro temporário)', function () {
       .expect(200);
   });
 
+  test('POST /api/form/filiacao grava ficha', async function () {
+    await request(app)
+      .post('/api/form/filiacao')
+      .send({
+        nomeCompleto: 'João Candidato',
+        email: 'joao@exemplo.org',
+        whatsapp: '31987654321',
+        dataNascimento: '1985-03-20',
+        bairroCidade: 'Betim',
+        interesseApoio: true,
+        historico: 'Desejo apoiar as ações culturais da associação na minha comunidade.',
+        consentimento: true
+      })
+      .expect(200);
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var full = await agent.get('/api/full').expect(200);
+    var list = full.body.pedidos_filiacao || [];
+    expect(list.length).toBeGreaterThanOrEqual(1);
+    var last = list[list.length - 1];
+    expect(last.email).toBe('joao@exemplo.org');
+    expect(last.whatsappLink).toMatch(/^https:\/\/wa\.me\//);
+  });
+
+  test('POST /api/form/filiacao sem consentimento → 400', async function () {
+    await request(app)
+      .post('/api/form/filiacao')
+      .send({
+        nomeCompleto: 'A',
+        email: 'a@b.co',
+        whatsapp: '31999999999',
+        dataNascimento: '1990-01-01',
+        bairroCidade: 'Betim',
+        interesseMilitante: true,
+        historico: 'Texto com mais de vinte caracteres aqui.'
+      })
+      .expect(400);
+  });
+
   test('POST /api/member/mensagem suporte com sessão', async function () {
     var agent = request.agent(app);
     await agent.post('/api/auth/member').send({ usuario: 'membro', senha: 'demo123' }).expect(200);
@@ -430,6 +469,7 @@ describe('API (integração, ficheiro temporário)', function () {
     var res = await request(app).get('/sitemap.xml').expect(200);
     expect(res.headers['content-type']).toMatch(/xml/);
     expect(res.text).toMatch(/eventos\.html/);
+    expect(res.text).toMatch(/filiacao\.html/);
     expect(res.text).toMatch(/urlset/);
   });
 
