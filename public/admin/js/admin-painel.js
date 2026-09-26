@@ -1423,7 +1423,17 @@
         return '<tr><td>' + (m.usuario || '') + '</td><td>' + (m.nome || '') + '</td><td>' + status + '</td><td class="acoes"><button type="button" class="btn btn-outline btn-edit-membro" data-id="' + m.id + '">Editar</button> <button type="button" class="btn btn-remove btn-remove-membro" data-id="' + m.id + '">Excluir</button></td></tr>';
       }).join('');
       tbody.querySelectorAll('.btn-edit-membro').forEach(function (b) { b.addEventListener('click', function () { editarMembro(this.getAttribute('data-id')); }); });
-      tbody.querySelectorAll('.btn-remove-membro').forEach(function (b) { b.addEventListener('click', function () { if (confirm('Excluir membro?')) removerMembro(this.getAttribute('data-id')); }); });
+      tbody.querySelectorAll('.btn-remove-membro').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var memberId = this.getAttribute('data-id');
+          var target = list.find(function (m) { return String(m.id) === String(memberId); });
+          var message = 'Excluir definitivamente o cadastro' + (target && target.nome ? ' de ' + target.nome : '') + '?';
+          var decision = window.AdminPainel && window.AdminPainel.confirmar
+            ? window.AdminPainel.confirmar(message, 'Excluir membro')
+            : Promise.resolve(window.confirm(message));
+          decision.then(function (ok) { if (ok) removerMembro(memberId); });
+        });
+      });
     }
     function editarMembro(id) {
       var list = D.getMembers() || [];

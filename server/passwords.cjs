@@ -58,6 +58,27 @@ function nextSessionVersion(user) {
   return sessionVersion(user) + 1;
 }
 
+function normalizeEmail(value) {
+  var email = String(value || '').trim().toLowerCase();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw validationError('Informe um e-mail válido para o membro.');
+  }
+  return email;
+}
+
+function normalizePhone(value) {
+  var raw = String(value || '').trim();
+  if (!raw) return '';
+  var digits = raw.replace(/\D/g, '');
+  if (digits.slice(0, 2) === '55' && digits.length > 11) digits = digits.slice(2);
+  if (digits.length !== 10 && digits.length !== 11) {
+    throw validationError('Informe um telefone com DDD válido para o membro.');
+  }
+  return digits.length === 11
+    ? '(' + digits.slice(0, 2) + ') ' + digits.slice(2, 7) + '-' + digits.slice(7)
+    : '(' + digits.slice(0, 2) + ') ' + digits.slice(2, 6) + '-' + digits.slice(6);
+}
+
 /**
  * Resposta ao painel: nunca envia hash ao navegador.
  */
@@ -89,6 +110,13 @@ function mergeMembersSave(state, incoming) {
     var prev = prevList.find(function (x) { return String(x.id) === String(m.id); });
     var senhaIn = m.senha;
     var out = Object.assign({}, m);
+    out.usuario = String(out.usuario || '').trim();
+    out.nome = String(out.nome || '').trim();
+    out.email = normalizeEmail(out.email);
+    out.telefone = normalizePhone(out.telefone);
+    if (!out.usuario || !out.nome) {
+      throw validationError('Utilizador e nome são obrigatórios para o membro.');
+    }
     if (!prev) {
       if (!senhaIn || String(senhaIn).trim() === '') {
         throw new Error('Senha obrigatória para novo membro');
@@ -131,9 +159,9 @@ function mergeAdminUsersSave(state, incoming) {
     return out;
   });
   var adminCount = incoming.filter(function (u) {
-    return (u.perfil || 'editor') === 'admin';
+    return (u.perfil || 'editor') === 'admin' && u.ativo !== false;
   }).length;
-  if (adminCount < 1) throw validationError('Mantenha pelo menos um utilizador com perfil admin');
+  if (adminCount < 1) throw validationError('Mantenha pelo menos um administrador ativo');
   return incoming.map(function (u) {
     var prev = prevList.find(function (x) { return String(x.id) === String(u.id); });
     var senhaIn = u.senha;
@@ -171,6 +199,8 @@ module.exports = {
   verifyPassword: verifyPassword,
   sessionVersion: sessionVersion,
   nextSessionVersion: nextSessionVersion,
+  normalizeEmail: normalizeEmail,
+  normalizePhone: normalizePhone,
   hashPasswordsInArray: hashPasswordsInArray,
   stripPasswordsFromState: stripPasswordsFromState,
   mergeMembersSave: mergeMembersSave,

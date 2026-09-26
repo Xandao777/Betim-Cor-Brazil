@@ -422,6 +422,20 @@ describe('API (integração, ficheiro temporário)', function () {
     expect(res.body.data.admin_users[0].senha).toBe('');
   });
 
+  test('API impede deixar o painel sem administrador ativo', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var full = await agent.get('/api/full').expect(200);
+    var withoutActiveAdmin = full.body.admin_users.map(function (u) {
+      return Object.assign({}, u, {
+        perfil: u.perfil === 'admin' ? 'admin' : u.perfil,
+        ativo: u.perfil === 'admin' ? false : u.ativo
+      });
+    });
+    var result = await putState(agent, 'admin_users', withoutActiveAdmin, 400);
+    expect(result.body.error).toMatch(/administrador ativo/);
+  });
+
   test('restaura backup e preserva credenciais administrativas atuais', async function () {
     var agent = request.agent(app);
     await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);

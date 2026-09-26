@@ -60,7 +60,35 @@ describe('server/passwords.cjs', function () {
     var state = { admin_users: [{ id: '1', usuario: 'a', senha: h, nome: 'A', perfil: 'admin' }] };
     expect(function () {
       pwd.mergeAdminUsersSave(state, [{ id: '1', usuario: 'a', senha: '', nome: 'A', perfil: 'editor' }]);
-    }).toThrow(/pelo menos um utilizador/);
+    }).toThrow(/pelo menos um administrador ativo/);
+  });
+
+  test('mergeAdminUsersSave impede desativar o último administrador', function () {
+    var h = pwd.hashPassword('adm-seguro');
+    var state = { admin_users: [{ id: '1', usuario: 'a', senha: h, nome: 'A', perfil: 'admin' }] };
+    expect(function () {
+      pwd.mergeAdminUsersSave(state, [
+        { id: '1', usuario: 'a', senha: '', nome: 'A', perfil: 'admin', ativo: false }
+      ]);
+    }).toThrow(/administrador ativo/);
+  });
+
+  test('mergeMembersSave normaliza e-mail e telefone', function () {
+    var out = pwd.mergeMembersSave(
+      { members: [] },
+      [{ id: '1', usuario: 'maria', senha: 'senha1234', nome: 'Maria', email: ' MARIA@EXEMPLO.ORG ', telefone: '+55 (31) 99999-1234' }]
+    );
+    expect(out[0].email).toBe('maria@exemplo.org');
+    expect(out[0].telefone).toBe('(31) 99999-1234');
+  });
+
+  test('mergeMembersSave rejeita contato inválido', function () {
+    expect(function () {
+      pwd.mergeMembersSave(
+        { members: [] },
+        [{ id: '1', usuario: 'maria', senha: 'senha1234', nome: 'Maria', email: 'invalido', telefone: '123' }]
+      );
+    }).toThrow(/e-mail válido/);
   });
 
   test('mergeAdminUsersSave rejeita utilizador duplicado', function () {

@@ -452,11 +452,11 @@
             </div>
             <div class="form-group">
               <label for="membro-email">E-mail</label>
-              <input type="email" id="membro-email">
+              <input type="email" id="membro-email" autocomplete="email" placeholder="nome@exemplo.org">
             </div>
             <div class="form-group">
               <label for="membro-telefone">Telefone</label>
-              <input type="text" id="membro-telefone">
+              <input type="tel" id="membro-telefone" autocomplete="tel" inputmode="tel" placeholder="(31) 99999-9999">
             </div>
             <div class="form-group">
               <label for="membro-tipo">Tipo de associado</label>
@@ -796,7 +796,7 @@
             </div>
             <div class="form-group">
               <label for="admin-user-senha">Senha *</label>
-              <input type="password" id="admin-user-senha" placeholder="Obrigatória para novo utilizador">
+              <input type="password" id="admin-user-senha" minlength="8" autocomplete="new-password" placeholder="Obrigatória para novo utilizador (mín. 8 caracteres)">
             </div>
             <div class="form-group">
               <label for="admin-user-nome">Nome *</label>
@@ -808,6 +808,9 @@
                 <option value="editor">Editor (conteúdo)</option>
                 <option value="admin">Administrador (acesso total)</option>
               </select>
+            </div>
+            <div class="form-group form-group-consent">
+              <label class="checkbox-label"><input type="checkbox" id="admin-user-ativo" checked> Acesso ativo</label>
             </div>
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">Salvar</button>

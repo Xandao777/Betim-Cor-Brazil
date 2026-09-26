@@ -1061,9 +1061,12 @@
               escHtml(u.nome) +
               '</td><td>' +
               escHtml(u.perfil || 'editor') +
+              (u.ativo === false ? ' · Inativo' : '') +
               '</td><td class="acoes"><button type="button" class="btn btn-outline btn-sm btn-edit-admin-user" data-id="' +
               attrSafe(u.id) +
-              '">Editar</button></td></tr>'
+              '">Editar</button> <button type="button" class="btn btn-remove btn-sm btn-remove-admin-user" data-id="' +
+              attrSafe(u.id) +
+              '">Excluir</button></td></tr>'
             );
           })
           .join('');
@@ -1079,8 +1082,29 @@
             document.getElementById('admin-user-senha').value = '';
             document.getElementById('admin-user-nome').value = u.nome || '';
             document.getElementById('admin-user-perfil').value = u.perfil || 'editor';
+            document.getElementById('admin-user-ativo').checked = u.ativo !== false;
             document.getElementById('form-admin-user-titulo').textContent = 'Editar utilizador';
             formAdminCard.style.display = 'block';
+          });
+        });
+        tbody.querySelectorAll('.btn-remove-admin-user').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var targetId = b.getAttribute('data-id');
+            var target = list.find(function (u) { return String(u.id) === String(targetId); });
+            if (!target) return;
+            if (AP.sessao && target.usuario === AP.sessao.usuario) {
+              AP.toastWarn('Não é possível excluir o utilizador da sessão atual.');
+              return;
+            }
+            confirmar('Excluir definitivamente o acesso de ' + target.nome + '?', 'Excluir utilizador').then(function (ok) {
+              if (!ok) return;
+              showSaving(true);
+              D.setAdminUsers(list.filter(function (u) { return String(u.id) !== String(targetId); }))
+                .then(function () { return D.refresh(); })
+                .then(function () { renderAdminUsers(); AP.toastOk('Utilizador excluído.'); })
+                .catch(AP.errSave)
+                .finally(function () { showSaving(false); });
+            });
           });
         });
       }
@@ -1089,6 +1113,7 @@
         formAdmin.reset();
         document.getElementById('admin-user-id').value = '';
         document.getElementById('admin-user-usuario').readOnly = false;
+        document.getElementById('admin-user-ativo').checked = true;
         document.getElementById('form-admin-user-titulo').textContent = 'Novo utilizador';
         formAdminCard.style.display = 'block';
       });
@@ -1104,6 +1129,7 @@
             usuario: document.getElementById('admin-user-usuario').value.trim(),
             nome: document.getElementById('admin-user-nome').value.trim(),
             perfil: document.getElementById('admin-user-perfil').value,
+            ativo: document.getElementById('admin-user-ativo').checked,
             senha: document.getElementById('admin-user-senha').value
           };
           if (!rec.usuario || !rec.nome) {
