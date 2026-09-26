@@ -27,4 +27,11 @@ describe('turnstile', function () {
     process.env.TURNSTILE_SITE_KEY = 'test-site-key';
     expect(turnstile.siteKey()).toBe('test-site-key');
   });
+
+  test('não ativa com configuração parcial', function () {
+    process.env.TURNSTILE_SITE_KEY = 'test-site-key';
+    delete process.env.TURNSTILE_SECRET_KEY;
+    expect(turnstile.isPartiallyConfigured()).toBe(true);
+    expect(turnstile.isEnabled()).toBe(false);
+  });
 });

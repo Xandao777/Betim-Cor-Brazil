@@ -29,6 +29,8 @@ const inscricaoSave = require('./server/inscricao-save.cjs');
 const stateCleanup = require('./server/state-cleanup.cjs');
 const filiacaoVal = require('./server/filiacao-validacao.cjs');
 const recordSave = require('./server/record-save.cjs');
+const { createLoginUserGuard } = require('./server/login-user-guard.cjs');
+const stateUrlNormalize = require('./server/state-url-normalize.cjs');
 const crypto = require('crypto');
 
 /** Incrementa a cada gravação — invalida cache de GET /api/public. */
@@ -399,6 +401,7 @@ var requireCurrentAdmin = requireCurrentPrincipal('admin');
 var requireCurrentMember = requireCurrentPrincipal('member');
 
 var rateLimits = createLimiters();
+var loginUserGuard = createLoginUserGuard();
 
 var app = express();
 if (process.env.RAILWAY_ENVIRONMENT || process.env.TRUST_PROXY) {
@@ -552,7 +555,7 @@ app.get('/api/member-bootstrap', async function (req, res) {
   }
 });
 
-app.post('/api/auth/admin', rateLimits.login, async function (req, res) {
+app.post('/api/auth/admin', rateLimits.login, loginUserGuard, async function (req, res) {
   var usuario = (req.body && req.body.usuario) ? String(req.body.usuario).trim() : '';
   var senha = (req.body && req.body.senha) ? String(req.body.senha) : '';
   if (!usuario || !senha) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
@@ -580,7 +583,7 @@ app.post('/api/auth/admin', rateLimits.login, async function (req, res) {
   }
 });
 
-app.post('/api/auth/member', rateLimits.login, async function (req, res) {
+app.post('/api/auth/member', rateLimits.login, loginUserGuard, async function (req, res) {
   var usuario = (req.body && req.body.usuario) ? String(req.body.usuario).trim() : '';
   var senha = (req.body && req.body.senha) ? String(req.body.senha) : '';
   if (!usuario || !senha) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
@@ -750,6 +753,7 @@ app.put('/api/state/:key', requireCurrentAdmin, async function (req, res) {
       });
     }
     var body = req.body;
+    body = stateUrlNormalize.normalizeStateUrls(key, body);
     if (key === 'members') {
       body = pwd.mergeMembersSave(stateBefore, body);
     } else if (key === 'admin_users') {

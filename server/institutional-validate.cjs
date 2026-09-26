@@ -17,6 +17,12 @@ function safeUrlOrRelative(url) {
   return '';
 }
 
+function safeHttpUrl(url) {
+  var s = String(url || '').trim();
+  if (!s) return '';
+  return /^https?:\/\//i.test(s) ? s.slice(0, 500) : '';
+}
+
 function normalizeAssuntos(list) {
   if (!Array.isArray(list)) return [];
   return list
@@ -56,10 +62,11 @@ function normalizeInstitutional(inst) {
   out.missao = clampStr(out.missao, 8000);
   out.visao = clampStr(out.visao, 8000);
   out.email = clampStr(out.email, 200);
+  if (out.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(out.email)) out.email = '';
   out.telefone = clampStr(out.telefone, 80);
-  out.facebook = clampStr(out.facebook, 300);
-  out.instagram = clampStr(out.instagram, 300);
-  out.youtube = clampStr(out.youtube, 300);
+  out.facebook = safeHttpUrl(out.facebook);
+  out.instagram = safeHttpUrl(out.instagram);
+  out.youtube = safeHttpUrl(out.youtube);
   out.pixChave = clampStr(out.pixChave, 120);
   out.pixTitular = clampStr(out.pixTitular, 200);
   out.pixQrUrl = safeUrlOrRelative(out.pixQrUrl);
@@ -106,5 +113,6 @@ function isAssuntoPermitido(institutional, assunto) {
 module.exports = {
   normalizeInstitutional: normalizeInstitutional,
   isAssuntoPermitido: isAssuntoPermitido,
-  safeUrlOrRelative: safeUrlOrRelative
+  safeUrlOrRelative: safeUrlOrRelative,
+  safeHttpUrl: safeHttpUrl
 };

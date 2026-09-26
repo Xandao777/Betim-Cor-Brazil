@@ -4,7 +4,11 @@
  * Cloudflare Turnstile (opcional). Sem TURNSTILE_SECRET_KEY, a verificação é ignorada.
  */
 function isEnabled() {
-  return !!(process.env.TURNSTILE_SECRET_KEY || '').trim();
+  return !!(process.env.TURNSTILE_SECRET_KEY || '').trim() && !!siteKey();
+}
+
+function isPartiallyConfigured() {
+  return !!(process.env.TURNSTILE_SECRET_KEY || '').trim() !== !!siteKey();
 }
 
 function siteKey() {
@@ -42,6 +46,7 @@ function failIfInvalid(res) {
 
 module.exports = {
   isEnabled: isEnabled,
+  isPartiallyConfigured: isPartiallyConfigured,
   siteKey: siteKey,
   verifyToken: verifyToken,
   failIfInvalid: failIfInvalid

@@ -32,6 +32,14 @@ function assertProductionConfig() {
     console.error('[startup] Produção: defina DATABASE_URL (PostgreSQL no Railway).');
     process.exit(1);
   }
+  var hasTurnstileSite = !!(process.env.TURNSTILE_SITE_KEY || '').trim();
+  var hasTurnstileSecret = !!(process.env.TURNSTILE_SECRET_KEY || '').trim();
+  if (hasTurnstileSite !== hasTurnstileSecret) {
+    console.error(
+      '[startup] Produção: configure TURNSTILE_SITE_KEY e TURNSTILE_SECRET_KEY em conjunto.'
+    );
+    process.exit(1);
+  }
 }
 
 module.exports = {

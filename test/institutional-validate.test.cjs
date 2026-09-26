@@ -17,6 +17,17 @@ describe('institutional-validate', function () {
     expect(out.homepage.btn1Url).toBe('index.html#nos');
   });
 
+  test('redes sociais aceitam apenas HTTP(S) e e-mail inválido é removido', function () {
+    var out = institutionalValidate.normalizeInstitutional({
+      email: 'invalido',
+      facebook: 'javascript:alert(1)',
+      instagram: 'https://instagram.com/betimcor'
+    });
+    expect(out.email).toBe('');
+    expect(out.facebook).toBe('');
+    expect(out.instagram).toBe('https://instagram.com/betimcor');
+  });
+
   test('isAssuntoPermitido valida lista configurada', function () {
     var inst = {
       contato: {

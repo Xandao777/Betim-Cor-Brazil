@@ -102,6 +102,11 @@ function buildDeployStatus(state) {
   if (isProd && !status.smtp) {
     status.warnings.push('SMTP não configurado: formulários gravam mas não enviam e-mail.');
   }
+  if (isProd && !status.turnstile) {
+    status.warnings.push(
+      'Turnstile não configurado: formulários públicos continuam sem CAPTCHA.'
+    );
+  }
   if (isProd && uploadsMode === 'disk') {
     status.warnings.push(
       'Uploads no disco do contentor: monte volume /uploads no Railway ou configure S3/R2.'
