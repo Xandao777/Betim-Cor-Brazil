@@ -16,6 +16,7 @@
     "check:production": "node scripts/check-production-env.cjs",
     "check:secrets": "node scripts/check-secrets.cjs",
     "check:deploy": "node scripts/post-deploy-check.cjs",
+    "check:backup": "node scripts/verify-backup.cjs",
     "generate:jwt-secret": "node scripts/generate-jwt-secret.cjs",
     "finalize": "npm run check:secrets && npm run lint && npm test && npm run test:e2e"
   },

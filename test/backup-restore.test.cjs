@@ -7,6 +7,32 @@ function mergeDefaults(state) {
 }
 
 describe('backup-restore', function () {
+  test('cria e verifica backup com checksum SHA-256', function () {
+    var state = {
+      events: [],
+      institutional: { historia: 'Teste' },
+      members: [],
+      admin_users: [{ id: 'a1', usuario: 'admin', perfil: 'admin', senha: '$hash' }]
+    };
+    var backup = backupRestore.createBackup(state, function (value) {
+      return JSON.parse(JSON.stringify(value));
+    });
+    expect(backup.checksum).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(backupRestore.verifyBackup(backup).checksumVerified).toBe(true);
+  });
+
+  test('rejeita backup alterado depois da exportação', function () {
+    var state = {
+      events: [],
+      institutional: { historia: 'Original' },
+      members: [],
+      admin_users: []
+    };
+    var backup = backupRestore.createBackup(state, function (value) { return value; });
+    backup.data.institutional.historia = 'Alterado';
+    expect(function () { backupRestore.verifyBackup(backup); }).toThrow(/checksum inválido/i);
+  });
+
   test('aceita formato legado e preserva hashes atuais', function () {
     var current = {
       members: [{ id: 'm1', usuario: 'membro', senha: '$hash-member' }],

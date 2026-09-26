@@ -1,5 +1,7 @@
 'use strict';
 
+var crypto = require('crypto');
+
 function validationError(message) {
   var error = new Error(message);
   error.status = 400;
@@ -18,6 +20,36 @@ function backupData(input) {
     throw validationError('Backup incompleto: dados institucionais ausentes.');
   }
   return data;
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return '[' + value.map(canonicalJson).join(',') + ']';
+  if (value && typeof value === 'object') {
+    return '{' + Object.keys(value).sort().map(function (key) {
+      return JSON.stringify(key) + ':' + canonicalJson(value[key]);
+    }).join(',') + '}';
+  }
+  return JSON.stringify(value);
+}
+
+function dataChecksum(data) {
+  var jsonCompatible = JSON.parse(JSON.stringify(data));
+  return crypto.createHash('sha256').update(canonicalJson(jsonCompatible), 'utf8').digest('hex');
+}
+
+function verifyBackup(input) {
+  var data = backupData(input);
+  if (input && input.format === 'betim-cor-backup') {
+    if (input.version !== 1) throw validationError('Versão de backup não suportada.');
+    if (input.checksum) {
+      var expected = String(input.checksum).replace(/^sha256:/, '').toLowerCase();
+      var actual = dataChecksum(data);
+      if (!/^[a-f0-9]{64}$/.test(expected) || expected !== actual) {
+        throw validationError('Backup corrompido ou alterado: checksum inválido.');
+      }
+    }
+  }
+  return { data: data, checksumVerified: !!(input && input.checksum) };
 }
 
 function restorePasswords(current, incoming, kind) {
@@ -49,7 +81,8 @@ function restorePasswords(current, incoming, kind) {
 }
 
 function prepareRestore(input, current, keys, mergeDefaults) {
-  var data = backupData(input);
+  var verification = verifyBackup(input);
+  var data = verification.data;
   var selected = {};
   keys.forEach(function (key) {
     if (data[key] !== undefined) selected[key] = data[key];
@@ -63,22 +96,26 @@ function prepareRestore(input, current, keys, mergeDefaults) {
     state: state,
     warnings: {
       adminUsersWithoutCredentials: admins.skipped,
-      membersWithoutCredentials: members.skipped
+      membersWithoutCredentials: members.skipped,
+      checksumVerified: verification.checksumVerified
     }
   };
 }
 
 function createBackup(state, stripPasswords) {
+  var data = stripPasswords(state);
   return {
     format: 'betim-cor-backup',
     version: 1,
     createdAt: new Date().toISOString(),
     credentialsIncluded: false,
-    data: stripPasswords(state)
+    checksum: 'sha256:' + dataChecksum(data),
+    data: data
   };
 }
 
 module.exports = {
   createBackup: createBackup,
-  prepareRestore: prepareRestore
+  prepareRestore: prepareRestore,
+  verifyBackup: verifyBackup
 };

@@ -417,6 +417,7 @@ describe('API (integração, ficheiro temporário)', function () {
     var res = await agent.get('/api/admin/backup').expect(200);
     expect(res.headers['content-type']).toMatch(/json/);
     expect(res.body.format).toBe('betim-cor-backup');
+    expect(res.body.checksum).toMatch(/^sha256:[a-f0-9]{64}$/);
     expect(res.body.version).toBe(1);
     expect(res.body.data.events).toBeDefined();
     expect(res.body.data.admin_users[0].senha).toBe('');
