@@ -28,6 +28,7 @@ const institutionalValidate = require('./server/institutional-validate.cjs');
 const inscricaoSave = require('./server/inscricao-save.cjs');
 const stateCleanup = require('./server/state-cleanup.cjs');
 const filiacaoVal = require('./server/filiacao-validacao.cjs');
+const recordSave = require('./server/record-save.cjs');
 const crypto = require('crypto');
 
 /** Incrementa a cada gravação — invalida cache de GET /api/public. */
@@ -179,9 +180,21 @@ async function saveStateFull(state) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2), 'utf8');
 }
 
-async function saveKey(key, payload) {
+async function saveKey(key, payload, options) {
   if (KEYS.indexOf(key) === -1) throw new Error('Chave inválida');
   if (pgPool) {
+    if (options && options.ifMatch) {
+      await pgStore.saveKeyIfMatch(
+        pgPool,
+        key,
+        payload,
+        options.ifMatch,
+        options.auditEntry,
+        options.currentPayload
+      );
+      bumpPublicCache();
+      return;
+    }
     await pgStore.saveKey(pgPool, key, payload);
   } else {
     var state = await loadState();
@@ -684,6 +697,31 @@ function newFormId() {
   return Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
 }
 
+function appendRecord(key, item) {
+  return recordSave.appendRecord(
+    { pgPool: pgPool, loadState: loadState, saveKey: saveKey },
+    key,
+    item
+  );
+}
+
+function updateRecord(key, id, patch) {
+  return recordSave.updateRecord(
+    { pgPool: pgPool, loadState: loadState, saveKey: saveKey },
+    key,
+    id,
+    patch
+  );
+}
+
+function deleteMemberRegistration(usuario, eventoId) {
+  return recordSave.deleteMemberRegistration(
+    { pgPool: pgPool, loadState: loadState, saveKey: saveKey },
+    usuario,
+    eventoId
+  );
+}
+
 function hasPrivacyConsent(b) {
   var c = b && b.consentimento;
   return c === true || c === 'true' || c === '1' || c === 'on';
@@ -699,7 +737,13 @@ app.put('/api/state/:key', requireCurrentAdmin, async function (req, res) {
     var stateBefore = await loadState();
     var currentEtag = stateEtag.etagForPayload(stateBefore[key]);
     var ifMatch = (req.get('If-Match') || '').replace(/^"|"$/g, '');
-    if (ifMatch && ifMatch !== currentEtag) {
+    if (!ifMatch) {
+      return res.status(428).json({
+        error: 'Atualize a página antes de gravar: a versão dos dados é obrigatória.',
+        etag: currentEtag
+      });
+    }
+    if (ifMatch !== currentEtag) {
       return res.status(409).json({
         error: 'Conflito: outra pessoa ou outro separador alterou estes dados. Atualize a página e grave de novo.',
         etag: currentEtag
@@ -715,26 +759,46 @@ app.put('/api/state/:key', requireCurrentAdmin, async function (req, res) {
     } else if (key === 'institutional') {
       body = institutionalValidate.normalizeInstitutional(body);
     }
-    await saveKey(key, body);
-    var newEtag = stateEtag.etagForPayload(body);
-    if (key !== 'admin_audit_log') {
-      try {
-        var stateAfter = await loadState();
-        var audit = auditLog.appendAudit(stateAfter, {
-          usuario: payload.usuario,
-          perfil: payload.perfil || 'editor',
-          acao: 'atualizar',
-          chave: key
-        });
-        await saveKey('admin_audit_log', audit);
-      } catch (auditErr) {
-        console.error('[audit]', auditErr.message || auditErr);
-      }
+    var auditEntry =
+      key === 'admin_audit_log'
+        ? null
+        : {
+            usuario: payload.usuario,
+            perfil: payload.perfil || 'editor',
+            acao: 'atualizar',
+            chave: key
+          };
+    if (pgPool) {
+      await saveKey(key, body, {
+        ifMatch: ifMatch,
+        auditEntry: auditEntry,
+        currentPayload: stateBefore[key]
+      });
+    } else {
+      await recordSave.withKeyLock(key, async function () {
+        var lockedState = await loadState();
+        var lockedEtag = stateEtag.etagForPayload(lockedState[key]);
+        if (lockedEtag !== ifMatch) {
+          var conflict = new Error(
+            'Conflito: outra pessoa ou outro separador alterou estes dados. Atualize a página e grave de novo.'
+          );
+          conflict.status = 409;
+          conflict.etag = lockedEtag;
+          throw conflict;
+        }
+        lockedState[key] = body;
+        if (auditEntry) {
+          lockedState.admin_audit_log = auditLog.appendAudit(lockedState, auditEntry);
+        }
+        await saveStateFull(lockedState);
+      });
+      bumpPublicCache();
     }
+    var newEtag = stateEtag.etagForPayload(body);
     res.json({ ok: true, etag: newEtag });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: String(e.message) });
+    res.status(e.status || 500).json({ error: String(e.message), etag: e.etag });
   }
 });
 
@@ -844,8 +908,7 @@ app.post('/api/form/contato', rateLimits.formPublico, async function (req, res) 
     if (!institutionalValidate.isAssuntoPermitido(state.institutional, assunto)) {
       return res.status(400).json({ error: 'Assunto inválido.' });
     }
-    var list = state.mensagens_contato || [];
-    list.push({
+    var contatoItem = {
       id: newFormId(),
       nome: nome,
       email: email,
@@ -853,8 +916,8 @@ app.post('/api/form/contato', rateLimits.formPublico, async function (req, res) 
       mensagem: mensagem,
       criadoEm: new Date().toISOString(),
       lida: false
-    });
-    await saveKey('mensagens_contato', list);
+    };
+    await appendRecord('mensagens_contato', contatoItem);
     smtpMail
       .notifyAfterFormSubmit({
         type: 'contato',
@@ -883,16 +946,13 @@ app.post('/api/form/filiacao', rateLimits.formPublico, async function (req, res)
     if (!parsed.ok) return res.status(400).json({ error: parsed.error });
     var item = parsed.item;
     var state = await loadState();
-    var list = state.pedidos_filiacao || [];
-    list.push(
-      Object.assign({}, item, {
-        id: newFormId(),
-        criadoEm: new Date().toISOString(),
-        lida: false,
-        estado: 'pendente'
-      })
-    );
-    await saveKey('pedidos_filiacao', list);
+    var filiacaoItem = Object.assign({}, item, {
+      id: newFormId(),
+      criadoEm: new Date().toISOString(),
+      lida: false,
+      estado: 'pendente'
+    });
+    await appendRecord('pedidos_filiacao', filiacaoItem);
     smtpMail
       .notifyAfterFormSubmit({
         type: 'filiacao',
@@ -939,8 +999,7 @@ app.post('/api/form/doacao', rateLimits.formPublico, async function (req, res) {
       reais = Math.round(v * 100) / 100;
     }
     var state = await loadState();
-    var list = state.pedidos_doacao || [];
-    list.push({
+    var doacaoItem = {
       id: newFormId(),
       nome: nome,
       email: email,
@@ -949,8 +1008,8 @@ app.post('/api/form/doacao', rateLimits.formPublico, async function (req, res) {
       lida: false,
       criadoEm: new Date().toISOString(),
       nota: 'Intenção registada no site — conclua o pagamento (PIX/gateway) por contacto direto com a associação.'
-    });
-    await saveKey('pedidos_doacao', list);
+    };
+    await appendRecord('pedidos_doacao', doacaoItem);
     smtpMail
       .notifyAfterFormSubmit({
         type: 'doacao',
@@ -992,11 +1051,7 @@ app.delete('/api/inscricao/membro/:eventoId', requireCurrentMember, async functi
   try {
     var usuario = payload.usuario;
     var eventoId = req.params.eventoId;
-    var state = await loadState();
-    var list = (state.inscricoes || []).filter(function (i) {
-      return !(i.membroUsuario === usuario && String(i.eventoId) === String(eventoId));
-    });
-    await saveKey('inscricoes', list);
+    await deleteMemberRegistration(usuario, eventoId);
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
@@ -1025,8 +1080,7 @@ app.post('/api/member/mensagem', requireCurrentMember, async function (req, res)
       if (!area && !msgVol) {
         return res.status(400).json({ error: 'Escolha uma área ou escreva uma mensagem.' });
       }
-      var listV = state.mensagens_membros || [];
-      listV.push({
+      var voluntariadoItem = {
         id: newFormId(),
         tipo: 'voluntariado',
         membroUsuario: membroUsuario,
@@ -1035,8 +1089,8 @@ app.post('/api/member/mensagem', requireCurrentMember, async function (req, res)
         mensagem: msgVol,
         criadoEm: new Date().toISOString(),
         lida: false
-      });
-      await saveKey('mensagens_membros', listV);
+      };
+      await appendRecord('mensagens_membros', voluntariadoItem);
       var emailVol = membro && membro.email ? String(membro.email).trim() : '';
       smtpMail
         .notifyAfterFormSubmit({
@@ -1061,8 +1115,7 @@ app.post('/api/member/mensagem', requireCurrentMember, async function (req, res)
     if (!assunto || !msgSup) {
       return res.status(400).json({ error: 'Preencha assunto e mensagem.' });
     }
-    var listS = state.mensagens_membros || [];
-    listS.push({
+    var suporteItem = {
       id: newFormId(),
       tipo: 'suporte',
       membroUsuario: membroUsuario,
@@ -1071,8 +1124,8 @@ app.post('/api/member/mensagem', requireCurrentMember, async function (req, res)
       mensagem: msgSup,
       criadoEm: new Date().toISOString(),
       lida: false
-    });
-    await saveKey('mensagens_membros', listS);
+    };
+    await appendRecord('mensagens_membros', suporteItem);
     var emailSup = membro && membro.email ? String(membro.email).trim() : '';
     smtpMail
       .notifyAfterFormSubmit({
@@ -1308,6 +1361,7 @@ registerAdminRoutes(app, {
   setAdminSessionCookie: function (res, token) { setSessionCookie(res, COOKIE_ADMIN, token); },
   loadState: loadState,
   saveKey: saveKey,
+  updateRecord: updateRecord,
   pwd: pwd,
   clampStr: clampStr
 });

@@ -1,21 +1,13 @@
 'use strict';
 
+var crypto = require('crypto');
 var pgStore = require('./pg-store.cjs');
-
-/** Fila em modo arquivo — evita corrida entre inscrições no mesmo processo. */
-var fileLock = Promise.resolve();
-
-function withFileLock(fn) {
-  var run = fileLock.then(function () {
-    return fn();
-  });
-  fileLock = run.catch(function () {});
-  return run;
-}
+var recordSave = require('./record-save.cjs');
 
 function buildInscricaoItem(valid, body, membroUsuario) {
   var ev = valid.evento;
   var item = {
+    id: crypto.randomUUID(),
     eventoId: body.eventoId,
     eventoTitulo: ev.titulo || body.eventoTitulo || '',
     eventoData: ev.data || body.eventoData || '',
@@ -47,7 +39,7 @@ async function appendInscricao(deps, body, membroUsuario) {
     return pgStore.appendInscricaoAtomic(pgPool, body, membroUsuario, validate, buildInscricaoItem);
   }
 
-  return withFileLock(async function () {
+  return recordSave.withKeyLock('inscricoes', async function () {
     var state = await loadState();
     var valid = membroUsuario
       ? validate.validateInscricaoMembro(state, body, membroUsuario)

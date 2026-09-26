@@ -10,6 +10,7 @@ function registerAdminRoutes(app, deps) {
   var setAdminSessionCookie = deps.setAdminSessionCookie;
   var loadState = deps.loadState;
   var saveKey = deps.saveKey;
+  var updateRecord = deps.updateRecord;
   var pwd = deps.pwd;
 
   async function requireAdmin(req, res, next) {
@@ -54,16 +55,8 @@ function registerAdminRoutes(app, deps) {
         return res.status(400).json({ error: 'Coleção inválida' });
       }
       if (!msgId) return res.status(400).json({ error: 'ID obrigatório' });
-      var state = req.adminState || (await loadState());
-      var list = state[collection] || [];
-      var found = false;
-      var nextList = list.map(function (m) {
-        if (String(m.id) !== msgId) return m;
-        found = true;
-        return Object.assign({}, m, { lida: lida });
-      });
-      if (!found) return res.status(404).json({ error: 'Mensagem não encontrada' });
-      await saveKey(collection, nextList);
+      var updated = await updateRecord(collection, msgId, { lida: lida });
+      if (!updated) return res.status(404).json({ error: 'Mensagem não encontrada' });
       res.json({ ok: true });
     } catch (e) {
       console.error(e);

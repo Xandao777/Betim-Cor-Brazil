@@ -84,13 +84,21 @@ Resumo completo em **`docs/ESTRUTURA.md`**. O Express serve apenas **`public/`**
 2. O Railway cria o serviço e injeta a variável **`DATABASE_URL`** no seu app web (verifique em **Variables** se o serviço do Node está **referenciando** o Postgres — use “Connect” / variável compartilhada se necessário).
 3. Adicione também **`JWT_SECRET`** (string longa aleatória) nas variáveis do serviço web.
 
-Na **primeira subida**, o Node **cria a tabela `app_state`** sozinho e preenche com os dados padrão se o banco estiver vazio. **Não é obrigatório** rodar SQL manual.
+Na **primeira subida**, o Node cria e migra automaticamente as tabelas necessárias. **Não é obrigatório** rodar SQL manual.
 
-### Modelo `app_state` (JSON por chave)
+### Modelo de dados PostgreSQL
 
-Os conteúdos (eventos, notícias, membros, inscrições, etc.) estão guardados como **JSONB** — **uma linha por chave lógica** (`events`, `news`, `members`, …), não como milhões de linhas normalizadas. Isto é **simples de manter** e adequado para **muitas associações de dimensão média**: poucos mil registos agregados, relatórios feitos na aplicação ou exportações pontuais, e sem requisitos extremos de auditoria campo a campo.
+O conteúdo editorial e de configuração continua em `app_state`, como **uma linha JSONB por chave lógica** (`events`, `news`, `members`, etc.). Coleções de crescimento contínuo usam uma linha por registro em tabelas próprias:
 
-**Limitações naturais deste desenho:** não escala de forma elegante para **volume massivo** (milhões de linhas por entidade), **relatórios analíticos pesados em SQL** sobre histórico fino, ou **trilho de auditoria** (quem alterou o quê e quando, por campo). Para isso seria preciso **tabelas relacionais**, **event sourcing**, logs de auditoria ou **armazém** à parte — fora do âmbito deste projeto. Se a associação crescer para esse patamar, o passo seguinte é **migrar entidades concretas** (ex.: inscrições, membros) para esquemas próprios, mantendo o resto em JSON se fizer sentido.
+- `event_registrations`;
+- `contact_messages`;
+- `donation_requests`;
+- `membership_requests`;
+- `member_messages`.
+
+Ao iniciar uma versão nova, o servidor migra automaticamente os arrays legados de `app_state` para essas tabelas, dentro de uma transação. Envios públicos e inscrições deixam de regravar o histórico inteiro e não se perdem quando chegam simultaneamente.
+
+**Limitações naturais deste desenho:** conteúdo editorial ainda não é totalmente relacional e o log de auditoria registra operações por seção, não diferenças campo a campo. Para BI pesado ou milhões de registros, o próximo passo seria normalizar também membros/eventos e usar um armazém analítico ou event sourcing.
 
 ## Deploy no Railway
 

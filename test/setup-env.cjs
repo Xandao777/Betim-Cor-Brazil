@@ -21,6 +21,7 @@ process.env.RATE_LIMIT_PUBLIC_GET_MAX = '999999';
 process.env.RATE_LIMIT_LOGIN_MAX = '999999';
 process.env.RATE_LIMIT_LOGIN_WINDOW_MS = '60000';
 process.env.RATE_LIMIT_INSCRICAO_PUBLICA_MAX = '999999';
+process.env.RATE_LIMIT_FORM_PUBLICO_MAX = '999999';
 
 try {
   fs.unlinkSync(tmp);

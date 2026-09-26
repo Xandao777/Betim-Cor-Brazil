@@ -31,6 +31,17 @@ describe('API (integração, ficheiro temporário)', function () {
     };
   }
 
+  async function putState(agent, key, body, expectedStatus) {
+    var full = await agent.get('/api/full').expect(200);
+    var headers = mutatingHeaders();
+    headers['If-Match'] = full.body._keyEtags[key];
+    return agent
+      .put('/api/state/' + key)
+      .set(headers)
+      .send(body)
+      .expect(expectedStatus || 200);
+  }
+
   test('GET /api/health', async function () {
     var res = await request(app).get('/api/health').expect(200);
     expect(res.body.ok).toBe(true);
@@ -131,11 +142,7 @@ describe('API (integração, ficheiro temporário)', function () {
         vagas: 10
       }
     ];
-    await agent
-      .put('/api/state/events')
-      .set(mutatingHeaders())
-      .send(events)
-      .expect(200);
+    await putState(agent, 'events', events);
     var pub = await request(app).get('/api/public').expect(200);
     var ev = pub.body.events.find(function (e) {
       return e.id === 't1';
@@ -208,7 +215,7 @@ describe('API (integração, ficheiro temporário)', function () {
       categoria: 'ata',
       visivel: true
     });
-    await agent.put('/api/state/documents').set(mutatingHeaders()).send(docs).expect(200);
+    await putState(agent, 'documents', docs);
     var memberAgent = request.agent(app);
     await memberAgent.post('/api/auth/member').send({ usuario: 'membro', senha: 'demo123' }).expect(200);
     await memberAgent.get(res.body.url).expect(200);
@@ -248,25 +255,17 @@ describe('API (integração, ficheiro temporário)', function () {
       data: '2028-08-01',
       publicado: false
     });
-    await adminAgent.put('/api/state/events').set(mutatingHeaders()).send(events).expect(200);
-    await adminAgent
-      .put('/api/state/news')
-      .set(mutatingHeaders())
-      .send([
+    await putState(adminAgent, 'events', events);
+    await putState(adminAgent, 'news', [
         { id: 'member-news-public', titulo: 'Publica', resumo: '', publicado: true },
         { id: 'member-news-exclusive', titulo: 'Exclusiva', resumo: '', publicado: true, exclusivoMembros: true },
         { id: 'member-news-draft', titulo: 'Rascunho', resumo: '', publicado: false }
-      ])
-      .expect(200);
-    await adminAgent
-      .put('/api/state/documents')
-      .set(mutatingHeaders())
-      .send([
+      ]);
+    await putState(adminAgent, 'documents', [
         { id: 'doc-visible', titulo: 'Visivel', arquivo: '', categoria: 'ata', visivel: true },
         { id: 'doc-hidden', titulo: 'Oculto', arquivo: '', categoria: 'ata', visivel: false },
         { id: 'doc-admin-only', titulo: 'Admin', arquivo: '', categoria: 'ata', visivel: true, acesso: 'admin' }
-      ])
-      .expect(200);
+      ]);
     var agent = request.agent(app);
     await agent.post('/api/auth/member').send({ usuario: 'membro', senha: 'demo123' }).expect(200);
     var res = await agent.get('/api/member-bootstrap').expect(200);
@@ -497,7 +496,7 @@ describe('API (integração, ficheiro temporário)', function () {
         publicado: true
       }
     ];
-    await agent.put('/api/state/news').set(mutatingHeaders()).send(payload).expect(200);
+    await putState(agent, 'news', payload);
     var pub = await request(app).get('/api/public').expect(200);
     var item = (pub.body.news || []).find(function (n) {
       return n.id === 'news-sanitize-test';
@@ -511,11 +510,7 @@ describe('API (integração, ficheiro temporário)', function () {
     var agent = request.agent(app);
     await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
     var full = await agent.get('/api/full').set(mutatingHeaders()).expect(200);
-    await agent
-      .put('/api/state/events')
-      .set(mutatingHeaders())
-      .send(full.body.events || [])
-      .expect(200);
+    await putState(agent, 'events', full.body.events || []);
     var res = await agent
       .get('/api/admin/audit-log?limit=20&chave=events')
       .set(mutatingHeaders())
@@ -575,11 +570,11 @@ describe('API (integração, ficheiro temporário)', function () {
       return String(e.id) !== 'ev-vagas-concorrencia';
     });
     events.push(ev);
-    await agent.put('/api/state/events').set(mutatingHeaders()).send(events).expect(200);
+    await putState(agent, 'events', events);
     var inscricoes = (full.body.inscricoes || []).filter(function (i) {
       return String(i.eventoId) !== 'ev-vagas-concorrencia';
     });
-    await agent.put('/api/state/inscricoes').set(mutatingHeaders()).send(inscricoes).expect(200);
+    await putState(agent, 'inscricoes', inscricoes);
 
     var payloadA = {
       eventoId: 'ev-vagas-concorrencia',
@@ -618,7 +613,7 @@ describe('API (integração, ficheiro temporário)', function () {
         assuntos: [{ value: 'duvida', label: 'Dúvida' }]
       }
     });
-    await agent.put('/api/state/institutional').set(mutatingHeaders()).send(inst).expect(200);
+    await putState(agent, 'institutional', inst);
     var pub = await request(app).get('/api/public').expect(200);
     expect(pub.body.institutional.homepage.btn1Url).toBe('');
     await request(app)
@@ -633,6 +628,17 @@ describe('API (integração, ficheiro temporário)', function () {
       .expect(400);
   });
 
+  test('PUT administrativo sem If-Match → 428', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var full = await agent.get('/api/full').expect(200);
+    await agent
+      .put('/api/state/events')
+      .set(mutatingHeaders())
+      .send(full.body.events || [])
+      .expect(428);
+  });
+
   test('rebaixar administrador revoga imediatamente os tokens antigos', async function () {
     var owner = request.agent(app);
     await owner.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
@@ -645,7 +651,7 @@ describe('API (integração, ficheiro temporário)', function () {
       nome: 'Admin Fase 1',
       perfil: 'admin'
     });
-    await owner.put('/api/state/admin_users').set(mutatingHeaders()).send(users).expect(200);
+    await putState(owner, 'admin_users', users);
 
     var oldSession = request.agent(app);
     await oldSession.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
@@ -658,14 +664,14 @@ describe('API (integração, ficheiro temporário)', function () {
     var demoted = controllerFull.body.admin_users.map(function (u) {
       return Object.assign({}, u, { perfil: u.usuario === 'admin' ? 'editor' : u.perfil });
     });
-    await controller.put('/api/state/admin_users').set(mutatingHeaders()).send(demoted).expect(200);
+    await putState(controller, 'admin_users', demoted);
     await oldSession.get('/api/full').expect(401);
 
     var restoreFull = await controller.get('/api/full').expect(200);
     var restored = restoreFull.body.admin_users.map(function (u) {
       return Object.assign({}, u, { perfil: u.usuario === 'admin' ? 'admin' : u.perfil });
     });
-    await controller.put('/api/state/admin_users').set(mutatingHeaders()).send(restored).expect(200);
+    await putState(controller, 'admin_users', restored);
   });
 
   test('remover administrador e desativar membro revoga sessões existentes', async function () {
@@ -683,7 +689,7 @@ describe('API (integração, ficheiro temporário)', function () {
       nome: 'Editor Removível',
       perfil: 'editor'
     });
-    await controller.put('/api/state/admin_users').set(mutatingHeaders()).send(users).expect(200);
+    await putState(controller, 'admin_users', users);
     var removedSession = request.agent(app);
     await removedSession
       .post('/api/auth/admin')
@@ -693,7 +699,7 @@ describe('API (integração, ficheiro temporário)', function () {
     var withoutTemp = withTemp.body.admin_users.filter(function (u) {
       return u.usuario !== 'editor-removivel';
     });
-    await controller.put('/api/state/admin_users').set(mutatingHeaders()).send(withoutTemp).expect(200);
+    await putState(controller, 'admin_users', withoutTemp);
     await removedSession.get('/api/auth/admin/session').expect(401);
 
     var memberSession = request.agent(app);
@@ -702,14 +708,14 @@ describe('API (integração, ficheiro temporário)', function () {
     var disabled = membersFull.body.members.map(function (m) {
       return Object.assign({}, m, { ativo: m.usuario === 'membro' ? false : m.ativo });
     });
-    await controller.put('/api/state/members').set(mutatingHeaders()).send(disabled).expect(200);
+    await putState(controller, 'members', disabled);
     await memberSession.get('/api/member-bootstrap').expect(401);
 
     var disabledFull = await controller.get('/api/full').expect(200);
     var enabled = disabledFull.body.members.map(function (m) {
       return Object.assign({}, m, { ativo: m.usuario === 'membro' ? true : m.ativo });
     });
-    await controller.put('/api/state/members').set(mutatingHeaders()).send(enabled).expect(200);
+    await putState(controller, 'members', enabled);
   });
 
   test('troca de senha mantém sessão atual e revoga outra sessão do membro', async function () {
@@ -744,5 +750,34 @@ describe('API (integração, ficheiro temporário)', function () {
       .expect(200);
     await current.get('/api/auth/admin/session').expect(200);
     await old.get('/api/auth/admin/session').expect(401);
+  });
+
+  test('envios simultâneos de contato são todos preservados', async function () {
+    var total = 20;
+    var sends = [];
+    for (var i = 0; i < total; i++) {
+      sends.push(
+        request(app)
+          .post('/api/form/contato')
+          .send({
+            nome: 'Concorrência ' + i,
+            email: 'concorrencia-' + i + '@exemplo.org',
+            assunto: 'duvida',
+            mensagem: 'Mensagem simultânea ' + i,
+            consentimento: true
+          })
+      );
+    }
+    var results = await Promise.all(sends);
+    results.forEach(function (result) {
+      expect(result.status).toBe(200);
+    });
+    var admin = request.agent(app);
+    await admin.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var full = await admin.get('/api/full').expect(200);
+    var concurrent = (full.body.mensagens_contato || []).filter(function (item) {
+      return String(item.email || '').indexOf('concorrencia-') === 0;
+    });
+    expect(concurrent).toHaveLength(total);
   });
 });
