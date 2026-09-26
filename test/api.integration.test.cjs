@@ -51,6 +51,7 @@ describe('API (integração, ficheiro temporário)', function () {
     expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(res.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
     expect(res.headers['permissions-policy']).toContain('camera=()');
+    expect(res.headers['x-request-id']).toBeTruthy();
   });
 
   test('GET /index.html serve a partir de public/', async function () {
@@ -415,8 +416,49 @@ describe('API (integração, ficheiro temporário)', function () {
     await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
     var res = await agent.get('/api/admin/backup').expect(200);
     expect(res.headers['content-type']).toMatch(/json/);
-    expect(res.body.events).toBeDefined();
-    expect(res.body.admin_users[0].senha).toBe('');
+    expect(res.body.format).toBe('betim-cor-backup');
+    expect(res.body.version).toBe(1);
+    expect(res.body.data.events).toBeDefined();
+    expect(res.body.data.admin_users[0].senha).toBe('');
+  });
+
+  test('restaura backup e preserva credenciais administrativas atuais', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var backup = await agent.get('/api/admin/backup').expect(200);
+    var originalTitle = backup.body.data.events[0].titulo;
+    var full = await agent.get('/api/full').expect(200);
+    var changedEvents = full.body.events.slice();
+    changedEvents[0] = Object.assign({}, changedEvents[0], { titulo: 'Alterado antes do restore' });
+    await putState(agent, 'events', changedEvents);
+
+    await agent
+      .post('/api/admin/restore')
+      .set(mutatingHeaders())
+      .send({ confirm: 'RESTAURAR', backup: backup.body })
+      .expect(200);
+
+    var restored = await agent.get('/api/full').expect(200);
+    expect(restored.body.events[0].titulo).toBe(originalTitle);
+    await request(app)
+      .post('/api/auth/admin')
+      .send({ usuario: 'admin', senha: 'admin123' })
+      .expect(200);
+  });
+
+  test('restore exige confirmação explícita e backup válido', async function () {
+    var agent = request.agent(app);
+    await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    await agent
+      .post('/api/admin/restore')
+      .set(mutatingHeaders())
+      .send({ backup: {} })
+      .expect(400);
+    await agent
+      .post('/api/admin/restore')
+      .set(mutatingHeaders())
+      .send({ confirm: 'RESTAURAR', backup: {} })
+      .expect(400);
   });
 
   test('POST /api/auth/logout-admin limpa sessão', async function () {

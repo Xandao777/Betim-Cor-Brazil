@@ -31,6 +31,8 @@ const filiacaoVal = require('./server/filiacao-validacao.cjs');
 const recordSave = require('./server/record-save.cjs');
 const { createLoginUserGuard } = require('./server/login-user-guard.cjs');
 const stateUrlNormalize = require('./server/state-url-normalize.cjs');
+const backupRestore = require('./server/backup-restore.cjs');
+const opsLog = require('./server/ops-log.cjs');
 const crypto = require('crypto');
 
 /** Incrementa a cada gravação — invalida cache de GET /api/public. */
@@ -352,6 +354,23 @@ function verifyToken(req) {
   }
 }
 
+async function restoreStateFull(input) {
+  var current = await loadState();
+  var prepared = backupRestore.prepareRestore(input, current, KEYS, mergeDefaults);
+  if (pgPool) {
+    await pgStore.restoreState(pgPool, KEYS, prepared.state);
+  } else {
+    await recordSave.withKeyLock('full-backup-restore', async function () {
+      fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
+      var tempFile = DATA_FILE + '.restore-' + process.pid + '.tmp';
+      fs.writeFileSync(tempFile, JSON.stringify(prepared.state, null, 2), 'utf8');
+      fs.renameSync(tempFile, DATA_FILE);
+    });
+  }
+  bumpPublicCache();
+  return prepared;
+}
+
 function currentPrincipalFromState(req, expectedType, state) {
   var tokenPayload = verifyToken(req);
   if (!tokenPayload || tokenPayload.t !== expectedType) return null;
@@ -442,6 +461,23 @@ if (cspAtiva) {
 app.use(cookieParser());
 app.use(express.json({ limit: '5mb' }));
 app.use(function (req, res, next) {
+  var requestId = req.get('X-Request-ID') || crypto.randomUUID();
+  req.requestId = String(requestId).slice(0, 100);
+  res.setHeader('X-Request-ID', req.requestId);
+  var startedAt = Date.now();
+  res.once('finish', function () {
+    if (res.statusCode < 500 && res.statusCode !== 401 && res.statusCode !== 403 && res.statusCode !== 429) return;
+    opsLog.warn('http.response', {
+      requestId: req.requestId,
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      durationMs: Date.now() - startedAt
+    });
+  });
+  next();
+});
+app.use(function (req, res, next) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
@@ -467,12 +503,23 @@ app.get('/apple-touch-icon.png', function (req, res) {
   res.status(404).end();
 });
 
-app.get('/api/health', rateLimits.publicGet, function (req, res) {
+app.get('/api/health', rateLimits.publicGet, async function (req, res) {
   var deployStatus = require('./server/deploy-status.cjs');
   var brief = deployStatus.buildDeployStatus();
-  res.json({
-    ok: true,
+  var databaseOk = true;
+  if (pgPool) {
+    try {
+      await pgPool.query('SELECT 1');
+    } catch (error) {
+      databaseOk = false;
+      opsLog.error('health.database_failed', error, { requestId: req.requestId });
+    }
+  }
+  res.status(databaseOk ? 200 : 503).json({
+    ok: databaseOk,
     backend: pgPool ? 'postgres' : 'file',
+    database: databaseOk ? 'ok' : 'error',
+    uptimeSeconds: Math.floor(process.uptime()),
     smtp: brief.smtp,
     turnstile: brief.turnstile,
     uploads: brief.uploads
@@ -1365,6 +1412,9 @@ registerAdminRoutes(app, {
   setAdminSessionCookie: function (res, token) { setSessionCookie(res, COOKIE_ADMIN, token); },
   loadState: loadState,
   saveKey: saveKey,
+  restoreStateFull: restoreStateFull,
+  mergeDefaults: mergeDefaults,
+  keys: KEYS,
   updateRecord: updateRecord,
   pwd: pwd,
   clampStr: clampStr

@@ -1144,6 +1144,51 @@
         window.location.href = '/api/admin/backup';
       });
 
+      var btnRestore = document.getElementById('btn-restore-json');
+      var inputRestore = document.getElementById('input-restore-json');
+      if (btnRestore && inputRestore) {
+        btnRestore.addEventListener('click', function () {
+          inputRestore.value = '';
+          inputRestore.click();
+        });
+        inputRestore.addEventListener('change', function () {
+          var file = inputRestore.files && inputRestore.files[0];
+          if (!file) return;
+          if (file.size > 5 * 1024 * 1024) {
+            AP.toastWarn('O backup ultrapassa o limite de 5 MB.');
+            return;
+          }
+          file.text()
+            .then(function (text) { return JSON.parse(text); })
+            .then(function (backup) {
+              return confirmar(
+                'A restauração substituirá todo o conteúdo atual. As credenciais existentes serão preservadas. Continuar?',
+                'Restaurar backup'
+              ).then(function (ok) {
+                if (!ok) return null;
+                showSaving(true);
+                return fetch('/api/admin/restore', {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ confirm: 'RESTAURAR', backup: backup })
+                }).then(function (response) {
+                  return response.json().catch(function () { return {}; }).then(function (body) {
+                    if (!response.ok) throw new Error(body.error || 'Falha ao restaurar backup.');
+                    return D.refresh().then(function () {
+                      AP.toastOk('Backup restaurado com sucesso.');
+                      window.location.reload();
+                    });
+                  });
+                }).finally(function () { showSaving(false); });
+              });
+            })
+            .catch(function (error) {
+              AP.toastWarn(error.message || 'Arquivo de backup inválido.');
+            });
+        });
+      }
+
       document.querySelector('.admin-sidebar a[data-secao="utilizadores"]').addEventListener('click', function () {
         setTimeout(renderAdminUsers, 0);
       });

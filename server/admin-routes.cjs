@@ -12,6 +12,7 @@ function registerAdminRoutes(app, deps) {
   var saveKey = deps.saveKey;
   var updateRecord = deps.updateRecord;
   var pwd = deps.pwd;
+  var restoreStateFull = deps.restoreStateFull;
 
   async function requireAdmin(req, res, next) {
     try {
@@ -71,7 +72,7 @@ function registerAdminRoutes(app, deps) {
       var atual = b.senhaAtual != null ? String(b.senhaAtual) : '';
       var nova = b.senhaNova != null ? String(b.senhaNova) : '';
       if (!atual || !nova) return res.status(400).json({ error: 'Preencha a senha atual e a nova senha' });
-      if (nova.length < 6) return res.status(400).json({ error: 'A nova senha deve ter pelo menos 6 caracteres' });
+      pwd.assertPasswordPolicy(nova);
       var payload = req.adminPayload;
       var state = req.adminState || (await loadState());
       var users = state.admin_users || [];
@@ -98,8 +99,9 @@ function registerAdminRoutes(app, deps) {
   /** Backup JSON completo (sem hashes de senha). Só admin. */
   app.get('/api/admin/backup', requireAdmin, requireAdminRole, async function (req, res) {
     try {
+      var backupRestore = require('./backup-restore.cjs');
       var state = await loadState();
-      var safe = pwd.stripPasswordsFromState(state);
+      var safe = backupRestore.createBackup(state, pwd.stripPasswordsFromState);
       var nome = 'backup-betim-cor-' + new Date().toISOString().slice(0, 10) + '.json';
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename="' + nome + '"');
@@ -107,6 +109,21 @@ function registerAdminRoutes(app, deps) {
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: String(e.message) });
+    }
+  });
+
+  /** Restaura backup completo. Preserva hashes atuais porque o JSON exportado não contém senhas. */
+  app.post('/api/admin/restore', requireAdmin, requireAdminRole, async function (req, res) {
+    try {
+      var body = req.body || {};
+      if (body.confirm !== 'RESTAURAR') {
+        return res.status(400).json({ error: 'Confirmação RESTAURAR obrigatória.' });
+      }
+      var result = await restoreStateFull(body.backup);
+      res.json({ ok: true, warnings: result.warnings });
+    } catch (e) {
+      console.error('[restore]', e.message || e);
+      res.status(e.status || 500).json({ error: String(e.message) });
     }
   });
 

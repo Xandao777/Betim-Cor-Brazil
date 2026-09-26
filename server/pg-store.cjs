@@ -193,6 +193,36 @@ async function replaceRecordsWithClient(client, key, payload) {
   }
 }
 
+async function restoreState(pool, KEYS, state) {
+  var client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('full-backup-restore'))");
+    for (var lockIndex = 0; lockIndex < KEYS.length; lockIndex++) {
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [KEYS[lockIndex]]);
+    }
+    for (var i = 0; i < KEYS.length; i++) {
+      var key = KEYS[i];
+      var payload = state[key];
+      if (isRecordKey(key)) {
+        await replaceRecordsWithClient(client, key, payload || []);
+      } else {
+        await client.query(
+          `INSERT INTO app_state (key, payload, updated_at) VALUES ($1, $2::jsonb, NOW())
+           ON CONFLICT (key) DO UPDATE SET payload = EXCLUDED.payload, updated_at = NOW()`,
+          [key, JSON.stringify(payload)]
+        );
+      }
+    }
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 async function saveKeyIfMatch(pool, key, payload, expectedEtag, auditEntry, fallbackCurrent) {
   var client = await pool.connect();
   try {
@@ -410,6 +440,7 @@ module.exports = {
   appendRecord: appendRecord,
   updateRecord: updateRecord,
   replaceRecords: replaceRecords,
+  restoreState: restoreState,
   saveKeyIfMatch: saveKeyIfMatch,
   deleteMemberRegistration: deleteMemberRegistration
 };
