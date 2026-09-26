@@ -9,6 +9,9 @@ test('admin login e painel carregam', async function ({ page }) {
   await page.click('button[type="submit"]');
   await page.waitForURL(/painel\.html/);
   await expect(page.locator('#secao-dashboard')).toBeVisible({ timeout: 15000 });
+  await page.click('a[data-secao="formularios"]');
+  await expect(page.locator('#btn-limpar-lidos-antigos')).toBeVisible();
+  await expect(page.locator('#retencao-formularios-dias')).toHaveValue('90');
 });
 
 test('institucional expõe banner no site público', async function ({ page, playwright }) {

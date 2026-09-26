@@ -926,6 +926,43 @@
       });
     }
 
+    var btnRetencao = document.getElementById('btn-limpar-lidos-antigos');
+    if (btnRetencao && window.AdminDataRetention) {
+      if (!isAdmin) btnRetencao.closest('#retencao-formularios').hidden = true;
+      btnRetencao.addEventListener('click', function () {
+        if (!isAdmin) return;
+        var days = Number(document.getElementById('retencao-formularios-dias').value);
+        var result = window.AdminDataRetention.purgeReadOlderThan({
+          mensagens_contato: D.getMensagensContato() || [],
+          pedidos_filiacao: D.getPedidosFiliacao() || [],
+          pedidos_doacao: D.getPedidosDoacao() || [],
+          mensagens_membros: D.getMensagensMembros() || []
+        }, days);
+        if (!result.totalRemoved) {
+          AP.toastWarn('Nenhum registro lido ultrapassa o prazo selecionado.');
+          return;
+        }
+        confirmar(
+          'Serão excluídos ' + result.totalRemoved + ' registros já tratados e mais antigos que ' + days + ' dias. Faça um backup antes. Continuar?',
+          'Aplicar retenção de dados'
+        ).then(function (ok) {
+          if (!ok) return;
+          var jobs = [];
+          if (result.removed.mensagens_contato) jobs.push(D.setMensagensContato(result.collections.mensagens_contato));
+          if (result.removed.pedidos_filiacao) jobs.push(D.setPedidosFiliacao(result.collections.pedidos_filiacao));
+          if (result.removed.pedidos_doacao) jobs.push(D.setPedidosDoacao(result.collections.pedidos_doacao));
+          if (result.removed.mensagens_membros) jobs.push(D.setMensagensMembros(result.collections.mensagens_membros));
+          return Promise.all(jobs)
+            .then(function () { return D.refresh(); })
+            .then(function () {
+              AP.renderFormularios();
+              AP.toastOk(result.totalRemoved + ' registros antigos excluídos.');
+            })
+            .catch(AP.errSave);
+        });
+      });
+    }
+
     // Limpar com confirmação reforçada
     ['btn-limpar-contato', 'btn-limpar-filiacao', 'btn-limpar-doacao', 'btn-limpar-membro-msg'].forEach(function (id) {
       var btn = document.getElementById(id);
