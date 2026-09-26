@@ -52,8 +52,9 @@ function registerPublicRoutes(app, deps) {
   app.get('/api/health', deps.rateLimits.publicGet, async function (req, res) {
     var brief = deployStatus.buildDeployStatus();
     var databaseOk = true;
-    if (deps.pgPool) {
-      try { await deps.pgPool.query('SELECT 1'); }
+    var pgPool = deps.getPgPool();
+    if (pgPool) {
+      try { await pgPool.query('SELECT 1'); }
       catch (error) {
         databaseOk = false;
         deps.opsLog.error('health.database_failed', error, { requestId: req.requestId });
@@ -61,7 +62,7 @@ function registerPublicRoutes(app, deps) {
     }
     res.status(databaseOk ? 200 : 503).json({
       ok: databaseOk,
-      backend: deps.pgPool ? 'postgres' : 'file',
+      backend: pgPool ? 'postgres' : 'file',
       database: databaseOk ? 'ok' : 'error',
       uptimeSeconds: Math.floor(process.uptime()),
       smtp: brief.smtp,

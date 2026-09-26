@@ -490,7 +490,7 @@ app.use(csrfOriginGuard);
 registerPublicRoutes(app, {
   publicDir: PUBLIC_DIR,
   rateLimits: rateLimits,
-  pgPool: pgPool,
+  getPgPool: function () { return pgPool; },
   opsLog: opsLog,
   turnstile: turnstile,
   loadState: loadState,

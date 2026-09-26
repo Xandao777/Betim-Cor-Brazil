@@ -17,6 +17,7 @@ var checks = [
 
 async function run() {
   var failed = 0;
+  var publicBody = null;
   for (var i = 0; i < checks.length; i++) {
     var check = checks[i];
     try {
@@ -27,6 +28,7 @@ async function run() {
       var ok = response.ok;
       if (check.json) {
         var body = await response.json();
+        if (check.path === '/api/public') publicBody = body;
         ok = ok && check.validate(body);
       } else {
         var text = await response.text();
@@ -37,6 +39,52 @@ async function run() {
     } catch (error) {
       failed += 1;
       console.error('[FALHA] ' + check.path + ' ' + error.message);
+    }
+  }
+  var advanced = [
+    {
+      label: 'headers de segurança',
+      run: async function () {
+        var response = await fetch(base + '/');
+        return response.headers.get('x-content-type-options') === 'nosniff' &&
+          !!response.headers.get('content-security-policy');
+      }
+    },
+    {
+      label: 'cache de assets',
+      run: async function () {
+        var response = await fetch(base + '/css/style.css');
+        return response.ok && /max-age=86400/.test(response.headers.get('cache-control') || '');
+      }
+    },
+    {
+      label: 'sitemap absoluto',
+      run: async function () {
+        var response = await fetch(base + '/sitemap.xml');
+        var xml = await response.text();
+        return response.ok && xml.indexOf('<loc>' + base + '/') !== -1;
+      }
+    }
+  ];
+  if (publicBody && publicBody.events && publicBody.events[0]) {
+    advanced.push({
+      label: 'SEO de detalhe no servidor',
+      run: async function () {
+        var detail = '/evento.html?id=' + encodeURIComponent(publicBody.events[0].id);
+        var response = await fetch(base + detail);
+        var html = await response.text();
+        return response.ok && /application\/ld\+json/.test(html) && /rel="canonical"/.test(html);
+      }
+    });
+  }
+  for (var j = 0; j < advanced.length; j++) {
+    try {
+      var advancedOk = await advanced[j].run();
+      console.log((advancedOk ? '[OK] ' : '[FALHA] ') + advanced[j].label);
+      if (!advancedOk) failed += 1;
+    } catch (advancedError) {
+      failed += 1;
+      console.error('[FALHA] ' + advanced[j].label + ' ' + advancedError.message);
     }
   }
   if (failed) process.exit(1);

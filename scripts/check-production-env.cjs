@@ -43,6 +43,12 @@ var recommended = [
     ok:
       !!(process.env.S3_BUCKET || '').trim() ||
       process.env.UPLOADS_USE_VOLUME === '1'
+  },
+  {
+    key: 'Turnstile (SITE_KEY+SECRET_KEY)',
+    ok:
+      !!(process.env.TURNSTILE_SITE_KEY || '').trim() &&
+      !!(process.env.TURNSTILE_SECRET_KEY || '').trim()
   }
 ];
 

@@ -47,7 +47,7 @@ describe('API (integração, ficheiro temporário)', function () {
     expect(res.body.ok).toBe(true);
     expect(['file', 'postgres']).toContain(res.body.backend);
     expect(typeof res.body.smtp).toBe('boolean');
-    expect(['disk', 's3']).toContain(res.body.uploads);
+    expect(['disk', 'volume', 's3']).toContain(res.body.uploads);
     expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(res.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
     expect(res.headers['permissions-policy']).toContain('camera=()');

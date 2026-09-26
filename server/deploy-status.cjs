@@ -77,7 +77,11 @@ function hasDemoAdminUsers(adminUsers) {
  */
 function buildDeployStatus(state) {
   var isProd = process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_ENVIRONMENT;
-  var uploadsMode = s3Storage.isConfigured() ? 's3' : 'disk';
+  var uploadsMode = s3Storage.isConfigured()
+    ? 's3'
+    : envFlag('UPLOADS_USE_VOLUME')
+      ? 'volume'
+      : 'disk';
   var status = {
     production: isProd,
     backend: process.env.DATABASE_URL ? 'postgres' : 'file',
@@ -91,7 +95,7 @@ function buildDeployStatus(state) {
     turnstile: turnstile.isEnabled(),
     turnstileSiteKey: !!turnstile.siteKey(),
     uploads: uploadsMode,
-    uploadsPersistent: uploadsMode === 's3',
+    uploadsPersistent: uploadsMode === 's3' || uploadsMode === 'volume',
     demoSeedAllowed: seed.allowDemoSeed(),
     warnings: []
   };
@@ -107,7 +111,7 @@ function buildDeployStatus(state) {
       'Turnstile não configurado: formulários públicos continuam sem CAPTCHA.'
     );
   }
-  if (isProd && uploadsMode === 'disk') {
+  if (isProd && !status.uploadsPersistent) {
     status.warnings.push(
       'Uploads no disco do contentor: monte volume /uploads no Railway ou configure S3/R2.'
     );

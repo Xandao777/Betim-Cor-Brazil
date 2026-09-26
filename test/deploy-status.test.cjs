@@ -3,6 +3,17 @@
 var deployStatus = require('../server/deploy-status.cjs');
 
 describe('deploy-status', function () {
+  var oldVolume;
+
+  beforeEach(function () {
+    oldVolume = process.env.UPLOADS_USE_VOLUME;
+  });
+
+  afterEach(function () {
+    if (oldVolume === undefined) delete process.env.UPLOADS_USE_VOLUME;
+    else process.env.UPLOADS_USE_VOLUME = oldVolume;
+  });
+
   test('institutionalChecklist detecta campos em falta', function () {
     var r = deployStatus.institutionalChecklist({
       email: 'contato@associacao.org.br',
@@ -23,5 +34,12 @@ describe('deploy-status', function () {
       homepage: { titulo: 'Betim Cor Brazil — Associação Cultural' }
     });
     expect(r.complete).toBe(true);
+  });
+
+  test('reconhece volume Railway como armazenamento persistente', function () {
+    process.env.UPLOADS_USE_VOLUME = '1';
+    var status = deployStatus.buildDeployStatus();
+    expect(status.uploads).toBe('volume');
+    expect(status.uploadsPersistent).toBe(true);
   });
 });
