@@ -91,4 +91,34 @@ describe('server/passwords.cjs', function () {
     expect(pwd.isBcryptHash(arr[0].senha)).toBe(true);
     expect(arr[1].senha).toBe(plain);
   });
+
+  test('mergeMembersSave incrementa versão ao desativar membro', function () {
+    var hash = pwd.hashPassword('senha1234');
+    var state = {
+      members: [
+        { id: '1', usuario: 'membro', senha: hash, nome: 'Membro', ativo: true, sessionVersion: 3 }
+      ]
+    };
+    var out = pwd.mergeMembersSave(state, [
+      { id: '1', usuario: 'membro', senha: '', nome: 'Membro', ativo: false, sessionVersion: 999 }
+    ]);
+    expect(out[0].sessionVersion).toBe(4);
+    expect(out[0].senha).toBe(hash);
+  });
+
+  test('mergeAdminUsersSave incrementa versão ao alterar perfil', function () {
+    var hash = pwd.hashPassword('senha1234');
+    var state = {
+      admin_users: [
+        { id: '1', usuario: 'admin', senha: hash, nome: 'Admin', perfil: 'admin', sessionVersion: 2 },
+        { id: '2', usuario: 'admin2', senha: hash, nome: 'Admin 2', perfil: 'admin', sessionVersion: 1 }
+      ]
+    };
+    var out = pwd.mergeAdminUsersSave(state, [
+      { id: '1', usuario: 'admin', senha: '', nome: 'Admin', perfil: 'editor', sessionVersion: 999 },
+      { id: '2', usuario: 'admin2', senha: '', nome: 'Admin 2', perfil: 'admin', sessionVersion: 1 }
+    ]);
+    expect(out[0].sessionVersion).toBe(3);
+    expect(out[1].sessionVersion).toBe(1);
+  });
 });

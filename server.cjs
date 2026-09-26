@@ -290,7 +290,14 @@ function canAccessDocumentUpload(payload, doc) {
 
 function signAdmin(user) {
   return jwt.sign(
-    { t: 'admin', sub: user.id, perfil: user.perfil || 'editor', usuario: user.usuario, nome: user.nome },
+    {
+      t: 'admin',
+      sub: user.id,
+      perfil: user.perfil || 'editor',
+      usuario: user.usuario,
+      nome: user.nome,
+      sv: pwd.sessionVersion(user)
+    },
     JWT_SECRET,
     { expiresIn: '7d' }
   );
@@ -298,7 +305,13 @@ function signAdmin(user) {
 
 function signMember(member) {
   return jwt.sign(
-    { t: 'member', sub: member.id, usuario: member.usuario, nome: member.nome },
+    {
+      t: 'member',
+      sub: member.id,
+      usuario: member.usuario,
+      nome: member.nome,
+      sv: pwd.sessionVersion(member)
+    },
     JWT_SECRET,
     { expiresIn: '7d' }
   );
@@ -323,6 +336,54 @@ function verifyToken(req) {
     return null;
   }
 }
+
+function currentPrincipalFromState(req, expectedType, state) {
+  var tokenPayload = verifyToken(req);
+  if (!tokenPayload || tokenPayload.t !== expectedType) return null;
+  var collection = expectedType === 'admin' ? state.admin_users : state.members;
+  var user = (collection || []).find(function (item) {
+    return String(item.id) === String(tokenPayload.sub);
+  });
+  if (!user || user.ativo === false) return null;
+  if (Number(tokenPayload.sv) !== pwd.sessionVersion(user)) return null;
+  var payload = Object.assign({}, tokenPayload, {
+    usuario: user.usuario,
+    nome: user.nome,
+    sv: pwd.sessionVersion(user)
+  });
+  if (expectedType === 'admin') payload.perfil = user.perfil || 'editor';
+  return { payload: payload, user: user, state: state };
+}
+
+async function authenticateCurrent(req, expectedType, existingState) {
+  var state = existingState || (await loadState());
+  return currentPrincipalFromState(req, expectedType, state);
+}
+
+function clearInvalidSession(res, expectedType) {
+  clearSessionCookie(res, expectedType === 'admin' ? COOKIE_ADMIN : COOKIE_MEMBER);
+}
+
+function requireCurrentPrincipal(expectedType) {
+  return async function (req, res, next) {
+    try {
+      var auth = await authenticateCurrent(req, expectedType);
+      if (!auth) {
+        clearInvalidSession(res, expectedType);
+        return res.status(401).json({ error: 'Não autorizado' });
+      }
+      res.setHeader('Cache-Control', 'no-store');
+      req.currentAuth = auth;
+      next();
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: String(e.message) });
+    }
+  };
+}
+
+var requireCurrentAdmin = requireCurrentPrincipal('admin');
+var requireCurrentMember = requireCurrentPrincipal('member');
 
 var rateLimits = createLimiters();
 
@@ -440,12 +501,15 @@ function hashMemberResetToken(token) {
 }
 
 app.get('/api/full', async function (req, res) {
-  var payload = verifyToken(req);
-  if (!payload || payload.t !== 'admin') {
-    return res.status(401).json({ error: 'Não autorizado' });
-  }
   try {
-    var state = await loadState();
+    var auth = await authenticateCurrent(req, 'admin');
+    if (!auth) {
+      clearInvalidSession(res, 'admin');
+      return res.status(401).json({ error: 'Não autorizado' });
+    }
+    var payload = auth.payload;
+    var state = auth.state;
+    res.setHeader('Cache-Control', 'no-store');
     var safe = filterAdminFullStateForPayload(state, payload);
     if ((payload.perfil || 'editor') === 'admin') {
       safe._keyEtags = stateEtag.keyEtags(state, KEYS);
@@ -458,12 +522,15 @@ app.get('/api/full', async function (req, res) {
 });
 
 app.get('/api/member-bootstrap', async function (req, res) {
-  var payload = verifyToken(req);
-  if (!payload || payload.t !== 'member') {
-    return res.status(401).json({ error: 'Não autorizado' });
-  }
   try {
-    var state = await loadState();
+    var auth = await authenticateCurrent(req, 'member');
+    if (!auth) {
+      clearInvalidSession(res, 'member');
+      return res.status(401).json({ error: 'Não autorizado' });
+    }
+    var payload = auth.payload;
+    var state = auth.state;
+    res.setHeader('Cache-Control', 'no-store');
     var usuario = payload.usuario;
     res.json(filterMemberBootstrapState(state, usuario));
   } catch (e) {
@@ -480,7 +547,7 @@ app.post('/api/auth/admin', rateLimits.login, async function (req, res) {
     var state = await loadState();
     var users = state.admin_users || [];
     var found = users.find(function (u) {
-      return u.usuario && u.usuario.toLowerCase() === usuario.toLowerCase();
+      return u.usuario && u.usuario.toLowerCase() === usuario.toLowerCase() && u.ativo !== false;
     });
     if (!found || !pwd.verifyPassword(senha, found.senha)) {
       return res.status(401).json({ error: 'Usuário ou senha incorretos' });
@@ -528,38 +595,53 @@ app.post('/api/auth/member', rateLimits.login, async function (req, res) {
 });
 
 /** Sempre 200 — evita 401 no console em visitantes anónimos ao detetar sessão. */
-app.get('/api/auth/status', rateLimits.publicGet, function (req, res) {
-  var payload = verifyToken(req);
-  if (payload && payload.t === 'admin') {
-    return res.json({ kind: 'admin' });
+app.get('/api/auth/status', rateLimits.publicGet, async function (req, res) {
+  try {
+    var state = await loadState();
+    if (currentPrincipalFromState(req, 'admin', state)) return res.json({ kind: 'admin' });
+    if (currentPrincipalFromState(req, 'member', state)) return res.json({ kind: 'member' });
+    res.json({ kind: null });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: String(e.message) });
   }
-  if (payload && payload.t === 'member') {
-    return res.json({ kind: 'member' });
-  }
-  res.json({ kind: null });
 });
 
-app.get('/api/auth/admin/session', function (req, res) {
-  var payload = verifyToken(req);
-  if (!payload || payload.t !== 'admin') {
-    return res.status(401).json({ error: 'Não autorizado' });
+app.get('/api/auth/admin/session', async function (req, res) {
+  try {
+    var auth = await authenticateCurrent(req, 'admin');
+    if (!auth) {
+      clearInvalidSession(res, 'admin');
+      return res.status(401).json({ error: 'Não autorizado' });
+    }
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({
+      usuario: auth.payload.usuario,
+      nome: auth.payload.nome,
+      perfil: auth.payload.perfil || 'editor'
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: String(e.message) });
   }
-  res.json({
-    usuario: payload.usuario,
-    nome: payload.nome,
-    perfil: payload.perfil || 'editor'
-  });
 });
 
-app.get('/api/auth/member/session', function (req, res) {
-  var payload = verifyToken(req);
-  if (!payload || payload.t !== 'member') {
-    return res.status(401).json({ error: 'Não autorizado' });
+app.get('/api/auth/member/session', async function (req, res) {
+  try {
+    var auth = await authenticateCurrent(req, 'member');
+    if (!auth) {
+      clearInvalidSession(res, 'member');
+      return res.status(401).json({ error: 'Não autorizado' });
+    }
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({
+      usuario: auth.payload.usuario,
+      nome: auth.payload.nome
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: String(e.message) });
   }
-  res.json({
-    usuario: payload.usuario,
-    nome: payload.nome
-  });
 });
 
 app.post('/api/auth/logout-admin', function (req, res) {
@@ -607,11 +689,10 @@ function hasPrivacyConsent(b) {
   return c === true || c === 'true' || c === '1' || c === 'on';
 }
 
-app.put('/api/state/:key', async function (req, res) {
+app.put('/api/state/:key', requireCurrentAdmin, async function (req, res) {
   var key = req.params.key;
   if (KEYS.indexOf(key) === -1) return res.status(400).json({ error: 'Chave inválida' });
-  var payload = verifyToken(req);
-  if (!payload || payload.t !== 'admin') return res.status(401).json({ error: 'Não autorizado' });
+  var payload = req.currentAuth.payload;
   var err = assertAdminEditor(payload, key);
   if (err) return res.status(403).json({ error: err });
   try {
@@ -672,10 +753,7 @@ async function finishUpload(req, res, file, localUrl, s3Folder) {
 
 /** Upload de ficheiro para documentos (somente perfil admin — igual a PUT documents). */
 function handleDocumentUploadPost(req, res) {
-  var payload = verifyToken(req);
-  if (!payload || payload.t !== 'admin') {
-    return res.status(401).json({ error: 'Não autorizado' });
-  }
+  var payload = req.currentAuth.payload;
   if ((payload.perfil || 'editor') !== 'admin') {
     return res.status(403).json({ error: 'Sem permissão para enviar documentos' });
   }
@@ -693,15 +771,11 @@ function handleDocumentUploadPost(req, res) {
 app.get('/api/upload/document', function (req, res) {
   res.status(405).set('Allow', 'POST').json({ error: 'Use POST com multipart field "file"' });
 });
-app.post('/api/upload/document', handleDocumentUploadPost);
-app.post('/api/upload/document/', handleDocumentUploadPost);
+app.post('/api/upload/document', requireCurrentAdmin, handleDocumentUploadPost);
+app.post('/api/upload/document/', requireCurrentAdmin, handleDocumentUploadPost);
 
 /** Upload de ficheiro para galeria (admin ou editor — igual a PUT gallery). */
 function handleGalleryUploadPost(req, res) {
-  var payload = verifyToken(req);
-  if (!payload || payload.t !== 'admin') {
-    return res.status(401).json({ error: 'Não autorizado' });
-  }
   galleryUpload.uploadSingle(req, res, function (err) {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
@@ -716,8 +790,8 @@ function handleGalleryUploadPost(req, res) {
 app.get('/api/upload/gallery', function (req, res) {
   res.status(405).set('Allow', 'POST').json({ error: 'Use POST com multipart field "file"' });
 });
-app.post('/api/upload/gallery', handleGalleryUploadPost);
-app.post('/api/upload/gallery/', handleGalleryUploadPost);
+app.post('/api/upload/gallery', requireCurrentAdmin, handleGalleryUploadPost);
+app.post('/api/upload/gallery/', requireCurrentAdmin, handleGalleryUploadPost);
 
 app.post('/api/inscricao/publica', rateLimits.inscricaoPublica, async function (req, res) {
   try {
@@ -893,9 +967,8 @@ app.post('/api/form/doacao', rateLimits.formPublico, async function (req, res) {
   }
 });
 
-app.post('/api/inscricao/membro', async function (req, res) {
-  var payload = verifyToken(req);
-  if (!payload || payload.t !== 'member') return res.status(401).json({ error: 'Não autorizado' });
+app.post('/api/inscricao/membro', requireCurrentMember, async function (req, res) {
+  var payload = req.currentAuth.payload;
   try {
     var b = req.body || {};
     var usuario = payload.usuario;
@@ -914,9 +987,8 @@ app.post('/api/inscricao/membro', async function (req, res) {
   }
 });
 
-app.delete('/api/inscricao/membro/:eventoId', async function (req, res) {
-  var payload = verifyToken(req);
-  if (!payload || payload.t !== 'member') return res.status(401).json({ error: 'Não autorizado' });
+app.delete('/api/inscricao/membro/:eventoId', requireCurrentMember, async function (req, res) {
+  var payload = req.currentAuth.payload;
   try {
     var usuario = payload.usuario;
     var eventoId = req.params.eventoId;
@@ -932,9 +1004,8 @@ app.delete('/api/inscricao/membro/:eventoId', async function (req, res) {
   }
 });
 
-app.post('/api/member/mensagem', async function (req, res) {
-  var payload = verifyToken(req);
-  if (!payload || payload.t !== 'member') return res.status(401).json({ error: 'Não autorizado' });
+app.post('/api/member/mensagem', requireCurrentMember, async function (req, res) {
+  var payload = req.currentAuth.payload;
   try {
     var b = req.body || {};
     var tipo = clampStr(b.tipo, 40);
@@ -1025,9 +1096,8 @@ app.post('/api/member/mensagem', async function (req, res) {
   }
 });
 
-app.post('/api/member/change-password', async function (req, res) {
-  var payload = verifyToken(req);
-  if (!payload || payload.t !== 'member') return res.status(401).json({ error: 'Não autorizado' });
+app.post('/api/member/change-password', requireCurrentMember, async function (req, res) {
+  var payload = req.currentAuth.payload;
   try {
     var b = req.body || {};
     var atual = b.senhaAtual != null ? String(b.senhaAtual) : '';
@@ -1051,10 +1121,12 @@ app.post('/api/member/change-password', async function (req, res) {
     var updated = members.slice();
     updated[ix] = Object.assign({}, m, {
       senha: pwd.hashPassword(nova),
+      sessionVersion: pwd.nextSessionVersion(m),
       resetTokenHash: undefined,
       resetExpires: undefined
     });
     await saveKey('members', updated);
+    setSessionCookie(res, COOKIE_MEMBER, signMember(updated[ix]));
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
@@ -1135,6 +1207,7 @@ app.post('/api/auth/member-reset', rateLimits.formPublico, async function (req, 
     var updated = members.slice();
     updated[ix] = Object.assign({}, m, {
       senha: pwd.hashPassword(nova),
+      sessionVersion: pwd.nextSessionVersion(m),
       resetTokenHash: undefined,
       resetExpires: undefined
     });
@@ -1146,9 +1219,8 @@ app.post('/api/auth/member-reset', rateLimits.formPublico, async function (req, 
   }
 });
 
-app.patch('/api/member/perfil', async function (req, res) {
-  var payload = verifyToken(req);
-  if (!payload || payload.t !== 'member') return res.status(401).json({ error: 'Não autorizado' });
+app.patch('/api/member/perfil', requireCurrentMember, async function (req, res) {
+  var payload = req.currentAuth.payload;
   try {
     var b = req.body || {};
     var state = await loadState();
@@ -1230,7 +1302,10 @@ app.get('/sitemap.xml', rateLimits.publicGet, async function (req, res) {
 });
 
 registerAdminRoutes(app, {
-  verifyToken: verifyToken,
+  authenticateCurrent: authenticateCurrent,
+  clearInvalidSession: clearInvalidSession,
+  signAdmin: signAdmin,
+  setAdminSessionCookie: function (res, token) { setSessionCookie(res, COOKIE_ADMIN, token); },
   loadState: loadState,
   saveKey: saveKey,
   pwd: pwd,
@@ -1275,7 +1350,12 @@ app.use('/uploads/documents', async function (req, res, next) {
     var state = await loadState();
     var publicUrl = '/uploads/documents/' + filename;
     var doc = documentRecordForUrl(state, publicUrl);
-    var payload = verifyToken(req);
+    var tokenPayload = verifyToken(req);
+    var auth = null;
+    if (tokenPayload && (tokenPayload.t === 'admin' || tokenPayload.t === 'member')) {
+      auth = currentPrincipalFromState(req, tokenPayload.t, state);
+    }
+    var payload = auth && auth.payload;
     if (!canAccessDocumentUpload(payload, doc)) {
       return res.status(payload ? 403 : 401).json({ error: 'NÃ£o autorizado' });
     }

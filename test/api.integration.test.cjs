@@ -632,4 +632,117 @@ describe('API (integração, ficheiro temporário)', function () {
       })
       .expect(400);
   });
+
+  test('rebaixar administrador revoga imediatamente os tokens antigos', async function () {
+    var owner = request.agent(app);
+    await owner.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var full = await owner.get('/api/full').expect(200);
+    var users = full.body.admin_users.slice();
+    users.push({
+      id: 'admin-fase1',
+      usuario: 'admin-fase1',
+      senha: 'senha-fase1-segura',
+      nome: 'Admin Fase 1',
+      perfil: 'admin'
+    });
+    await owner.put('/api/state/admin_users').set(mutatingHeaders()).send(users).expect(200);
+
+    var oldSession = request.agent(app);
+    await oldSession.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);
+    var controller = request.agent(app);
+    await controller
+      .post('/api/auth/admin')
+      .send({ usuario: 'admin-fase1', senha: 'senha-fase1-segura' })
+      .expect(200);
+    var controllerFull = await controller.get('/api/full').expect(200);
+    var demoted = controllerFull.body.admin_users.map(function (u) {
+      return Object.assign({}, u, { perfil: u.usuario === 'admin' ? 'editor' : u.perfil });
+    });
+    await controller.put('/api/state/admin_users').set(mutatingHeaders()).send(demoted).expect(200);
+    await oldSession.get('/api/full').expect(401);
+
+    var restoreFull = await controller.get('/api/full').expect(200);
+    var restored = restoreFull.body.admin_users.map(function (u) {
+      return Object.assign({}, u, { perfil: u.usuario === 'admin' ? 'admin' : u.perfil });
+    });
+    await controller.put('/api/state/admin_users').set(mutatingHeaders()).send(restored).expect(200);
+  });
+
+  test('remover administrador e desativar membro revoga sessões existentes', async function () {
+    var controller = request.agent(app);
+    await controller
+      .post('/api/auth/admin')
+      .send({ usuario: 'admin-fase1', senha: 'senha-fase1-segura' })
+      .expect(200);
+    var full = await controller.get('/api/full').expect(200);
+    var users = full.body.admin_users.slice();
+    users.push({
+      id: 'editor-removivel',
+      usuario: 'editor-removivel',
+      senha: 'senha-editor-segura',
+      nome: 'Editor Removível',
+      perfil: 'editor'
+    });
+    await controller.put('/api/state/admin_users').set(mutatingHeaders()).send(users).expect(200);
+    var removedSession = request.agent(app);
+    await removedSession
+      .post('/api/auth/admin')
+      .send({ usuario: 'editor-removivel', senha: 'senha-editor-segura' })
+      .expect(200);
+    var withTemp = await controller.get('/api/full').expect(200);
+    var withoutTemp = withTemp.body.admin_users.filter(function (u) {
+      return u.usuario !== 'editor-removivel';
+    });
+    await controller.put('/api/state/admin_users').set(mutatingHeaders()).send(withoutTemp).expect(200);
+    await removedSession.get('/api/auth/admin/session').expect(401);
+
+    var memberSession = request.agent(app);
+    await memberSession.post('/api/auth/member').send({ usuario: 'membro', senha: 'demo123' }).expect(200);
+    var membersFull = await controller.get('/api/full').expect(200);
+    var disabled = membersFull.body.members.map(function (m) {
+      return Object.assign({}, m, { ativo: m.usuario === 'membro' ? false : m.ativo });
+    });
+    await controller.put('/api/state/members').set(mutatingHeaders()).send(disabled).expect(200);
+    await memberSession.get('/api/member-bootstrap').expect(401);
+
+    var disabledFull = await controller.get('/api/full').expect(200);
+    var enabled = disabledFull.body.members.map(function (m) {
+      return Object.assign({}, m, { ativo: m.usuario === 'membro' ? true : m.ativo });
+    });
+    await controller.put('/api/state/members').set(mutatingHeaders()).send(enabled).expect(200);
+  });
+
+  test('troca de senha mantém sessão atual e revoga outra sessão do membro', async function () {
+    var current = request.agent(app);
+    var old = request.agent(app);
+    await current.post('/api/auth/member').send({ usuario: 'membro', senha: 'demo123' }).expect(200);
+    await old.post('/api/auth/member').send({ usuario: 'membro', senha: 'demo123' }).expect(200);
+    await current
+      .post('/api/member/change-password')
+      .set(mutatingHeaders())
+      .send({ senhaAtual: 'demo123', senhaNova: 'senha-nova-fase1' })
+      .expect(200);
+    await current.get('/api/auth/member/session').expect(200);
+    await old.get('/api/auth/member/session').expect(401);
+  });
+
+  test('troca de senha mantém sessão atual e revoga outra sessão administrativa', async function () {
+    var current = request.agent(app);
+    var old = request.agent(app);
+    await current
+      .post('/api/auth/admin')
+      .send({ usuario: 'admin-fase1', senha: 'senha-fase1-segura' })
+      .expect(200);
+    await old
+      .post('/api/auth/admin')
+      .send({ usuario: 'admin-fase1', senha: 'senha-fase1-segura' })
+      .expect(200);
+    await current
+      .post('/api/admin/change-password')
+      .set(mutatingHeaders())
+      .send({ senhaAtual: 'senha-fase1-segura', senhaNova: 'nova-admin-fase1' })
+      .expect(200);
+    await current.get('/api/auth/admin/session').expect(200);
+    await old.get('/api/auth/admin/session').expect(401);
+  });
 });

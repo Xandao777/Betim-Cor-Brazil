@@ -49,6 +49,15 @@ function hashPasswordsInArray(arr) {
   });
 }
 
+function sessionVersion(user) {
+  var n = parseInt(user && user.sessionVersion, 10);
+  return isNaN(n) || n < 1 ? 1 : n;
+}
+
+function nextSessionVersion(user) {
+  return sessionVersion(user) + 1;
+}
+
 /**
  * Resposta ao painel: nunca envia hash ao navegador.
  */
@@ -86,8 +95,14 @@ function mergeMembersSave(state, incoming) {
       }
       assertPasswordPolicy(senhaIn);
       out.senha = isBcryptHash(senhaIn) ? senhaIn : hashPassword(senhaIn);
+      out.sessionVersion = 1;
       return out;
     }
+    var mustRevoke =
+      prev.ativo !== out.ativo ||
+      String(prev.usuario || '') !== String(out.usuario || '') ||
+      (senhaIn !== undefined && senhaIn !== null && String(senhaIn).trim() !== '');
+    out.sessionVersion = mustRevoke ? nextSessionVersion(prev) : sessionVersion(prev);
     if (senhaIn === undefined || senhaIn === null || String(senhaIn).trim() === '') {
       out.senha = prev.senha;
       return out;
@@ -129,8 +144,15 @@ function mergeAdminUsersSave(state, incoming) {
       }
       assertPasswordPolicy(senhaIn);
       out.senha = isBcryptHash(senhaIn) ? senhaIn : hashPassword(senhaIn);
+      out.sessionVersion = 1;
       return out;
     }
+    var mustRevoke =
+      prev.ativo !== out.ativo ||
+      String(prev.usuario || '') !== String(out.usuario || '') ||
+      String(prev.perfil || 'editor') !== String(out.perfil || 'editor') ||
+      (senhaIn !== undefined && senhaIn !== null && String(senhaIn).trim() !== '');
+    out.sessionVersion = mustRevoke ? nextSessionVersion(prev) : sessionVersion(prev);
     if (senhaIn === undefined || senhaIn === null || String(senhaIn).trim() === '') {
       out.senha = prev.senha;
       return out;
@@ -147,6 +169,8 @@ module.exports = {
   isBcryptHash: isBcryptHash,
   hashPassword: hashPassword,
   verifyPassword: verifyPassword,
+  sessionVersion: sessionVersion,
+  nextSessionVersion: nextSessionVersion,
   hashPasswordsInArray: hashPasswordsInArray,
   stripPasswordsFromState: stripPasswordsFromState,
   mergeMembersSave: mergeMembersSave,

@@ -4,18 +4,30 @@
  * Rotas extra do painel admin (Railway-only: usa Postgres/arquivo existente).
  */
 function registerAdminRoutes(app, deps) {
-  var verifyToken = deps.verifyToken;
+  var authenticateCurrent = deps.authenticateCurrent;
+  var clearInvalidSession = deps.clearInvalidSession;
+  var signAdmin = deps.signAdmin;
+  var setAdminSessionCookie = deps.setAdminSessionCookie;
   var loadState = deps.loadState;
   var saveKey = deps.saveKey;
   var pwd = deps.pwd;
 
-  function requireAdmin(req, res, next) {
-    var payload = verifyToken(req);
-    if (!payload || payload.t !== 'admin') {
-      return res.status(401).json({ error: 'Não autorizado' });
+  async function requireAdmin(req, res, next) {
+    try {
+      var auth = await authenticateCurrent(req, 'admin');
+      if (!auth) {
+        clearInvalidSession(res, 'admin');
+        return res.status(401).json({ error: 'Não autorizado' });
+      }
+      res.setHeader('Cache-Control', 'no-store');
+      req.adminPayload = auth.payload;
+      req.adminUser = auth.user;
+      req.adminState = auth.state;
+      next();
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: String(e.message) });
     }
-    req.adminPayload = payload;
-    next();
   }
 
   function requireAdminRole(req, res, next) {
@@ -42,7 +54,7 @@ function registerAdminRoutes(app, deps) {
         return res.status(400).json({ error: 'Coleção inválida' });
       }
       if (!msgId) return res.status(400).json({ error: 'ID obrigatório' });
-      var state = await loadState();
+      var state = req.adminState || (await loadState());
       var list = state[collection] || [];
       var found = false;
       var nextList = list.map(function (m) {
@@ -68,7 +80,7 @@ function registerAdminRoutes(app, deps) {
       if (!atual || !nova) return res.status(400).json({ error: 'Preencha a senha atual e a nova senha' });
       if (nova.length < 6) return res.status(400).json({ error: 'A nova senha deve ter pelo menos 6 caracteres' });
       var payload = req.adminPayload;
-      var state = await loadState();
+      var state = req.adminState || (await loadState());
       var users = state.admin_users || [];
       var ix = users.findIndex(function (u) {
         return u.usuario === payload.usuario;
@@ -80,7 +92,9 @@ function registerAdminRoutes(app, deps) {
       }
       var updated = users.slice();
       updated[ix] = Object.assign({}, u, { senha: pwd.hashPassword(nova) });
+      updated[ix].sessionVersion = pwd.nextSessionVersion(u);
       await saveKey('admin_users', updated);
+      setAdminSessionCookie(res, signAdmin(updated[ix]));
       res.json({ ok: true });
     } catch (e) {
       console.error(e);
