@@ -33,6 +33,7 @@ const { createLoginUserGuard } = require('./server/login-user-guard.cjs');
 const stateUrlNormalize = require('./server/state-url-normalize.cjs');
 const backupRestore = require('./server/backup-restore.cjs');
 const opsLog = require('./server/ops-log.cjs');
+const { registerPublicRoutes } = require('./server/public-routes.cjs');
 const crypto = require('crypto');
 
 /** Incrementa a cada gravação — invalida cache de GET /api/public. */
@@ -486,66 +487,15 @@ app.use(function (req, res, next) {
 app.use('/api', rateLimits.apiGlobal);
 app.use(csrfOriginGuard);
 
-var logoPath = path.join(PUBLIC_DIR, 'img', 'logo.jpg');
-app.get('/favicon.ico', function (req, res) {
-  if (fs.existsSync(logoPath)) {
-    res.setHeader('Content-Type', 'image/jpeg');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    return fs.createReadStream(logoPath).pipe(res);
-  }
-  res.status(204).end();
-});
-app.get('/apple-touch-icon.png', function (req, res) {
-  if (fs.existsSync(logoPath)) {
-    res.setHeader('Content-Type', 'image/jpeg');
-    return fs.createReadStream(logoPath).pipe(res);
-  }
-  res.status(404).end();
-});
-
-app.get('/api/health', rateLimits.publicGet, async function (req, res) {
-  var deployStatus = require('./server/deploy-status.cjs');
-  var brief = deployStatus.buildDeployStatus();
-  var databaseOk = true;
-  if (pgPool) {
-    try {
-      await pgPool.query('SELECT 1');
-    } catch (error) {
-      databaseOk = false;
-      opsLog.error('health.database_failed', error, { requestId: req.requestId });
-    }
-  }
-  res.status(databaseOk ? 200 : 503).json({
-    ok: databaseOk,
-    backend: pgPool ? 'postgres' : 'file',
-    database: databaseOk ? 'ok' : 'error',
-    uptimeSeconds: Math.floor(process.uptime()),
-    smtp: brief.smtp,
-    turnstile: brief.turnstile,
-    uploads: brief.uploads
-  });
-});
-
-app.get('/api/config', rateLimits.publicGet, function (req, res) {
-  res.json({
-    turnstileSiteKey: turnstile.siteKey()
-  });
-});
-
-app.get('/api/public', rateLimits.publicGet, async function (req, res) {
-  try {
-    var state = await loadState();
-    var etag = 'W/"pub-' + publicDataRevision + '"';
-    res.setHeader('ETag', etag);
-    res.setHeader('Cache-Control', 'public, max-age=60, must-revalidate');
-    if (req.get('If-None-Match') === etag) {
-      return res.status(304).end();
-    }
-    res.json(filterPublic(state));
-  } catch (e) {
-    console.error(e);
-    res.status(e.status || 500).json({ error: String(e.message) });
-  }
+registerPublicRoutes(app, {
+  publicDir: PUBLIC_DIR,
+  rateLimits: rateLimits,
+  pgPool: pgPool,
+  opsLog: opsLog,
+  turnstile: turnstile,
+  loadState: loadState,
+  filterPublic: filterPublic,
+  getPublicRevision: function () { return publicDataRevision; }
 });
 
 async function assertTurnstile(req, res) {
@@ -817,7 +767,8 @@ app.put('/api/state/:key', requireCurrentAdmin, async function (req, res) {
             usuario: payload.usuario,
             perfil: payload.perfil || 'editor',
             acao: 'atualizar',
-            chave: key
+            chave: key,
+            resumo: auditLog.changeSummary(stateBefore[key], body)
           };
     if (pgPool) {
       await saveKey(key, body, {
@@ -1358,88 +1309,6 @@ var STATIC_BLOCK_PREFIXES = [
   '/supabase',
   '/.git'
 ];
-/** Sitemap com páginas estáticas + eventos/notícias/blog publicados. */
-var seoRender = require('./server/seo-render.cjs');
-var DETAIL_PAGES = {
-  '/evento.html': { key: 'events', file: 'evento.html', schemaType: 'Event', targetId: 'evento-detalhe' },
-  '/noticia.html': { key: 'news', file: 'noticia.html', schemaType: 'NewsArticle', targetId: 'noticia-artigo' },
-  '/blog-post.html': { key: 'blog', file: 'blog-post.html', schemaType: 'BlogPosting', targetId: 'blog-post-artigo' }
-};
-
-app.get(Object.keys(DETAIL_PAGES), rateLimits.publicGet, async function (req, res, next) {
-  try {
-    var config = DETAIL_PAGES[req.path];
-    var id = String(req.query.id || '');
-    if (!config || !id) return next();
-    var state = filterPublic(await loadState());
-    var item = (state[config.key] || []).find(function (entry) { return String(entry.id) === id; });
-    if (!item) return next();
-    var template = await fs.promises.readFile(path.join(PUBLIC_DIR, config.file), 'utf8');
-    var detailPath = req.path + '?id=' + encodeURIComponent(id);
-    var html = seoRender.render(template, {
-      title: item.titulo + ' | Associação Betim Cor Brazil',
-      description: item.resumo || item.descricao || item.conteudo || 'Conteúdo da Associação Betim Cor Brazil.',
-      image: item.imagemCapa || '',
-      date: item.dataPublicacao || item.data || '',
-      location: item.local || undefined,
-      path: detailPath,
-      base: (process.env.SITE_PUBLIC_URL || '').trim(),
-      schemaType: config.schemaType,
-      targetId: config.targetId
-    });
-    res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
-    res.type('html').send(html);
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get('/sitemap.xml', rateLimits.publicGet, async function (req, res) {
-  try {
-    var state = await loadState();
-    var pub = filterPublic(state);
-    var base = (process.env.SITE_PUBLIC_URL || '').trim().replace(/\/$/, '');
-    var paths = [
-      '/index.html',
-      '/eventos.html',
-      '/noticias.html',
-      '/blog.html',
-      '/galeria.html',
-      '/contato.html',
-      '/voluntariado.html',
-      '/filiacao.html',
-      '/doar.html',
-      '/privacidade.html'
-    ];
-    (pub.events || []).forEach(function (e) {
-      if (e.id) paths.push('/evento.html?id=' + encodeURIComponent(String(e.id)));
-    });
-    (pub.news || []).forEach(function (n) {
-      if (n.id) paths.push('/noticia.html?id=' + encodeURIComponent(String(n.id)));
-    });
-    (pub.blog || []).forEach(function (b) {
-      if (b.id) paths.push('/blog-post.html?id=' + encodeURIComponent(String(b.id)));
-    });
-    var body = paths
-      .map(function (p) {
-        var loc = base ? base + p : p;
-        return '<url><loc>' + loc.replace(/&/g, '&amp;') + '</loc><changefreq>weekly</changefreq></url>';
-      })
-      .join('');
-    var xml =
-      '<?xml version="1.0" encoding="UTF-8"?>' +
-      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
-      body +
-      '</urlset>';
-    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.send(xml);
-  } catch (e) {
-    console.error(e);
-    res.status(500).end();
-  }
-});
-
 registerAdminRoutes(app, {
   authenticateCurrent: authenticateCurrent,
   clearInvalidSession: clearInvalidSession,

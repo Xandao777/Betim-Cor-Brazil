@@ -297,7 +297,13 @@
                     escHtml(e.acao || '') +
                     ' <em>' +
                     escHtml(e.chave || '') +
-                    '</em></li>'
+                    '</em>' +
+                    (e.resumo && e.resumo.tipo === 'lista'
+                      ? ' <span>[' + escHtml(String(e.resumo.antes)) + ' → ' + escHtml(String(e.resumo.depois)) + ' itens]</span>'
+                      : e.resumo && e.resumo.camposAlterados && e.resumo.camposAlterados.length
+                        ? ' <span>[' + escHtml(e.resumo.camposAlterados.join(', ')) + ']</span>'
+                        : '') +
+                    '</li>'
                   );
                 })
                 .join('')
