@@ -114,5 +114,7 @@ module.exports = {
   /** Fichas de filiação (site/filiacao.html) — candidaturas de novos membros. */
   pedidos_filiacao: [],
   /** Voluntariado e suporte enviados pela área de membros. */
-  mensagens_membros: []
+  mensagens_membros: [],
+  /** Histórico de alterações feitas no painel administrativo. */
+  admin_audit_log: []
 };

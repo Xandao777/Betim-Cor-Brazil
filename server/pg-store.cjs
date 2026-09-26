@@ -131,6 +131,7 @@ async function seed(pool, KEYS, DEFAULTS) {
       var k = KEYS[i];
       if (isRecordKey(k)) continue;
       var payload = seedData[k];
+      if (payload === undefined) payload = [];
       if (k === 'members' || k === 'admin_users') {
         payload = pwd.hashPasswordsInArray(JSON.parse(JSON.stringify(seedData[k])));
       }
