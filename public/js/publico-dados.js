@@ -51,7 +51,7 @@
       escapeAttr(u) +
       '" alt="' +
       escapeAttr(titulo || '') +
-      '" loading="lazy">'
+      '" loading="lazy" decoding="async">'
     );
   }
 
@@ -223,7 +223,7 @@
         var isVid = g.tipo === 'video' || /\.(mp4|webm|ogv|mov|m4v)(\?|$)/i.test(u);
         var thumb = isVid
           ? '<div class="galeria-thumb galeria-thumb-video" aria-hidden="true">▶</div>'
-          : '<img class="galeria-thumb" src="' + escapeAttr(u) + '" alt="' + escapeAttr(g.altText || g.titulo || '') + '" loading="lazy">';
+          : '<img class="galeria-thumb" src="' + escapeAttr(u) + '" alt="' + escapeAttr(g.altText || g.titulo || '') + '" loading="lazy" decoding="async">';
         return '<a href="galeria.html" class="galeria-mini-item">' + thumb + '</a>';
       })
       .join('');
@@ -344,7 +344,7 @@
     var conteudo = renderConteudo(n.conteudo, n.resumo);
     var capaArt = (n.imagemCapa || '').trim();
     var capaHtml = capaArt
-      ? '<figure class="noticia-capa-hero"><img src="' + escapeAttr(capaArt) + '" alt="' + escapeAttr(n.titulo || '') + '" loading="eager"></figure>'
+      ? '<figure class="noticia-capa-hero"><img src="' + escapeAttr(capaArt) + '" alt="' + escapeAttr(n.titulo || '') + '" loading="eager" decoding="async" fetchpriority="high"></figure>'
       : '';
     root.innerHTML =
       capaHtml +
@@ -388,7 +388,7 @@
       if (g.tipo === 'video' && u) {
         inner = '<video src="' + escapeAttr(u) + '" controls playsinline preload="metadata" title="' + escapeAttr(g.titulo || '') + '"></video>';
       } else if (u) {
-        inner = '<img src="' + escapeAttr(u) + '" alt="' + escapeAttr(g.altText || g.titulo || '') + '" loading="lazy">';
+        inner = '<img src="' + escapeAttr(u) + '" alt="' + escapeAttr(g.altText || g.titulo || '') + '" loading="lazy" decoding="async">';
       } else {
         inner = '<div class="galeria-placeholder">' + escapeHtml(g.titulo || '') + '</div>';
       }
@@ -428,7 +428,7 @@
       var titleAttr = desc ? ' title="' + escapeAttr(desc) + '"' : '';
       var inner;
       if (p.logo && String(p.logo).trim()) {
-        inner = '<img src="' + escapeAttr(p.logo) + '" alt="' + escapeAttr(p.nome || '') + '" loading="lazy" style="max-height:60px;max-width:120px;">';
+        inner = '<img src="' + escapeAttr(p.logo) + '" alt="' + escapeAttr(p.nome || '') + '" loading="lazy" decoding="async" style="max-height:60px;max-width:120px;">';
       } else {
         inner = escapeHtml(p.nome || '');
       }

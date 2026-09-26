@@ -21,3 +21,22 @@ test('partials do cabeçalho são servidos', async function ({ request }) {
   var text = await res.text();
   expect(text).toMatch(/Betim Cor Brazil/);
 });
+
+test('detalhe de evento traz SEO antes do JavaScript', async function ({ request }) {
+  var stateResponse = await request.get('/api/public');
+  var state = await stateResponse.json();
+  var event = state.events[0];
+  expect(event).toBeTruthy();
+  var response = await request.get('/evento.html?id=' + encodeURIComponent(event.id));
+  var html = await response.text();
+  expect(html).toContain(event.titulo + ' | Associação Betim Cor Brazil');
+  expect(html).toContain('application/ld+json');
+});
+
+test('navegação por teclado alcança o conteúdo principal', async function ({ page }) {
+  await page.goto('/');
+  await page.keyboard.press('Tab');
+  await expect(page.locator('.skip-link')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#main')).toBeFocused();
+});

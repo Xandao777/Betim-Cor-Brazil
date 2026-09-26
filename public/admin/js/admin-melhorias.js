@@ -41,6 +41,15 @@
     // ---- Modal confirmar ----
     var confirmModal = document.getElementById('admin-confirm-modal');
     var confirmResolve = null;
+    var confirmPreviousFocus = null;
+
+    function closeConfirm(result) {
+      if (confirmModal) confirmModal.hidden = true;
+      if (confirmResolve) confirmResolve(result);
+      confirmResolve = null;
+      if (confirmPreviousFocus && typeof confirmPreviousFocus.focus === 'function') confirmPreviousFocus.focus();
+      confirmPreviousFocus = null;
+    }
 
     function confirmar(texto, titulo) {
       return new Promise(function (resolve) {
@@ -50,8 +59,13 @@
         }
         document.getElementById('admin-confirm-title').textContent = titulo || 'Confirmar';
         document.getElementById('admin-confirm-text').textContent = texto;
+        confirmPreviousFocus = document.activeElement;
         confirmModal.hidden = false;
         confirmResolve = resolve;
+        window.setTimeout(function () {
+          var cancel = document.getElementById('admin-confirm-cancel');
+          if (cancel) cancel.focus();
+        }, 0);
       });
     }
 
@@ -59,16 +73,24 @@
     var btnConfirmCancel = document.getElementById('admin-confirm-cancel');
     if (btnConfirmOk) {
       btnConfirmOk.addEventListener('click', function () {
-        if (confirmModal) confirmModal.hidden = true;
-        if (confirmResolve) confirmResolve(true);
-        confirmResolve = null;
+        closeConfirm(true);
       });
     }
     if (btnConfirmCancel) {
       btnConfirmCancel.addEventListener('click', function () {
-        if (confirmModal) confirmModal.hidden = true;
-        if (confirmResolve) confirmResolve(false);
-        confirmResolve = null;
+        closeConfirm(false);
+      });
+    }
+    if (confirmModal) {
+      confirmModal.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') return closeConfirm(false);
+        if (event.key !== 'Tab') return;
+        var focusable = confirmModal.querySelectorAll('button:not([disabled]), [href], input:not([disabled])');
+        if (!focusable.length) return;
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
       });
     }
     AP.confirmar = confirmar;

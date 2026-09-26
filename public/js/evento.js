@@ -34,7 +34,7 @@
         escAttr(capa) +
         '" alt="' +
         escAttr(ev.titulo || 'Capa do evento') +
-        '" loading="eager">' +
+        '" loading="eager" decoding="async" fetchpriority="high">' +
         '</div>'
       );
     }

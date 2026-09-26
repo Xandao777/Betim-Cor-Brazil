@@ -422,6 +422,22 @@ describe('API (integração, ficheiro temporário)', function () {
     expect(res.body.data.admin_users[0].senha).toBe('');
   });
 
+  test('página de detalhe entrega SEO no HTML inicial', async function () {
+    var publicState = await request(app).get('/api/public').expect(200);
+    var event = publicState.body.events[0];
+    expect(event).toBeDefined();
+    var res = await request(app).get('/evento.html?id=' + encodeURIComponent(event.id)).expect(200);
+    expect(res.text).toContain('<title>' + event.titulo + ' | Associação Betim Cor Brazil</title>');
+    expect(res.text).toContain('application/ld+json');
+    expect(res.headers['cache-control']).toContain('max-age=300');
+  });
+
+  test('assets estáticos usam cache com revalidação', async function () {
+    var res = await request(app).get('/css/style.css').expect(200);
+    expect(res.headers['cache-control']).toContain('max-age=86400');
+    expect(res.headers['cache-control']).toContain('must-revalidate');
+  });
+
   test('API impede deixar o painel sem administrador ativo', async function () {
     var agent = request.agent(app);
     await agent.post('/api/auth/admin').send({ usuario: 'admin', senha: 'admin123' }).expect(200);

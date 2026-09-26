@@ -1359,6 +1359,41 @@ var STATIC_BLOCK_PREFIXES = [
   '/.git'
 ];
 /** Sitemap com páginas estáticas + eventos/notícias/blog publicados. */
+var seoRender = require('./server/seo-render.cjs');
+var DETAIL_PAGES = {
+  '/evento.html': { key: 'events', file: 'evento.html', schemaType: 'Event', targetId: 'evento-detalhe' },
+  '/noticia.html': { key: 'news', file: 'noticia.html', schemaType: 'NewsArticle', targetId: 'noticia-artigo' },
+  '/blog-post.html': { key: 'blog', file: 'blog-post.html', schemaType: 'BlogPosting', targetId: 'blog-post-artigo' }
+};
+
+app.get(Object.keys(DETAIL_PAGES), rateLimits.publicGet, async function (req, res, next) {
+  try {
+    var config = DETAIL_PAGES[req.path];
+    var id = String(req.query.id || '');
+    if (!config || !id) return next();
+    var state = filterPublic(await loadState());
+    var item = (state[config.key] || []).find(function (entry) { return String(entry.id) === id; });
+    if (!item) return next();
+    var template = await fs.promises.readFile(path.join(PUBLIC_DIR, config.file), 'utf8');
+    var detailPath = req.path + '?id=' + encodeURIComponent(id);
+    var html = seoRender.render(template, {
+      title: item.titulo + ' | Associação Betim Cor Brazil',
+      description: item.resumo || item.descricao || item.conteudo || 'Conteúdo da Associação Betim Cor Brazil.',
+      image: item.imagemCapa || '',
+      date: item.dataPublicacao || item.data || '',
+      location: item.local || undefined,
+      path: detailPath,
+      base: (process.env.SITE_PUBLIC_URL || '').trim(),
+      schemaType: config.schemaType,
+      targetId: config.targetId
+    });
+    res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
+    res.type('html').send(html);
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get('/sitemap.xml', rateLimits.publicGet, async function (req, res) {
   try {
     var state = await loadState();
@@ -1476,12 +1511,24 @@ app.use('/uploads/documents', async function (req, res, next) {
     return res.status(500).json({ error: String(e.message) });
   }
 });
-app.use('/uploads/gallery', express.static(path.join(__dirname, 'uploads', 'gallery')));
+app.use('/uploads/gallery', express.static(path.join(__dirname, 'uploads', 'gallery'), {
+  maxAge: '7d',
+  immutable: false
+}));
 
 app.use(
   express.static(PUBLIC_DIR, {
     index: ['index.html'],
-    extensions: ['html']
+    extensions: ['html'],
+    setHeaders: function (res, filePath) {
+      if (/\.(?:css|js)$/i.test(filePath)) {
+        res.setHeader('Cache-Control', 'public, max-age=86400, must-revalidate');
+      } else if (/\.(?:png|jpe?g|gif|svg|webp|ico|woff2?)$/i.test(filePath)) {
+        res.setHeader('Cache-Control', 'public, max-age=604800, must-revalidate');
+      } else if (/\.html$/i.test(filePath)) {
+        res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+      }
+    }
   })
 );
 

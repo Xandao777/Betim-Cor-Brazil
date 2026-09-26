@@ -57,6 +57,17 @@
       });
   }
 
+  function initSkipLink() {
+    var skip = document.querySelector('.skip-link');
+    var main = document.getElementById('main');
+    if (!skip || !main) return;
+    if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1');
+    skip.addEventListener('click', function () {
+      window.setTimeout(function () { main.focus(); }, 0);
+    });
+  }
+
+  initSkipLink();
   var mounts = Array.prototype.slice.call(document.querySelectorAll('[data-site-chrome]'));
   window.SiteChromeReady = Promise.all(mounts.map(loadPartial))
     .then(function () {
