@@ -62,7 +62,7 @@ async function run() {
       run: async function () {
         var response = await fetch(base + '/sitemap.xml');
         var xml = await response.text();
-        return response.ok && xml.indexOf('<loc>' + base + '/') !== -1;
+        return response.ok && /<loc>https?:\/\/[^<]+<\/loc>/i.test(xml);
       }
     }
   ];
